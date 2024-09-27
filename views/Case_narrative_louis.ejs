@@ -443,69 +443,68 @@ select {
 	<script>
 		"use strict";
 
-		const body = document.querySelector("body");
-		const tabcontents = document.querySelectorAll(".tabcontent");
-		const chats = document.querySelectorAll(".chat");
-		const qna = document.getElementById("QnA");
-		const qnaChat = qna.querySelector(".chat");
-		const casenarrative = document.getElementById("CaseNarrative");
-		
-		function openTab(evt, tabName) {
-		    let i, tabcontent, tablinks;
-		
-		    // Hide all tab contents
-		    tabcontent = document.getElementsByClassName("tabcontent");
-		    for (i = 0; i < tabcontent.length; i++) {
-		        tabcontent[i].style.display = "none";
-		        // Hide the loading indicator for all tabs
-		        const loadingIndicator = tabcontent[i].querySelector(".overlay");
-		        if (loadingIndicator) {
-		            loadingIndicator.style.display = "none";
-		        }
-		    }
-		
-		    // Remove active class from all tab links
-		    tablinks = document.getElementsByClassName("tablinks");
-		    for (i = 0; i < tablinks.length; i++) {
-		        tablinks[i].className = tablinks[i].className.replace(" active", "");
-		    }
-		
-		    // Show the selected tab
-		    const tab = document.getElementById(tabName);
-		    tab.style.display = "block";
-		
-		    // Show the loading indicator for the active tab
-		    const loadingIndicator = tab.querySelector(".overlay");
-		    if (loadingIndicator) {
-		        loadingIndicator.style.display = "flex"; // Show the loading overlay
-		    }
-		
-		    // Simulate a loading delay (you can replace this with your actual API call)
-		    setTimeout(() => {
-		        // After loading, hide the loading indicator
-		        if (loadingIndicator) {
-		            loadingIndicator.style.display = "none";
-		        }
-		    }, 2000); // Simulate a 2-second loading time
-		
-		    // Adjust heights of elements
-		    qna.style.height = qnaChat.scrollHeight + 50 + "px";
-		    autoGrow(casenarrative);
-		    autoGrow(qnaChat);
-		    autoGrow(qna);
-		    autoGrow(body);
-		
-		    // Set the active tab
-		    evt.currentTarget.className += " active";
-		}
-		
-		// Open the default tab
-		document.getElementById("defaultOpen").click();
-		
-		function autoGrow(element) {
-		    element.style.height = "auto";
-		    element.style.height = element.scrollHeight + "px";
-		}
+const body = document.querySelector("body");
+const tabcontents = document.querySelectorAll(".tabcontent");
+const qna = document.getElementById("QnA");
+const casenarrative = document.getElementById("CaseNarrative");
+
+function openTab(evt, tabName) {
+    let i, tabcontent, tablinks;
+
+    // Hide all tab contents
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+        // Hide the loading indicator for all tabs
+        const loadingIndicator = tabcontent[i].querySelector(".overlay");
+        if (loadingIndicator) {
+            loadingIndicator.style.display = "none";
+        }
+    }
+
+    // Remove active class from all tab links
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Show the selected tab
+    const tab = document.getElementById(tabName);
+    tab.style.display = "block";
+
+    // Set the active tab
+    evt.currentTarget.className += " active";
+}
+
+// Open the default tab
+document.getElementById("defaultOpen").click();
+
+function showLoading(tabName) {
+    const tab = document.getElementById(tabName);
+    const loadingIndicator = tab.querySelector(".overlay");
+    if (loadingIndicator) {
+        loadingIndicator.style.display = "flex"; // Show the loading overlay
+    }
+
+    // Simulate a loading delay (you can replace this with your actual API call)
+    setTimeout(() => {
+        if (loadingIndicator) {
+            loadingIndicator.style.display = "none"; // Hide the loading overlay after 2 seconds
+        }
+    }, 2000); // Simulate a 2-second loading time
+}
+
+// Attach event listeners to buttons
+document.getElementById("chatForm").addEventListener("submit", function (event) {
+    event.preventDefault(); // Prevent default form submission
+    showLoading("QnA"); // Show loading in QnA tab
+});
+
+document.getElementById("chatForm-cn").addEventListener("submit", function (event) {
+    event.preventDefault(); // Prevent default form submission
+    showLoading("CaseNarrative"); // Show loading in Case Narrative tab
+});
+
 
 
 		// Attach the autoGrow function to input event for all textareas
