@@ -1,497 +1,1019 @@
+<!--
+Written by Arnav Priyadarshi
+Date: August 2024
+arnav.priyadarshi@sas.com
+-->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <script src='./javascripts/sas/util/messagingUtil.js'></script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            margin: 0 30px;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-        }
+	<script src="./javascripts/sas/util/messagingUtil.js"></script>
+	<script type="module" src="https://md-block.verou.me/md-block.js"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<style>
+		*,
+		*::before,
+		*::after {
+			box-sizing: border-box;
+		}
 
-        pre {
-            white-space: pre-wrap;
-            font-family: monospace;
-            font-size: 14px;
-        }
+		* {
+			margin: 0;
+			padding: 0;
+		}
 
-        details {
-            margin: 20px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: 90%;
-            padding: 10px;
-        }
+		body {
+			font-family: Arial, sans-serif;
+			font-size: 16px;
+			width: 80%;
+			display: flex;
+			flex-direction: column;
+			margin: 0 auto;
+			padding: 0px;
+			min-height: 100vh;
+		}
 
-        summary {
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-        }
+		pre {
+			white-space: pre-wrap;
+			font-family: monospace;
+			font-size: 14px;
+		}
 
-        .btn-primary {
-            background-color: #007bff;
-            border-color: #007bff;
-            color: #fff;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 20px;
-            /* inset */
-            border-radius: 5px;
-            box-shadow: inset 0px 0px 0px 1px #0a0a0a;
-        }
+		details {
+			display: none;
+		}
 
-        form {
-            display: flex;
-            flex-direction: column;
-            margin: 10px;
-            align-items: center;
-            justify-content: center;
-        }
+		.btn-primary {
+			background-color: #007bff;
+			border-color: #0a4079;
+			color: #fff;
+			padding: 10px 40px;
+			font-size: 16px;
+			cursor: pointer;
+			margin: 20px;
+			border-radius: 5px;
+			box-shadow: inset 0px 0px 0px -0.1px #0a0a0a;
+		}
 
-        label {
-            margin-bottom: 10px;
-        }
+		.btn-primary:disabled {
+			background-color: #d6d6d6; /* Lighter background to indicate it's disabled */
+			border-color: #ccc;         /* Lighter border */
+			color: #888;                /* Greyed out text */
+			cursor: not-allowed;        /* Change cursor to not-allowed */
+			box-shadow: none;           /* Remove the inset shadow */
+			opacity: 0.65;              /* Slightly transparent */
+		}
 
-        textarea {
-            width: 90%;
-            min-height: 80px;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            text-wrap: wrap;
-            height: auto;
-            overflow: hidden;
-            resize: none;
-            padding: 0.8em;
-        }
 
-        #chatgptResponse {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            color: #02022f;
-        }
+		label {
+			margin-bottom: 10px;
+		}
 
-        .loading {
-            display: none;
-            z-index: 999;
-            height: 2em;
-            width: 2em;
-        }
+		.prompt {
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-items: center;
+		}
 
-        .api-response-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin: 20px;
-        }
+		textarea {
+			width: 60%;
+			min-height: 80px;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			text-wrap: wrap;
+			height: auto;
+			overflow: hidden;
+			resize: none;
+			padding: 0.8em;
+			font-size: 16px;
+			border: 1px solid #000000;
+		}
 
-        .api-pricing {
-            display: flex;
-            width: 80%;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-        }
+		.row {
+			padding-top: 10px;
+			display: flex;
+			flex-direction: row;
+			justify-content: space-evenly;
+			align-items: center;
+			width: 20%;
+		}
 
-        .api-pricing>p {
-            margin-left: 10px;
-        }
-    </style>
-    <title>Data Workbench</title>
+		#chatgptResponse {
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			color: #02022f;
+		}
+
+		.loading {
+			display: none;
+		}
+
+		.chat {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			flex: 1;
+		}
+
+		h1 {
+			margin-bottom: 0;
+		}
+
+		h2 {
+			margin-top: 10px;
+			margin-bottom: 10px;
+		}
+
+		#conversation {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin: 20px;
+			margin-top: 0;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #eeeeee;
+			margin-bottom: 40px;
+			min-height: 200px;
+			padding-top: 12px;
+			padding-bottom: 12px;
+		}
+
+		#conversation-cn {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin: 20px;
+			margin-top: 0;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #fefeff;
+			margin-bottom: 40px;
+			min-height: 200px;
+			padding-top: 12px;
+			padding-bottom: 12px;
+		}
+
+		label {
+			margin-bottom: 0;
+		}
+
+		.message {
+			padding: 24px;
+			border-radius: 5px;
+			background-color: #fefefe;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			width: 75%;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			margin-left: 4px;
+			margin-right: 4px;
+			margin-bottom: 8px;
+		}
+
+		.case-narrative-message {
+			padding: 24px;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #fefefe;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			line-height: 1.5;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+		}
+
+		.assistant-response {
+			/* the box is aligned to the left inside #conversation */
+			align-self: flex-start;
+			color: #010721;
+		}
+
+		.user-response {
+			/* the box is aligned to the right inside #conversation */
+			align-self: flex-end;
+		}
+
+		#chatForm {
+			flex: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding-bottom: 0.2rem;
+			width: 100%;
+		}
+
+		#chatForm-cn {
+			flex: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding-bottom: 0.2rem;
+			width: 100%;
+		}
+
+
+		.tab {
+    display: flex;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+}
+
+.tab button {
+    background-color: #f1f1f1;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.tab button:hover {
+    background-color: #ddd;
+}
+
+.tab button.active {
+    background-color: #e7e7e7;
+    border-bottom: 2px solid #007bff;
+    font-weight: bold;
+}
+
+.tabcontent {
+    padding: 20px;
+    display: none;
+}
+
+.tabcontent.active {
+    display: block;
+}
+
+select {
+		appearance: none;
+		background-color: white;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+		padding: 5px 10px;
+		font-size: 16px;
+	}
+
+	select:hover {
+		border-color: #888;
+	}
+
+	</style>
+	<title>AML LLM</title>
 </head>
 
 <body>
-    <details>
-        <summary>API Response</summary>
-        <h2>API response</h2>
-        <pre id="apiResponse"></pre>
-        <h2>Filtered Scenario Fired Events</h2>
-        <pre id="scenario_fired_event"></pre>
-        <h2>Filtered Transactions</h2>
-        <pre id="transactions"></pre>
-        <h2>Personal Information</h2>
-        <pre id="Party_info"></pre>
-        <h2>Nonnormalized graph</h2>
-        <pre id="postResponse"></pre>
-    </details>
-    <details>
-        <summary>Graph Of Transactions</summary>
-        <h2>Vertices JSON</h2>
-        <pre id="verticesJson"></pre>
-        <h2>Edges JSON</h2>
-        <pre id="edgesJson"></pre>
-        <p id="alertid"></p>
-    </details>
+	<details>
+		<summary>API Response</summary>
+		<h2>API response</h2>
+		<pre id="apiResponse"></pre>
+		<h2>Filtered Scenario Fired Events</h2>
+		<pre id="scenario_fired_event"></pre>
+		<h2>Filtered Transactions</h2>
+		<pre id="transactions"></pre>
+		<h2>Personal Information</h2>
+		<pre id="Party_info"></pre>
+		<h2>Nonnormalized graph</h2>
+		<pre id="postResponse"></pre>
+	</details>
+	<details>
+		<summary>Graph Of Transactions</summary>
+		<h2>Vertices JSON</h2>
+		<pre id="verticesJson"></pre>
+		<h2>Edges JSON</h2>
+		<pre id="edgesJson"></pre>
+		<p id="alertid"></p>
+	</details>
 
-    <form id="chatForm">
-        <div class="row">
-            <label for="model">Model:</label>
-            <select id="model" name="model">
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o mini</option>
-            </select>
-        </div>
-        <button type="submit" class="btn-primary" id="callApiButton">Case Narrative
-        </button>
-    </form>
+	<div class="tab">
+		<button class="tablinks" onclick="openTab(event, 'CaseNarrative')" aria-label="Case Narrative" id="defaultOpen">
+			Case Recommendation
+		</button>
+		<button class="tablinks" onclick="openTab(event, 'QnA')" aria-label="QnA" >
+			Digital Assistant
+		</button>
+	</div>
 
-    <h2 class="loading" id="loading-indicator">
-        Loading response
-    </h2>
+	<div id="QnA" class="tabcontent">
+		<div class="chat">
+			<br>
+			<h1>AML Digital Assistant</h1>
+			<br>
+			<div id="conversation">
+			<div class="overlay" id="loading-indicator">
+				<div class="loading-container">
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
+				</div>
+			</div>
+			</div>
+			<form id="chatForm">
+				<div class="prompt">
+					<label for="userPrompt"> Ask a question </label>
+					<textarea id="userPrompt" name="userPrompt"></textarea>
+				</div>
 
-    <div class="api-response-box">
-        <pre style="width: 100%;"><span id="chatgptResponse"></span></pre>
-    </div>
-    <p hidden><span id="apiKeyContainer"></span></p>
-    <p hidden><span id="alertid"></span></p>
+				<div class="row">
+					<label for="model">Model:</label>
+					<select id="model" name="model">
+						<option value="gpt-4o">GPT-4o</option>
+						<option value="gpt-4o-mini">GPT-4o mini</option>
+					</select>
+				</div>
+				<button disabled type="submit" class="btn-primary" id="callApiButton">
+					Send
+				</button>
+			</form>
+		</div>
+	</div>
 
-    <script>
-        "use strict";
+	<div id="CaseNarrative" class="tabcontent">
+		<div class="chat">
+			<div id="conversation-cn">
+				<div class="overlay" id="loading-indicator-cn">
+				<div class="loading-container">
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
+				</div>
+			</div>
+			</div>
+			<form id="chatForm-cn">
+				<div class="row">
+					<label for="model-cn">Model:</label>
+					<select id="model-cn" name="model">
+						<option value="gpt-4o">GPT-4o</option>
+						<option value="gpt-4o-mini">GPT-4o mini</option>
+					</select>
+				</div>
+				<button disabled type="submit" class="btn-primary" id="callApiButton-cn">
+					Get Case Narrative
+				</button>
+			</form>
+		</div>
+	</div>
 
-        function autoGrow(element) {
-            element.style.height = 'auto';
-            element.style.height = (element.scrollHeight) + 'px';
-        }
+	<p hidden><span id="apiKeyContainer"></span></p>
+	<p hidden><span id="alertid"></span></p>
 
-        // Attach the autoGrow function to input event for all textareas
-        document.querySelectorAll('textarea').forEach(textarea => {
-            textarea.addEventListener('input', function () {
-                autoGrow(this);
-            });
-            // Call autoGrow on page load to set initial height
-            autoGrow(textarea);
-        });
+	<script>
+		"use strict";
 
-        const myHeaders = new Headers();
-        myHeaders.append("Cookie", "sas-ingress-nginx=6866adc2289a112d6ea7fd0775261540|f0e9e5d83f1b459459b54939af4feb2b");
+		const body = document.querySelector("body");
+		const tabcontents = document.querySelectorAll(".tabcontent");
+		const chats = document.querySelectorAll(".chat");
+		const qna = document.getElementById("QnA");
+		const qnaChat = qna.querySelector(".chat");
+		const casenarrative = document.getElementById("CaseNarrative");
 
-        const requestOptions = {
-            method: "GET",
-            headers: myHeaders,
-            redirect: "follow"
-        };
+		function openTab(evt, tabName) {
+			let i, tabcontent, tablinks;
+			tabcontent = document.getElementsByClassName("tabcontent");
+			for (i = 0; i < tabcontent.length; i++) {
+				tabcontent[i].style.display = "none";
+			}
+			tablinks = document.getElementsByClassName("tablinks");
+			for (i = 0; i < tablinks.length; i++) {
+				tablinks[i].className = tablinks[i].className.replace(
+					" active",
+					""
+				);
+			}
+			const tab = document.getElementById(tabName);
+			tab.style.display = "block";
 
-        va.messagingUtil.setOnDataReceivedCallback(updateURL);
+			qna.style.height = qnaChat.scrollHeight + 50 + "px";
+			autoGrow(casenarrative);
+			autoGrow(qnaChat);
+			autoGrow(qna);
+			autoGrow(body);
 
-        function updateURL(vaMsgObj) {
-            console.log('Received vaMsgObj:', vaMsgObj);
-            if (vaMsgObj && vaMsgObj.data && vaMsgObj.data.length > 0) {
-                const apiKey = vaMsgObj.data[0][0];
-                console.log('[debug]: Fetched API Key:', apiKey);
-                document.getElementById("apiKeyContainer").textContent = apiKey;
+			evt.currentTarget.className += " active";
+		}
 
-                // Extract the value from the parameters array
-                if (vaMsgObj.parameters && vaMsgObj.parameters.length > 0) {
-                    const alert_id = vaMsgObj.parameters[0].value;
-                    console.log('[debug]: Fetched Parameter Value:', alert_id);
-                    document.getElementById("alertid").textContent = alert_id;
-                } else {
-                    document.getElementById("alertid").textContent = "No parameter value available";
-                }
-            } else {
-                document.getElementById("apiKeyContainer").textContent = "No API key available";
-                document.getElementById("alertid").textContent = "No parameter value available";
-            }
-        }
+		// Open the default tab
+		document.getElementById("defaultOpen").click();
 
-        async function getCsrfToken() {
-            const url = 'https://amlglobalteam-03.unx.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000';
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                const csrfToken = response.headers.get('X-CSRF-TOKEN');
-                if (!csrfToken) {
-                    console.error('CSRF token not found in response headers');
-                    throw new Error('CSRF token not found in response headers');
-                }
-                console.log("[debug]: csrfToken set")
-                return csrfToken;
-            } catch (error) {
-                console.error('[debug]: Error in getCsrfToken:', error);
-                throw error;
-            }
-        }
-
-        async function postData(csrfToken) {
-            const url = 'https://amlglobalteam-03.unx.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000';
-            const data = {
-                "edgeTypes": [
-                    "social_link"
-                ],
-                "depth": 2,
-                "extendedFormat": true,
-                "graphObjectIds": [
-                    {
-                        "type": "PTY",
-                        "id": "326315"
-                    },
-                    {
-                        "type": "alerts",
-                        "id": "3d9a7119-640a-420a-a273-e7f0520259f4"
-                    }
-                ],
-                "query": {
-                    "type": "object",
-                    "objectIds": [
-                        {
-                            "type": "PTY",
-                            "id": "326315"
-                        }
-                    ]
-                }
-            };
-
-            const myHeaderspost = new Headers();
-            myHeaderspost.append("Content-Type", "application/json");
-            myHeaderspost.append("Cookie", "sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855");
-            myHeaderspost.append("X-CSRF-TOKEN", csrfToken);
-
-            const requestOptionspost = {
-                method: "POST",
-                headers: myHeaderspost,
-                body: JSON.stringify(data),
-                redirect: "follow"
-            };
-
-            try {
-                const response = await fetch(url, requestOptionspost);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                const postResponseText = await response.json();
-                document.getElementById('postResponse').textContent = JSON.stringify(postResponseText, null, 2);
-
-                const vertices = postResponseText.vertices.map(vertex => ({
-                    type: vertex.type,
-                    id: vertex.id,
-                    typeLabel: vertex.typeLabel,
-                    label: vertex.label
-                }));
-
-                const edges = postResponseText.edges.map(edge => ({
-                    id: edge.id,
-                    endpoints: edge.endpoints.map(endpoint => ({
-                        type: endpoint.type,
-                        id: endpoint.id
-                    })),
-                    subtype: edge.subtype,
-                    label: edge.label
-                }));
-
-                console.log("[debug]: set pty and graph data");
-
-                document.getElementById('verticesJson').textContent = JSON.stringify(vertices, null, 2);
-                document.getElementById('edgesJson').textContent = JSON.stringify(edges, null, 2);
-            } catch (error) {
-                console.error('[debug]: Error in postData:', error);
-                document.getElementById('postResponse').textContent = `Error: ${error}`;
-            }
-        }
-
-        async function fetchData() {
-            const alertIdElement = document.getElementById("alertid");
-            let alertId = alertIdElement.textContent.trim(); // Get the alert ID from the element
-
-            if (!alertId) {
-                console.warn('[debug]: Alert ID is not immediately available. Waiting for it to be populated...');
-
-                // Wait for the alert ID to be available
-                for (let i = 0; i < 10; i++) {  // Retry up to 10 times (adjust as needed)
-                    await new Promise(resolve => setTimeout(resolve, 500));  // Wait for 500ms
-                    alertId = alertIdElement.textContent.trim();
-                    if (alertId) {
-                        break;  // Exit the loop once alertId is available
-                    }
-                }
-            }
-
-            if (!alertId) {
-                console.error('Alert ID is still not available after waiting.');
-                return;
-            }
-            const alertUrl = `https://amlglobalteam-03.unx.sas.com/svi-alert/alerts/${alertId}`;
-
-            console.log("[debug]: called alerts data");
-            try {
-                const response = await fetch(alertUrl, requestOptions);
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                const data = await response.json();
-                const currentAlertingEventId = data.currentAlertingEventId;
-                const actionableEntityId = data.actionableEntityId;
-                document.getElementById("apiResponse").innerHTML = JSON.stringify(data, null, 2);
-
-                const alertingEventsUrl = `https://amlglobalteam-03.unx.sas.com/svi-alert/alertingEvents/${currentAlertingEventId}`;
-                const alertingEventsResponse = await fetch(alertingEventsUrl, requestOptions);
-                if (!alertingEventsResponse.ok) {
-                    throw new Error('Network response was not ok ' + alertingEventsResponse.statusText);
-                }
-                const alertingEventsData = await alertingEventsResponse.json();
-                const filteredScenarioFiredEvents = alertingEventsData.scenarioFiredEvents.map(event => ({
-                    scenarioName: event.scenarioName,
-                    scenarioDescription: event.scenarioDescription,
-                    messageTemplateText: event.messageTemplateText
-                }));
-                document.getElementById("scenario_fired_event").innerHTML = JSON.stringify(filteredScenarioFiredEvents, null, 2);
-
-                const transactionsUrl = `https://amlglobalteam-03.unx.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
-                const transactionsResponse = await fetch(transactionsUrl, requestOptions);
-                if (!transactionsResponse.ok) {
-                    throw new Error('Network response was not ok ' + transactionsResponse.statusText);
-                }
-                const transactionsData = await transactionsResponse.json();
-                const filteredTransactions = transactionsData.items.map(transaction => ({
-                    transactionNumber: transaction.transactionNumber,
-                    transactionDate:transaction.transactionDate,
-                    primaryMediumDesc: transaction.primaryMediumDesc,
-                    secondaryMediumDesc: transaction.secondaryMediumDesc,
-                    mechanismDesc: transaction.mechanismDesc,
-                    currencyAmount: transaction.currencyAmount,
-                    transactionCDIDesc: transaction.transactionCDIDesc
-                }));
-                document.getElementById("transactions").innerHTML = JSON.stringify(filteredTransactions, null, 2);
-
-                const partyInfoUrl = `https://amlglobalteam-03.unx.sas.com/SASVisualInvestigator/pages/PTY/${actionableEntityId}`;
-                const partyInfoResponse = await fetch(partyInfoUrl, requestOptions);
-                if (!partyInfoResponse.ok) {
-                    throw new Error('Network response was not ok ' + partyInfoResponse.statusText);
-                }
-                const partyInfoData = await partyInfoResponse.json();
-                document.getElementById("Party_info").innerHTML = JSON.stringify(partyInfoData.data, null, 2);
-
-                const csrfToken = await getCsrfToken();
-                await postData(csrfToken);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('postResponse').textContent = `Error: ${error}`;
-            }
-        }
-
-        document.getElementById("chatForm").addEventListener("submit", function () {
-            console.log("[debug]: form submitted");
-            event.preventDefault();
-            console.log("[debug]: called api button");
-
-            const apiKey = document.getElementById("apiKeyContainer").textContent;
-            const apiUrl = "https://api.openai.com/v1/chat/completions";
-            
-            const model = document.getElementById("model").value;
-
-            console.log("[debug]: ", apiKey);
-
-            const userContent = `Please review the following account activity and identify any suspicious patterns or behaviors that could indicate potential money laundering. Focus on analyzing any large transactions, unusual frequency of activities, or connections to high-risk jurisdictions. Provide a detailed case narrative that includes an overview of the activity, specific transaction details, behavioral indicators, and how these activities align with the customer's KYC profile. Conclude with a risk assessment and recommendations for further action, such as enhanced due diligence or filing a SAR,
-
-            Filtered Scenario Fired Events: ${document.getElementById("scenario_fired_event").textContent} 
-            
-            Filtered transactions: ${document.getElementById("transactions").textContent} 
-            
-            Personal information on the customer: ${document.getElementById("Party_info").textContent}
-            `;
-
-            
-            console.log("[debug]: prompt: ", userContent);
-            console.log("[debug]: model: ", model);
-
-            const loading = document.getElementById("loading-indicator");
+		function autoGrow(element) {
+			element.style.height = "auto";
+			element.style.height = element.scrollHeight + "px";
+		}
 
 
-            fetch(apiUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + apiKey
-                },
-                body: JSON.stringify({
-                    "model": model,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": userContent
-                        }
-                    ]
-                })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    loading.classList.toggle("loading");
-                    console.log("[debug]: chatgpt response", data);
-                    const content = data.choices[0].message.content;
-                    const inputTokens = data.usage.prompt_tokens;
-                    const outputTokens = data.usage.completion_tokens;
+		// Attach the autoGrow function to input event for all textareas
+		document.querySelectorAll("textarea").forEach(textarea => {
+			textarea.addEventListener("input", function () {
+				autoGrow(this);
+				autoGrow(body);
+				for (const tabcontent of tabcontents) {
+					autoGrow(tabcontent);
+				}
+			});
+			// Call autoGrow on page load to set initial height
+			autoGrow(textarea);
+			autoGrow(body);
+			for (const tabcontent of tabcontents) {
+					autoGrow(tabcontent);
+			}
+		});
 
-                    document.getElementById("chatgptResponse").textContent = content;
+		//=============================================
 
-                    
-                    // log it to job execution
-                    callJob(inputTokens, outputTokens);
-                })
-                .catch(error => {
-                    loading.classList.toggle("loading");
-                    console.error("[debug]: Error:", error);
-                    document.getElementById("chatgptResponse").textContent = "Error occurred while fetching API data.";
-                });
-        });
+		const myHeaders = new Headers();
+		myHeaders.append(
+			"Cookie",
+			"sas-ingress-nginx=6866adc2289a112d6ea7fd0775261540|f0e9e5d83f1b459459b54939af4feb2b"
+		);
 
-        // calls the job on SASJobExecution
-        async function callJob(inputTokens, outputTokens) {
-            console.log("[debug]: called job execution");
-            const vajson = {
-                "inputTokens": inputTokens,
-                "outputTokens": outputTokens
-            }
+		const requestOptions = {
+			method: "GET",
+			headers: myHeaders,
+			redirect: "follow"
+		};
 
-            const paramStr = "?_program="
-                + encodeURIComponent("/Public/Report/Prices")
-                + "&_action=" + encodeURIComponent("execute")
-                + "&_outputType=ods_html5"
-                + "&vajson=" + encodeURIComponent(JSON.stringify(vajson));
-            + "&_debug=log"
-                ;
+		va.messagingUtil.setOnDataReceivedCallback(updateURL);
 
-            try {
-                const url = "/SASJobExecution/" + paramStr;
+		function updateURL(vaMsgObj) {
+			console.log("Received vaMsgObj:", vaMsgObj);
+			if (vaMsgObj && vaMsgObj.data && vaMsgObj.data.length > 0) {
+				const apiKey = vaMsgObj.data[0][0];
+				console.log("[debug]: Fetched API Key:", apiKey);
+				document.getElementById("apiKeyContainer").textContent =
+					apiKey;
 
-                console.log("[debug]: Job URL: ", url);
-                console.log("[debug]: ", vajson);
+				// Extract the value from the parameters array
+				if (vaMsgObj.parameters && vaMsgObj.parameters.length > 0) {
+					const alert_id = vaMsgObj.parameters[0].value;
+					console.log(
+						"[debug]: Fetched Parameter Value:",
+						alert_id
+					);
+					document.getElementById("alertid").textContent =
+						alert_id;
+				} else {
+					document.getElementById("alertid").textContent =
+						"No parameter value available";
+				}
+			} else {
+				document.getElementById("apiKeyContainer").textContent =
+					"No API key available";
+				document.getElementById("alertid").textContent =
+					"No parameter value available";
+			}
+		}
 
-                const requestHeaders = new Headers();
-                requestHeaders.append("Accept", "text/html");
+		async function getCsrfToken() {
+			const url =
+				"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+			try {
+				const response = await fetch(url, {
+					method: "GET",
+					credentials: "include"
+				});
+				const csrfToken = response.headers.get("X-CSRF-TOKEN");
+				if (!csrfToken) {
+					console.error(
+						"CSRF token not found in response headers"
+					);
+					throw new Error(
+						"CSRF token not found in response headers"
+					);
+				}
+				console.log("[debug]: csrfToken set");
+				return csrfToken;
+			} catch (error) {
+				console.error("[debug]: Error in getCsrfToken:", error);
+				throw error;
+			}
+		}
 
-                const requestOptions = {};
-                requestOptions.headers = requestHeaders;
-                requestOptions.method = "GET";
+		async function postData(csrfToken) {
+			const url =
+				"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+			const data = {
+				edgeTypes: ["social_link"],
+				depth: 2,
+				extendedFormat: true,
+				graphObjectIds: [
+					{
+						type: "PTY",
+						id: "326315"
+					},
+					{
+						type: "alerts",
+						id: "3d9a7119-640a-420a-a273-e7f0520259f4"
+					}
+				],
+				query: {
+					type: "object",
+					objectIds: [
+						{
+							type: "PTY",
+							id: "326315"
+						}
+					]
+				}
+			};
 
-                const response = await fetch(url, requestOptions);
+			const myHeaderspost = new Headers();
+			myHeaderspost.append("Content-Type", "application/json");
+			myHeaderspost.append(
+				"Cookie",
+				"sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855"
+			);
+			myHeaderspost.append("X-CSRF-TOKEN", csrfToken);
 
-                if (!response.ok) {
-                    const error = response.statusText;
-                    console.log("[debug]: Job failed with error: ", error);
-                }
+			const requestOptionspost = {
+				method: "POST",
+				headers: myHeaderspost,
+				body: JSON.stringify(data),
+				redirect: "follow"
+			};
 
-                const jobOutput = await response.text();
-                console.log("[debug]: Job output: ", jobOutput);
-                return jobOutput;
-            }
-            catch (error) {
-                console.error("************** JOB FAILED ***************");
-                console.error("[debug]: Error: ", error);
-            }
-        }
+			try {
+				const response = await fetch(url, requestOptionspost);
+				if (!response.ok) {
+					throw new Error(
+						"Network response was not ok " + response.statusText
+					);
+				}
+				const postResponseText = await response.json();
+				document.getElementById("postResponse").textContent =
+					JSON.stringify(postResponseText, null, 2);
 
-        // Fetch data on page load
-        document.addEventListener("DOMContentLoaded", function () {
-            fetchData();
-        });
-    </script>
+				const vertices = postResponseText.vertices.map(vertex => ({
+					type: vertex.type,
+					id: vertex.id,
+					typeLabel: vertex.typeLabel,
+					label: vertex.label
+				}));
+
+				const edges = postResponseText.edges.map(edge => ({
+					id: edge.id,
+					endpoints: edge.endpoints.map(endpoint => ({
+						type: endpoint.type,
+						id: endpoint.id
+					})),
+					subtype: edge.subtype,
+					label: edge.label
+				}));
+
+				console.log("[debug]: set pty and graph data");
+
+				document.getElementById("verticesJson").textContent =
+					JSON.stringify(vertices, null, 2);
+				document.getElementById("edgesJson").textContent =
+					JSON.stringify(edges, null, 2);
+			} catch (error) {
+				console.error("[debug]: Error in postData:", error);
+				document.getElementById(
+					"postResponse"
+				).textContent = `Error: ${error}`;
+			}
+		}
+
+		async function fetchData() {
+			const alertIdElement = document.getElementById("alertid");
+			let alertId = alertIdElement.textContent.trim(); // Get the alert ID from the element
+
+			if (!alertId) {
+				console.warn(
+					"[debug]: Alert ID is not immediately available. Waiting for it to be populated..."
+				);
+
+				// Wait for the alert ID to be available
+				for (let i = 0; i < 10; i++) {
+					// Retry up to 10 times (adjust as needed)
+					await new Promise(resolve => setTimeout(resolve, 500)); // Wait for 500ms
+					alertId = alertIdElement.textContent.trim();
+					if (alertId) {
+						break; // Exit the loop once alertId is available
+					}
+				}
+			}
+
+			if (!alertId) {
+				console.error(
+					"Alert ID is still not available after waiting."
+				);
+				return;
+			}
+			const alertUrl = `https://sasserver.demo.sas.com/svi-alert/alerts/${alertId}`;
+
+			console.log("[debug]: called alerts data");
+			try {
+				const response = await fetch(alertUrl, requestOptions);
+				if (!response.ok) {
+					throw new Error(
+						"Network response was not ok " + response.statusText
+					);
+				}
+				const data = await response.json();
+				const currentAlertingEventId = data.currentAlertingEventId;
+				const actionableEntityId = data.actionableEntityId;
+				document.getElementById("apiResponse").innerHTML =
+					JSON.stringify(data, null, 2);
+
+				const alertingEventsUrl = `https://sasserver.demo.sas.com/svi-alert/alertingEvents/${currentAlertingEventId}`;
+				const alertingEventsResponse = await fetch(
+					alertingEventsUrl,
+					requestOptions
+				);
+				if (!alertingEventsResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						alertingEventsResponse.statusText
+					);
+				}
+				const alertingEventsData =
+					await alertingEventsResponse.json();
+				const filteredScenarioFiredEvents =
+					alertingEventsData.scenarioFiredEvents.map(event => ({
+						scenarioName: event.scenarioName,
+						scenarioDescription: event.scenarioDescription,
+						messageTemplateText: event.messageTemplateText
+					}));
+				document.getElementById("scenario_fired_event").innerHTML =
+					JSON.stringify(filteredScenarioFiredEvents, null, 2);
+
+				const transactionsUrl = `https://sasserver.demo.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
+				const transactionsResponse = await fetch(
+					transactionsUrl,
+					requestOptions
+				);
+				if (!transactionsResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						transactionsResponse.statusText
+					);
+				}
+				const transactionsData = await transactionsResponse.json();
+				const filteredTransactions = transactionsData.items.map(
+					transaction => ({
+						transactionNumber: transaction.transactionNumber,
+						transactionDate: transaction.transactionDate,
+						primaryMediumDesc: transaction.primaryMediumDesc,
+						secondaryMediumDesc:
+							transaction.secondaryMediumDesc,
+						mechanismDesc: transaction.mechanismDesc,
+						currencyAmount: transaction.currencyAmount,
+						transactionCDIDesc: transaction.transactionCDIDesc
+					})
+				);
+				document.getElementById("transactions").innerHTML =
+					JSON.stringify(filteredTransactions, null, 2);
+
+				const partyInfoUrl = `https://sasserver.demo.sas.com/SASVisualInvestigator/pages/PTY/${actionableEntityId}`;
+				const partyInfoResponse = await fetch(
+					partyInfoUrl,
+					requestOptions
+				);
+				if (!partyInfoResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						partyInfoResponse.statusText
+					);
+				}
+				const partyInfoData = await partyInfoResponse.json();
+				document.getElementById("Party_info").innerHTML =
+					JSON.stringify(partyInfoData.data, null, 2);
+
+				console.log("[debug]: fetched VI data");
+
+				const csrfToken = await getCsrfToken();
+				await postData(csrfToken);
+			} catch (error) {
+				console.error("Error:", error);
+				document.getElementById(
+					"postResponse"
+				).textContent = `Error: ${error}`;
+			}
+			console.log("[debug]: fetched data - all ok");
+			// make the buttons no longer disabled
+			document.getElementById("callApiButton").disabled = false;
+			document.getElementById("callApiButton-cn").disabled = false;
+			return true;
+		}
+
+		// chat GPT code
+		// ========================
+
+		const conversation = document.getElementById("conversation");
+		const conversationCN = document.getElementById("conversation-cn");
+		const form = document.getElementById("chatForm");
+		const formCN = document.getElementById("chatForm-cn");
+		const loading = document.getElementById("loading-indicator");
+		const loadingCN = document.getElementById("loading-indicator-cn");
+
+		const apiUrl = "https://api.openai.com/v1/chat/completions";
+
+
+		const messages = [];
+		const systemPrompt = `You are a helpful Anti Money Laundering AI tool of a bank. You're used to reading and understanding complex JSON representations of alerts and can get why they're flagged based on filtered transactions and customer information. You are helping an Investigator make sense of the alerts that they're receiving by providing informative and actionable insights and discussing any issues that they're having, while not being afraid to admit your own ignorance and say that the answer may be unclear from just the data provided.
+
+			Make sure to output responses that are easy to understand and actionable.`;
+		const systemMessage = {
+			role: "assistant",
+			content: systemPrompt
+		};
+		messages.push(systemMessage);
+
+		let firstMessage = true;
+
+
+		function getCaseNarrative(event) {
+			const apiKey = document.getElementById("apiKeyContainer").textContent;
+			const filteredScenarioFiredEvents = document.getElementById(
+				"scenario_fired_event"
+			).textContent;
+			const filteredTransactions = document.getElementById(
+				"transactions"
+			).textContent;
+			const partyInfo = document.getElementById("Party_info").textContent;
+			console.log("[debug]: CaseNarrative called");
+			event.preventDefault();
+
+			const model = document.getElementById("model-cn").value;
+			const userPrompt = `Please review the following account activity and identify any suspicious patterns or behaviors that could indicate potential money laundering. Focus on analyzing any large transactions, unusual frequency of activities, or connections to high-risk jurisdictions. Provide a detailed case narrative that includes an overview of the activity, specific transaction details, behavioral indicators, and how these activities align with the customer's KYC profile. Conclude with a risk assessment and recommendations for further action, such as enhanced due diligence or filing a SAR. You may respond in Markdown.
+			
+			Filtered Scenario Fired Events: ${filteredScenarioFiredEvents}
+			
+			Filtered transactions: ${filteredTransactions}
+			
+			Personal information on the customer: ${partyInfo}`;
+
+			const newMessage = {
+				role: "user",
+				content: userPrompt
+			};
+
+			for (let i = 0; i < formCN.children.length; i++) {
+				formCN.children[i].style.display = "none";
+			}
+
+			console.log("[debug]: prompt: ", userPrompt);
+			console.log("[debug]: model: ", model);
+
+			loadingCN.classList.toggle("loading");
+			autoGrow(conversationCN);
+
+			fetch(apiUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer " + apiKey
+				},
+				body: JSON.stringify({
+					model: model,
+					messages: [...messages, newMessage]
+				})
+			})
+				.then(response => response.json())
+				.then(data => {
+					loadingCN.classList.toggle("loading");
+					console.log("[debug]: chatgpt response", data);
+					const content = data.choices[0].message.content;
+					const inputTokens = data.usage.prompt_tokens;
+					const outputTokens = data.usage.completion_tokens;
+
+					const responseMessage = {
+						role: "assistant",
+						content: content
+					};
+					addMessage(responseMessage, true);
+					messages.push(responseMessage);
+					console.log("[debug]: messages", messages);
+
+					// log it to job execution
+					callJob(inputTokens, outputTokens);
+				})
+				.catch(error => {
+					loadingCN.classList.toggle("loading");
+					console.error("[debug]: Error:", error);
+					document.getElementById(
+						"chatgptResponse"
+					).textContent =
+						"Error occurred while fetching API data.";
+				});
+			console.log("[debug]: CaseNarrative end");
+		}
+
+		document
+			.getElementById("chatForm-cn")
+			.addEventListener("submit", getCaseNarrative);
+
+		document
+			.getElementById("chatForm")
+			.addEventListener("submit", function () {
+				const apiKey = document.getElementById("apiKeyContainer").textContent;
+				const filteredScenarioFiredEvents = document.getElementById(
+					"scenario_fired_event"
+				).textContent;
+				const filteredTransactions = document.getElementById(
+					"transactions"
+				).textContent;
+				const partyInfo = document.getElementById("Party_info").textContent;
+
+				console.log("[debug]: form submitted");
+				event.preventDefault();
+				console.log("[debug]: called api button");
+
+
+				const model = document.getElementById("model").value;
+
+
+				let userPrompt =
+					document.getElementById("userPrompt").value;
+				document.getElementById("userPrompt").value = "";
+
+				const newMessage = {
+					role: "user",
+					content: userPrompt
+				};
+				addMessage(newMessage, false);
+
+				if (firstMessage) {
+					firstMessage = false;
+
+
+					userPrompt = `${userPrompt}
+
+Here is the data on the alerts
+that our system generated. Please review this for your answer.
+
+
+Filtered Scenario Fired Events: ${filteredScenarioFiredEvents}
+
+Filtered transactions: ${filteredTransactions}
+
+Personal information on the customer: ${partyInfo}`;
+
+					newMessage.content = userPrompt;
+				}
+
+				messages.push(newMessage);
+				console.log("[debug]: prompt: ", userPrompt);
+				console.log("[debug]: model: ", model);
+
+				const loading =
+					document.getElementById("loading-indicator");
+				loading.classList.toggle("loading");
+				autoGrow(conversation);
+
+				fetch(apiUrl, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: "Bearer " + apiKey
+					},
+					body: JSON.stringify({
+						model: model,
+						messages: messages.map(message => {
+							return {
+								role: message.role,
+								content: message.content
+							};
+						})
+					})
+				})
+					.then(response => response.json())
+					.then(data => {
+						loading.classList.toggle("loading");
+						console.log("[debug]: chatgpt response", data);
+						const content = data.choices[0].message.content;
+						const inputTokens = data.usage.prompt_tokens;
+						const outputTokens = data.usage.completion_tokens;
+
+						const responseMessage = {
+							role: "assistant",
+							content: content
+						};
+						addMessage(responseMessage, false);
+						messages.push(responseMessage);
+						console.log("[debug]: messages", messages);
+
+						// log it to job execution
+						callJob(inputTokens, outputTokens);
+					})
+					.catch(error => {
+						loading.classList.toggle("loading");
+						console.error("[debug]: Error:", error);
+						document.getElementById(
+							"chatgptResponse"
+						).textContent =
+							"Error occurred while fetching API data.";
+					});
+			});
+
+		function addMessage(message, cn) {
+			const messageElement = document.createElement("md-block");
+			messageElement.classList.add("message");
+			messageElement.classList.add(message.role + "-response");
+			messageElement.innerHTML = message.content;
+
+			const convo = cn ? conversationCN : conversation;
+			convo.appendChild(messageElement);
+			if (cn) {
+				messageElement.classList.add("case-narrative-message");
+				messageElement.classList.remove("message");
+			}
+
+			autoGrow(conversation);
+			autoGrow(conversationCN);
+			autoGrow(body);
+
+			setTimeout(() => {
+				autoGrow(conversation);
+				autoGrow(conversationCN);
+				for (const chat of chats) {
+					autoGrow(chat);
+				}
+				autoGrow(qna);
+				autoGrow(casenarrative);
+				autoGrow(body);
+			}, 200);
+
+			setTimeout(() => {
+				autoGrow(conversation);
+				autoGrow(conversationCN);
+				for (const chat of chats) {
+					autoGrow(chat);
+				}
+				autoGrow(qna);
+				autoGrow(casenarrative);
+				autoGrow(body);
+			}, 500);
+		}
+
+		// calls the job on SASJobExecution
+		async function callJob(inputTokens, outputTokens) {
+			console.log("[debug]: called job execution");
+			const vajson = {
+				inputTokens: inputTokens,
+				outputTokens: outputTokens
+			};
+
+			const paramStr =
+				"?_program=" +
+				encodeURIComponent("/Public/Report/Prices") +
+				"&_action=" +
+				encodeURIComponent("execute") +
+				"&_outputType=ods_html5" +
+				"&vajson=" +
+				encodeURIComponent(JSON.stringify(vajson));
+			+"&_debug=log";
+
+			try {
+				const url = "/SASJobExecution/" + paramStr;
+
+				console.log("[debug]: Job URL: ", url);
+				// console.log("[debug]: vajson ", vajson);
+
+				const requestHeaders = new Headers();
+				requestHeaders.append("Accept", "text/html");
+
+				const requestOptions = {};
+				requestOptions.headers = requestHeaders;
+				requestOptions.method = "GET";
+
+				const response = await fetch(url, requestOptions);
+
+				if (!response.ok) {
+					const error = response.statusText;
+					console.log("[debug]: Job failed with error: ", error);
+				}
+
+				const jobOutput = await response.text();
+				// console.log("[debug]: Job output: ", jobOutput);
+				return jobOutput;
+			} catch (error) {
+				console.error("************** JOB FAILED ***************");
+				console.error("[debug]: Error: ", error);
+			}
+		}
+
+		// Fetch data on page load
+		document.addEventListener("DOMContentLoaded", function () {
+			fetchData();
+		});
+	</script>
 </body>
 
 </html>
