@@ -47,6 +47,10 @@ arnav.priyadarshi@sas.com
             z-index: 9999; /* Ensure it stays on top */
         }
 
+	.overlay.loading {
+    	display: flex; /* Make it visible */
+	}
+
         .loading-container {
             display: flex;
             flex-direction: column;
@@ -834,7 +838,7 @@ select {
 			console.log("[debug]: prompt: ", userPrompt);
 			console.log("[debug]: model: ", model);
 
-			loadingCN.classList.toggle("loading");
+			loadingCN.classList.add("loading");
 			autoGrow(conversationCN);
 
 			fetch(apiUrl, {
@@ -850,7 +854,7 @@ select {
 			})
 				.then(response => response.json())
 				.then(data => {
-					loadingCN.classList.toggle("loading");
+					loadingCN.classList.add("loading");
 					console.log("[debug]: chatgpt response", data);
 					const content = data.choices[0].message.content;
 					const inputTokens = data.usage.prompt_tokens;
@@ -868,7 +872,7 @@ select {
 					callJob(inputTokens, outputTokens);
 				})
 				.catch(error => {
-					loadingCN.classList.toggle("loading");
+					loadingCN.classList.add("loading");
 					console.error("[debug]: Error:", error);
 					document.getElementById(
 						"chatgptResponse"
@@ -937,7 +941,7 @@ Personal information on the customer: ${partyInfo}`;
 
 				const loading =
 					document.getElementById("loading-indicator");
-				loading.classList.toggle("loading");
+				loading.classList.add("loading");
 				autoGrow(conversation);
 
 				fetch(apiUrl, {
@@ -958,7 +962,7 @@ Personal information on the customer: ${partyInfo}`;
 				})
 					.then(response => response.json())
 					.then(data => {
-						loading.classList.toggle("loading");
+						loading.classList.add("loading");
 						console.log("[debug]: chatgpt response", data);
 						const content = data.choices[0].message.content;
 						const inputTokens = data.usage.prompt_tokens;
@@ -976,7 +980,7 @@ Personal information on the customer: ${partyInfo}`;
 						callJob(inputTokens, outputTokens);
 					})
 					.catch(error => {
-						loading.classList.toggle("loading");
+						loading.classList.add("loading");
 						console.error("[debug]: Error:", error);
 						document.getElementById(
 							"chatgptResponse"
