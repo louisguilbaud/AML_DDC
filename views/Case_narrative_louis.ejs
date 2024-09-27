@@ -505,6 +505,10 @@ document.getElementById("chatForm-cn").addEventListener("submit", function (even
     showLoading("CaseNarrative"); // Show loading in Case Narrative tab
 });
 
+		function autoGrow(element) {
+			element.style.height = "auto";
+			element.style.height = element.scrollHeight + "px";
+		}
 
 
 		// Attach the autoGrow function to input event for all textareas
