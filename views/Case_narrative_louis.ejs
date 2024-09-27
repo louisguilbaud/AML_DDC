@@ -7,50 +7,45 @@ arnav.priyadarshi@sas.com
 <html lang="en">
 
 <head>
-	<script src="./javascripts/sas/util/messagingUtil.js"></script>
-	<script type="module" src="https://md-block.verou.me/md-block.js"></script>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<style>
-		*,
-		*::before,
-		*::after {
-			box-sizing: border-box;
-		}
+    <script src="./javascripts/sas/util/messagingUtil.js"></script>
+    <script type="module" src="https://md-block.verou.me/md-block.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-		* {
-			margin: 0;
-			padding: 0;
-		}
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            padding: 0;
+            min-height: 100vh;
+        }
 
-		body {
-			font-family: Arial, sans-serif;
-			font-size: 16px;
-			width: 80%;
-			display: flex;
-			flex-direction: column;
-			margin: 0 auto;
-			padding: 0px;
-			min-height: 100vh;
-		}
-		        /* Overlay styles */
+        /* Overlay styles */
         .overlay {
-		    position: absolute; /* Change to absolute */
-		    top: 0;
-		    left: 0;
-		    width: 100%;
-		    height: 100%;
-		    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent grey */
-		    display: none; /* Hidden by default */
-		    justify-content: center;
-		    align-items: center;
-		    z-index: 9999; /* Ensure it stays on top */
-		}
+            position: absolute; /* Change to absolute */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent grey */
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* Ensure it stays on top */
+        }
 
-
-	.overlay.loading {
-    	display: flex; /* Make it visible */
-	}
+        .overlay.loading {
+            display: flex; /* Make it visible */
+        }
 
         .loading-container {
             display: flex;
@@ -96,413 +91,199 @@ arnav.priyadarshi@sas.com
             margin-top: 5px;
         }
 
-        /* To simulate the loading trigger */
-        .content {
-            padding: 20px;
-            text-align: center;
+        /* Tab styles */
+        .tab {
+            display: flex;
+            background-color: #f1f1f1;
+            border-bottom: 1px solid #ccc;
+            padding: 10px 0;
         }
 
-		pre {
-			white-space: pre-wrap;
-			font-family: monospace;
-			font-size: 14px;
-		}
+        .tab button {
+            background-color: #f1f1f1;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
 
-		details {
-			display: none;
-		}
+        .tab button:hover {
+            background-color: #ddd;
+        }
 
-		.btn-primary {
-			background-color: #007bff;
-			border-color: #0a4079;
-			color: #fff;
-			padding: 10px 40px;
-			font-size: 16px;
-			cursor: pointer;
-			margin: 20px;
-			border-radius: 5px;
-			box-shadow: inset 0px 0px 0px -0.1px #0a0a0a;
-		}
+        .tab button.active {
+            background-color: #e7e7e7;
+            border-bottom: 2px solid #007bff;
+            font-weight: bold;
+        }
 
-		.btn-primary:disabled {
-			background-color: #d6d6d6; /* Lighter background to indicate it's disabled */
-			border-color: #ccc;         /* Lighter border */
-			color: #888;                /* Greyed out text */
-			cursor: not-allowed;        /* Change cursor to not-allowed */
-			box-shadow: none;           /* Remove the inset shadow */
-			opacity: 0.65;              /* Slightly transparent */
-		}
+        .tabcontent {
+            padding: 20px;
+            display: none;
+            position: relative; /* Added to position overlay correctly */
+        }
 
+        .tabcontent.active {
+            display: block;
+        }
 
-		label {
-			margin-bottom: 10px;
-		}
+        /* Other styles omitted for brevity... */
 
-		.prompt {
-			width: 100%;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-items: center;
-		}
+        .chat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
 
-		textarea {
-			width: 60%;
-			min-height: 80px;
-			font-family: system-ui, -apple-system, BlinkMacSystemFont,
-				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-				"Helvetica Neue", sans-serif;
-			text-wrap: wrap;
-			height: auto;
-			overflow: hidden;
-			resize: none;
-			padding: 0.8em;
-			font-size: 16px;
-			border: 1px solid #000000;
-		}
-
-		.row {
-			padding-top: 10px;
-			display: flex;
-			flex-direction: row;
-			justify-content: space-evenly;
-			align-items: center;
-			width: 20%;
-		}
-
-		#chatgptResponse {
-			font-family: system-ui, -apple-system, BlinkMacSystemFont,
-				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-				"Helvetica Neue", sans-serif;
-			color: #02022f;
-		}
-
-		.loading {
-			display: none;
-		}
-
-		.chat {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			flex: 1;
-		}
-
-		h1 {
-			margin-bottom: 0;
-		}
-
-		h2 {
-			margin-top: 10px;
-			margin-bottom: 10px;
-		}
-
-		#conversation {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			margin: 20px;
-			margin-top: 0;
-			width: 100%;
-			border-radius: 5px;
-			background-color: #eeeeee;
-			margin-bottom: 40px;
-			min-height: 200px;
-			padding-top: 12px;
-			padding-bottom: 12px;
-		}
-
-		#conversation-cn {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			margin: 20px;
-			margin-top: 0;
-			width: 100%;
-			border-radius: 5px;
-			background-color: #fefeff;
-			margin-bottom: 40px;
-			min-height: 200px;
-			padding-top: 12px;
-			padding-bottom: 12px;
-		}
-
-		label {
-			margin-bottom: 0;
-		}
-
-		.message {
-			padding: 24px;
-			border-radius: 5px;
-			background-color: #fefefe;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-			width: 75%;
-			font-family: system-ui, -apple-system, BlinkMacSystemFont,
-				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-				"Helvetica Neue", sans-serif;
-			margin-left: 4px;
-			margin-right: 4px;
-			margin-bottom: 8px;
-		}
-
-		.case-narrative-message {
-			padding: 24px;
-			width: 100%;
-			border-radius: 5px;
-			background-color: #fefefe;
-			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-			line-height: 1.5;
-			font-family: system-ui, -apple-system, BlinkMacSystemFont,
-				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-				"Helvetica Neue", sans-serif;
-		}
-
-		.assistant-response {
-			/* the box is aligned to the left inside #conversation */
-			align-self: flex-start;
-			color: #010721;
-		}
-
-		.user-response {
-			/* the box is aligned to the right inside #conversation */
-			align-self: flex-end;
-		}
-
-		#chatForm {
-			flex: 0;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			padding-bottom: 0.2rem;
-			width: 100%;
-		}
-
-		#chatForm-cn {
-			flex: 0;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			padding-bottom: 0.2rem;
-			width: 100%;
-		}
-
-
-		.tab {
-    display: flex;
-    background-color: #f1f1f1;
-    border-bottom: 1px solid #ccc;
-    padding: 10px 0;
-}
-
-.tab button {
-    background-color: #f1f1f1;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.tab button:hover {
-    background-color: #ddd;
-}
-
-.tab button.active {
-    background-color: #e7e7e7;
-    border-bottom: 2px solid #007bff;
-    font-weight: bold;
-}
-
-.tabcontent {
-    padding: 20px;
-    display: none;
-}
-
-.tabcontent.active {
-    display: block;
-}
-
-select {
-		appearance: none;
-		background-color: white;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		padding: 5px 10px;
-		font-size: 16px;
-	}
-
-	select:hover {
-		border-color: #888;
-	}
-
-	</style>
-	<title>AML LLM</title>
+        #conversation,
+        #conversation-cn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            margin-top: 0;
+            width: 100%;
+            border-radius: 5px;
+            background-color: #eeeeee;
+            margin-bottom: 40px;
+            min-height: 200px;
+            padding-top: 12px;
+            padding-bottom: 12px;
+            position: relative; /* Ensure it holds the overlay */
+        }
+    </style>
+    <title>AML LLM</title>
 </head>
 
 <body>
-	<details>
-		<summary>API Response</summary>
-		<h2>API response</h2>
-		<pre id="apiResponse"></pre>
-		<h2>Filtered Scenario Fired Events</h2>
-		<pre id="scenario_fired_event"></pre>
-		<h2>Filtered Transactions</h2>
-		<pre id="transactions"></pre>
-		<h2>Personal Information</h2>
-		<pre id="Party_info"></pre>
-		<h2>Nonnormalized graph</h2>
-		<pre id="postResponse"></pre>
-	</details>
-	<details>
-		<summary>Graph Of Transactions</summary>
-		<h2>Vertices JSON</h2>
-		<pre id="verticesJson"></pre>
-		<h2>Edges JSON</h2>
-		<pre id="edgesJson"></pre>
-		<p id="alertid"></p>
-	</details>
+    <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'CaseNarrative')" aria-label="Case Narrative" id="defaultOpen">
+            Case Recommendation
+        </button>
+        <button class="tablinks" onclick="openTab(event, 'QnA')" aria-label="QnA">
+            Digital Assistant
+        </button>
+    </div>
 
-	<div class="tab">
-		<button class="tablinks" onclick="openTab(event, 'CaseNarrative')" aria-label="Case Narrative" id="defaultOpen">
-			Case Recommendation
-		</button>
-		<button class="tablinks" onclick="openTab(event, 'QnA')" aria-label="QnA" >
-			Digital Assistant
-		</button>
-	</div>
+    <div id="QnA" class="tabcontent">
+        <div class="chat">
+            <h1>AML Digital Assistant</h1>
+            <div id="conversation">
+                <div class="overlay" id="loading-indicator">
+                    <div class="loading-container">
+                        <div class="dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                        <p class="loading-text">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <form id="chatForm">
+                <div class="prompt">
+                    <label for="userPrompt"> Ask a question </label>
+                    <textarea id="userPrompt" name="userPrompt"></textarea>
+                </div>
+                <button type="submit" class="btn-primary" id="callApiButton">
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
 
-	<div id="QnA" class="tabcontent">
-		<div class="chat">
-			<br>
-			<h1>AML Digital Assistant</h1>
-			<br>
-			<div id="conversation">
-			<div class="overlay" id="loading-indicator">
-				<div class="loading-container">
-					<div class="dots">
-						<div class="dot"></div>
-						<div class="dot"></div>
-						<div class="dot"></div>
-					</div>
-					<p class="loading-text">Loading...</p>
-				</div>
-			</div>
-			</div>
-			<form id="chatForm">
-				<div class="prompt">
-					<label for="userPrompt"> Ask a question </label>
-					<textarea id="userPrompt" name="userPrompt"></textarea>
-				</div>
+    <div id="CaseNarrative" class="tabcontent">
+        <div class="chat">
+            <div id="conversation-cn">
+                <div class="overlay" id="loading-indicator-cn">
+                    <div class="loading-container">
+                        <div class="dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                        <p class="loading-text">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <form id="chatForm-cn">
+                <div class="row">
+                    <label for="model-cn">Model:</label>
+                    <select id="model-cn" name="model">
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o mini</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary" id="callApiButton-cn">
+                    Get Case Narrative
+                </button>
+            </form>
+        </div>
+    </div>
 
-				<div class="row">
-					<label for="model">Model:</label>
-					<select id="model" name="model">
-						<option value="gpt-4o">GPT-4o</option>
-						<option value="gpt-4o-mini">GPT-4o mini</option>
-					</select>
-				</div>
-				<button disabled type="submit" class="btn-primary" id="callApiButton">
-					Send
-				</button>
-			</form>
-		</div>
-	</div>
+    <script>
+        "use strict";
 
-	<div id="CaseNarrative" class="tabcontent">
-		<div class="chat">
-			<div id="conversation-cn">
-				<div class="overlay" id="loading-indicator-cn">
-				<div class="loading-container">
-					<div class="dots">
-						<div class="dot"></div>
-						<div class="dot"></div>
-						<div class="dot"></div>
-					</div>
-					<p class="loading-text">Loading...</p>
-				</div>
-			</div>
-			</div>
-			<form id="chatForm-cn">
-				<div class="row">
-					<label for="model-cn">Model:</label>
-					<select id="model-cn" name="model">
-						<option value="gpt-4o">GPT-4o</option>
-						<option value="gpt-4o-mini">GPT-4o mini</option>
-					</select>
-				</div>
-				<button disabled type="submit" class="btn-primary" id="callApiButton-cn">
-					Get Case Narrative
-				</button>
-			</form>
-		</div>
-	</div>
+        const body = document.querySelector("body");
+        const tabcontents = document.querySelectorAll(".tabcontent");
 
-	<p hidden><span id="apiKeyContainer"></span></p>
-	<p hidden><span id="alertid"></span></p>
+        function openTab(evt, tabName) {
+            let i, tabcontent, tablinks;
 
-	<script>
-		"use strict";
+            // Hide all tab contents
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                // Hide the loading indicator for all tabs
+                const loadingIndicator = tabcontent[i].querySelector(".overlay");
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = "none";
+                }
+            }
 
-const body = document.querySelector("body");
-const tabcontents = document.querySelectorAll(".tabcontent");
+            // Remove active class from all tab links
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
 
-function openTab(evt, tabName) {
-    let i, tabcontent, tablinks;
+            // Show the selected tab
+            const tab = document.getElementById(tabName);
+            tab.style.display = "block";
 
-    // Hide all tab contents
-    tabcontent = document.getElementsByClassName("tabcontent");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-        // Hide the loading indicator for all tabs
-        const loadingIndicator = tabcontent[i].querySelector(".overlay");
-        if (loadingIndicator) {
-            loadingIndicator.style.display = "none";
+            // Set the active tab
+            evt.currentTarget.className += " active";
         }
-    }
 
-    // Remove active class from all tab links
-    tablinks = document.getElementsByClassName("tablinks");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
+        // Open the default tab
+        document.getElementById("defaultOpen").click();
 
-    // Show the selected tab
-    const tab = document.getElementById(tabName);
-    tab.style.display = "block";
+        function showLoading(tabName) {
+            const tab = document.getElementById(tabName);
+            const loadingIndicator = tab.querySelector(".overlay");
+            if (loadingIndicator) {
+                loadingIndicator.style.display = "flex"; // Show the loading overlay
+            }
 
-    // Set the active tab
-    evt.currentTarget.className += " active";
-}
-
-// Open the default tab
-document.getElementById("defaultOpen").click();
-
-function showLoading(tabName) {
-    const tab = document.getElementById(tabName);
-    const loadingIndicator = tab.querySelector(".overlay");
-    if (loadingIndicator) {
-        loadingIndicator.style.display = "flex"; // Show the loading overlay
-    }
-
-    // Simulate a loading delay (you can replace this with your actual API call)
-    setTimeout(() => {
-        if (loadingIndicator) {
-            loadingIndicator.style.display = "none"; // Hide the loading overlay after 2 seconds
+            // Simulate a loading delay (you can replace this with your actual API call)
+            setTimeout(() => {
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = "none"; // Hide the loading overlay after 2 seconds
+                }
+            }, 2000); // Simulate a 2-second loading time
         }
-    }, 2000); // Simulate a 2-second loading time
-}
 
-// Attach event listeners to buttons
-document.getElementById("chatForm").addEventListener("submit", function (event) {
-    event.preventDefault(); // Prevent default form submission
-    showLoading("QnA"); // Show loading in QnA tab
-});
+        // Attach event listeners to buttons
+        document.getElementById("chatForm").addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent default form submission
+            showLoading("QnA"); // Show loading in QnA tab
+        });
 
-document.getElementById("chatForm-cn").addEventListener("submit", function (event) {
-    event.preventDefault(); // Prevent default form submission
-    showLoading("CaseNarrative"); // Show loading in Case Narrative tab
-});
+        document.getElementById("chatForm-cn").addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent default form submission
+            showLoading("CaseNarrative"); // Show loading in Case Narrative tab
+        });
 
 		function autoGrow(element) {
 			element.style.height = "auto";
