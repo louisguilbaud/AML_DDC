@@ -100,4 +100,8 @@ router.get("/qna.html", function (req, res, next) {
 	res.render("qna", { title: "qna ddc" });
 });
 
+router.get("/case_narrative.html", function (req, res, next) {
+	res.render("qna", { title: "case_narrative ddc" });
+});
+
 module.exports = router;
