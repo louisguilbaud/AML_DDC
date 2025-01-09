@@ -101,11 +101,11 @@ router.get("/qna.html", function (req, res, next) {
 });
 
 router.get("/case_narrative.html", function (req, res, next) {
-	res.render("qna", { title: "case_narrative ddc" });
+	res.render("case_narrative", { title: "case_narrative ddc" });
 });
 
 router.get("/new.html", function (req, res, next) {
-	res.render("qna", { title: "new ddc" });
+	res.render("new", { title: "new ddc" });
 });
 
 module.exports = router;
