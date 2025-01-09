@@ -618,7 +618,9 @@ arnav.priyadarshi@sas.com
 					}));
 				document.getElementById("scenario_fired_event").innerHTML =
 					JSON.stringify(filteredScenarioFiredEvents, null, 2);
-
+				
+				console.log("[debug]: SFE:", filteredScenarioFiredEvents);
+				
 				const partyInfoUrl = `https://sasserver.demo.sas.com/SASVisualInvestigator/pages/PTY/${actionableEntityId}`;
 				const partyInfoResponse = await fetch(
 					partyInfoUrl,
@@ -633,8 +635,8 @@ arnav.priyadarshi@sas.com
 				const partyInfoData = await partyInfoResponse.json();
 				document.getElementById("Party_info").innerHTML =
 					JSON.stringify(partyInfoData.data, null, 2);
-
-				console.log("[debug]: fetched VI data");
+					
+				console.log("[debug]: PTY info:", Party_info);
 				
 				const transactionsUrl = `https://sasserver.demo.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
 				const transactionsResponse = await fetch(
@@ -662,6 +664,8 @@ arnav.priyadarshi@sas.com
 				);
 				document.getElementById("transactions").innerHTML =
 					JSON.stringify(filteredTransactions, null, 2);
+				
+				console.log("[debug]: transactions info:", filteredTransactions);
 
 				const csrfToken = await getCsrfToken();
 				await postData(csrfToken);
