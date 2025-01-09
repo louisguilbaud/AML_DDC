@@ -330,7 +330,7 @@ arnav.priyadarshi@sas.com
 					</select>
 				</div>
 				<button disabled type="submit" class="btn-primary" id="callApiButton-cn">
-					Get Case Narratives
+					Get Case Narrative
 				</button>
 			</form>
 		</div>
@@ -480,11 +480,11 @@ arnav.priyadarshi@sas.com
 				graphObjectIds: [
 					{
 						type: "PTY",
-						id: "326315"
+						id: "10056215"
 					},
 					{
 						type: "alerts",
-						id: "3d9a7119-640a-420a-a273-e7f0520259f4"
+						id: "b63203ba-d218-410d-b3fe-95108afb5208"
 					}
 				],
 				query: {
@@ -492,7 +492,7 @@ arnav.priyadarshi@sas.com
 					objectIds: [
 						{
 							type: "PTY",
-							id: "326315"
+							id: "10056215"
 						}
 					]
 				}
@@ -635,8 +635,37 @@ arnav.priyadarshi@sas.com
 				const partyInfoData = await partyInfoResponse.json();
 				document.getElementById("Party_info").innerHTML =
 					JSON.stringify(partyInfoData.data, null, 2);
-				console.log("[debug]: test");
-				console.log("[debug]: PTY info:", partyInfoData);
+					
+				console.log("[debug]: PTY info:", Party_info);
+				
+				const transactionsUrl = `https://sasserver.demo.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
+				const transactionsResponse = await fetch(
+					transactionsUrl,
+					requestOptions
+				);
+				if (!transactionsResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						transactionsResponse.statusText
+					);
+				}
+				const transactionsData = await transactionsResponse.json();
+				const filteredTransactions = transactionsData.items.map(
+					transaction => ({
+						transactionNumber: transaction.transactionNumber,
+						transactionDate: transaction.transactionDate,
+						primaryMediumDesc: transaction.primaryMediumDesc,
+						secondaryMediumDesc:
+							transaction.secondaryMediumDesc,
+						mechanismDesc: transaction.mechanismDesc,
+						currencyAmount: transaction.currencyAmount,
+						transactionCDIDesc: transaction.transactionCDIDesc
+					})
+				);
+				document.getElementById("transactions").innerHTML =
+					JSON.stringify(filteredTransactions, null, 2);
+				
+				console.log("[debug]: transactions info:", filteredTransactions);
 
 				const csrfToken = await getCsrfToken();
 				await postData(csrfToken);
