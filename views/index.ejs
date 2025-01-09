@@ -1,87 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>API Response</title>
+    <title>TEST</title>
 </head>
 <body>
-    <h1>API Response</h1>
+    <h1>TEST</h1>
 
     <script>
-        async function getCsrfToken() {
-            const url = 'https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000';
-
-            const response = await fetch(url, {
-                method: 'GET',
-                credentials: 'include' // Include credentials for same-origin requests
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch CSRF token');
-            }
-
-            const csrfToken = response.headers.get('X-CSRF-TOKEN');
-            return csrfToken;
-        }
-
-        async function postData() {
-            const url = 'https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000';
-            const data = {
-                "edgeTypes": [
-                    "social_link"
-                ],
-                "depth": 1,
-                "extendedFormat": true,
-                "graphObjectIds": [
-                    {
-                        "type": "PTY",
-                        "id": "10056215"
-                    },
-                    {
-                        "type": "alerts",
-                        "id": "b63203ba-d218-410d-b3fe-95108afb5208"
-                    }
-                ],
-                "query": {
-                    "type": "object",
-                    "objectIds": [
-                        {
-                            "type": "PTY",
-                            "id": "10056215"
-                        }
-                    ]
-                }
-            };
-
-            try {
-                const csrfToken = await getCsrfToken();
-
-                const myHeaders = new Headers();
-                myHeaders.append("Content-Type", "application/json");
-                myHeaders.append("Cookie", "sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855");
-                myHeaders.append("X-CSRF-TOKEN", csrfToken);
-
-                const requestOptions = {
-                    method: "POST",
-                    headers: myHeaders,
-                    body: JSON.stringify(data),
-                    redirect: "follow"
-                };
-
-                const response = await fetch(url, requestOptions);
-
-                if (!response.ok) {
-                    throw new Error('Failed to post data');
-                }
-
-                const result = await response.text();
-                console.log(result);
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-
-        // Call the function to make the POST request
-        postData();
     </script>
 </body>
 </html>
