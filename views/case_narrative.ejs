@@ -637,35 +637,6 @@ arnav.priyadarshi@sas.com
 					JSON.stringify(partyInfoData.data, null, 2);
 				console.log("[debug]: test");
 				console.log("[debug]: PTY info:", partyInfoData);
-				
-				const transactionsUrl = `https://sasserver.demo.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
-				const transactionsResponse = await fetch(
-					transactionsUrl,
-					requestOptions
-				);
-				if (!transactionsResponse.ok) {
-					throw new Error(
-						"Network response was not ok " +
-						transactionsResponse.statusText
-					);
-				}
-				const transactionsData = await transactionsResponse.json();
-				const filteredTransactions = transactionsData.items.map(
-					transaction => ({
-						transactionNumber: transaction.transactionNumber,
-						transactionDate: transaction.transactionDate,
-						primaryMediumDesc: transaction.primaryMediumDesc,
-						secondaryMediumDesc:
-							transaction.secondaryMediumDesc,
-						mechanismDesc: transaction.mechanismDesc,
-						currencyAmount: transaction.currencyAmount,
-						transactionCDIDesc: transaction.transactionCDIDesc
-					})
-				);
-				document.getElementById("transactions").innerHTML =
-					JSON.stringify(filteredTransactions, null, 2);
-				
-				console.log("[debug]: transactions info:", filteredTransactions);
 
 				const csrfToken = await getCsrfToken();
 				await postData(csrfToken);
