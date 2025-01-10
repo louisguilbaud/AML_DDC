@@ -528,6 +528,120 @@ arnav.priyadarshi@sas.com
 					JSON.stringify(partyInfoData.data, null, 2);
 					
 				console.log("[debug]: PTY info:", Party_info);
+			
+				async function getCsrfToken() {
+				const url =
+					"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+				try {
+					const response = await fetch(url, {
+						method: "GET",
+						credentials: "include"
+					});
+					const csrfToken = response.headers.get("X-CSRF-TOKEN");
+					if (!csrfToken) {
+						console.error(
+							"CSRF token not found in response headers"
+						);
+						throw new Error(
+							"CSRF token not found in response headers"
+						);
+					}
+					console.log("[debug]: csrfToken set");
+					return csrfToken;
+				} catch (error) {
+					console.error("[debug]: Error in getCsrfToken:", error);
+					throw error;
+				}
+			}
+
+			async function postData(csrfToken) {
+				const url =
+					"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+				const data = {
+					edgeTypes: ["social_link"],
+					depth: 2,
+					extendedFormat: true,
+					graphObjectIds: [
+						{
+							type: "PTY",
+							id: "10056215"
+						},
+						{
+							type: "alerts",
+							id: "b63203ba-d218-410d-b3fe-95108afb5208"
+						}
+					],
+					query: {
+						type: "object",
+						objectIds: [
+							{
+								type: "PTY",
+								id: "10056215"
+							}
+						]
+					}
+				};
+
+				const myHeaderspost = new Headers();
+				myHeaderspost.append("Content-Type", "application/json");
+				myHeaderspost.append(
+					"Cookie",
+					"sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855"
+				);
+				myHeaderspost.append("X-CSRF-TOKEN", csrfToken);
+
+				const requestOptionspost = {
+					method: "POST",
+					headers: myHeaderspost,
+					body: JSON.stringify(data),
+					redirect: "follow"
+				};
+
+				try {
+					const response = await fetch(url, requestOptionspost);
+					if (!response.ok) {
+						throw new Error(
+							"Network response was not ok " + response.statusText
+						);
+					}
+					const postResponseText = await response.json();
+					document.getElementById("postResponse").textContent =
+						JSON.stringify(postResponseText, null, 2);
+
+					const vertices = postResponseText.vertices.map(vertex => ({
+						type: vertex.type,
+						id: vertex.id,
+						typeLabel: vertex.typeLabel,
+						label: vertex.label
+					}));
+
+					const edges = postResponseText.edges.map(edge => ({
+						id: edge.id,
+						endpoints: edge.endpoints.map(endpoint => ({
+							type: endpoint.type,
+							id: endpoint.id
+						})),
+						subtype: edge.subtype,
+						label: edge.label
+					}));
+
+					console.log("[debug]: set pty and graph data");
+
+					document.getElementById("verticesJson").textContent =
+						JSON.stringify(vertices, null, 2);
+					document.getElementById("edgesJson").textContent =
+						JSON.stringify(edges, null, 2);
+					
+					console.log("[debug]: Network entity:", verticesJson);
+					console.log("[debug]: Networks links:", edgesJson);
+				} catch (error) {
+					console.error("[debug]: Error in postData:", error);
+					document.getElementById(
+						"postResponse"
+					).textContent = `Error: ${error}`;
+				}
+			}
+
 				
 				const transactionsUrl = `https://sasserver.demo.sas.com/amlCore/transactions?entityLevelCode=PTY&entityNumber=${actionableEntityId}`;
 				const transactionsResponse = await fetch(
@@ -573,119 +687,7 @@ arnav.priyadarshi@sas.com
 			return true;
 		}
 		
-		async function getCsrfToken() {
-			const url =
-				"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
-			try {
-				const response = await fetch(url, {
-					method: "GET",
-					credentials: "include"
-				});
-				const csrfToken = response.headers.get("X-CSRF-TOKEN");
-				if (!csrfToken) {
-					console.error(
-						"CSRF token not found in response headers"
-					);
-					throw new Error(
-						"CSRF token not found in response headers"
-					);
-				}
-				console.log("[debug]: csrfToken set");
-				return csrfToken;
-			} catch (error) {
-				console.error("[debug]: Error in getCsrfToken:", error);
-				throw error;
-			}
-		}
-
-		async function postData(csrfToken) {
-			const url =
-				"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
-			const data = {
-				edgeTypes: ["social_link"],
-				depth: 2,
-				extendedFormat: true,
-				graphObjectIds: [
-					{
-						type: "PTY",
-						id: "10056215"
-					},
-					{
-						type: "alerts",
-						id: "b63203ba-d218-410d-b3fe-95108afb5208"
-					}
-				],
-				query: {
-					type: "object",
-					objectIds: [
-						{
-							type: "PTY",
-							id: "10056215"
-						}
-					]
-				}
-			};
-
-			const myHeaderspost = new Headers();
-			myHeaderspost.append("Content-Type", "application/json");
-			myHeaderspost.append(
-				"Cookie",
-				"sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855"
-			);
-			myHeaderspost.append("X-CSRF-TOKEN", csrfToken);
-
-			const requestOptionspost = {
-				method: "POST",
-				headers: myHeaderspost,
-				body: JSON.stringify(data),
-				redirect: "follow"
-			};
-
-			try {
-				const response = await fetch(url, requestOptionspost);
-				if (!response.ok) {
-					throw new Error(
-						"Network response was not ok " + response.statusText
-					);
-				}
-				const postResponseText = await response.json();
-				document.getElementById("postResponse").textContent =
-					JSON.stringify(postResponseText, null, 2);
-
-				const vertices = postResponseText.vertices.map(vertex => ({
-					type: vertex.type,
-					id: vertex.id,
-					typeLabel: vertex.typeLabel,
-					label: vertex.label
-				}));
-
-				const edges = postResponseText.edges.map(edge => ({
-					id: edge.id,
-					endpoints: edge.endpoints.map(endpoint => ({
-						type: endpoint.type,
-						id: endpoint.id
-					})),
-					subtype: edge.subtype,
-					label: edge.label
-				}));
-
-				console.log("[debug]: set pty and graph data");
-
-				document.getElementById("verticesJson").textContent =
-					JSON.stringify(vertices, null, 2);
-				document.getElementById("edgesJson").textContent =
-					JSON.stringify(edges, null, 2);
-				
-				console.log("[debug]: Network entity:", verticesJson);
-				console.log("[debug]: Networks links:", edgesJson);
-			} catch (error) {
-				console.error("[debug]: Error in postData:", error);
-				document.getElementById(
-					"postResponse"
-				).textContent = `Error: ${error}`;
-			}
-		}
-
+	
 		// chat GPT code
 		// ========================
 
