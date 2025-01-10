@@ -555,6 +555,8 @@ arnav.priyadarshi@sas.com
 			}
 
 			async function postData(csrfToken) {
+				const actionableEntityIdnet = "actionableEntityId"; // Replace with the actual actionable entity ID
+				const alertIdnet = "alertId";
 				const url =
 					"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
 				const data = {
@@ -564,11 +566,11 @@ arnav.priyadarshi@sas.com
 					graphObjectIds: [
 						{
 							type: "PTY",
-							id: "${actionableEntityId}"
+							id: actionableEntityIdnet
 						},
 						{
 							type: "alerts",
-							id: "${alertId}"
+							id: alertIdnet
 						}
 					],
 					query: {
@@ -576,7 +578,7 @@ arnav.priyadarshi@sas.com
 						objectIds: [
 							{
 								type: "PTY",
-								id: "${actionableEntityId}"
+								id: actionableEntityIdnet
 							}
 						]
 					}
