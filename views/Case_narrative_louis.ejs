@@ -796,7 +796,7 @@ arnav.priyadarshi@sas.com
 			event.preventDefault();
 
 			const model = document.getElementById("model-cn").value;
-			const userPrompt = `Please review the following account activity and identify any suspicious patterns or behaviors that could indicate potential money laundering. Focus on analyzing any large transactions, unusual frequency of activities, or connections to high-risk jurisdictions. Provide a detailed case narrative that includes an overview of the activity, specific transaction details, behavioral indicators, and how these activities align with the customer's KYC profile. Conclude with a risk assessment and recommendations for further action, such as enhanced due diligence or filing a SAR. You may respond in Markdown.
+			const userPrompt = `Based on the scenario scenarios that the custoemr trigger (also know as Scenario Fired Events), on the transactions and on the Personal information on the customer provide a detailed case narrative. This narrative should ahve a title with the name of the customer, and will contains 4 parts. The first part will be reviewing the personal information and discover anything unusual. The second part is analysing the scenario fired event and giving context based on the transactions and the personal information. In the 3 part you will perform a behavioral indicator and a risk assessment and in the last part you will give recommendations to investigator on what he should with this alert. You may respond in Markdown.
 			
 			Filtered Scenario Fired Events: ${filteredScenarioFiredEvents}
 			
