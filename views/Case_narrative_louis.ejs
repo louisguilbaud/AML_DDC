@@ -164,12 +164,18 @@ arnav.priyadarshi@sas.com
 				"Helvetica Neue", sans-serif;
 			color: #02022f;
 		}
-
+	
 		.loading {
 			display: none;
-			flex-direction: column; /* Fixed typo - should be 'column' not 'columns' */
-			align-items: center;
-			text-align: center;
+			position: fixed;
+			  top: 0;
+			  left: 0;
+			  width: 100%;
+			  height: 100%;
+			  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent grey background */
+			  justify-content: center;
+			  align-items: center;
+			  z-index: 1000;
 		}
 		
 		.dots {
@@ -238,6 +244,7 @@ arnav.priyadarshi@sas.com
 			padding-top: 12px;
 			padding-bottom: 12px;
 		}
+		
 
 		#conversation-cn {
 			display: flex;
@@ -253,6 +260,7 @@ arnav.priyadarshi@sas.com
 			padding-top: 12px;
 			padding-bottom: 12px;
 		}
+		
 
 		label {
 			margin-bottom: 0;
