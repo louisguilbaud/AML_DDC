@@ -167,8 +167,47 @@ arnav.priyadarshi@sas.com
 
 		.loading {
 			display: none;
+			flex-direction: column; /* Fixed typo - should be 'column' not 'columns' */
+			align-items: center;
+			text-align: center;
+		}
+		
+		.dots {
+			display: flex;
+			justify-content: space-around;
+			align-items: center;
+			width: 60px;
+			margin-bottom: 5px;
 		}
 
+		.dot {
+			width: 10px;
+			height: 10px;
+			margin: 3px;
+			background-color: #007bff; /* Blue color */
+			border-radius: 50%;
+			animation: bounce 0.6s infinite alternate;
+		}
+
+		@keyframes bounce {
+			to {
+				transform: translateY(-10px);
+			}
+		}
+
+		.dot:nth-child(2) {
+			animation-delay: 0.2s;
+		}
+
+		.dot:nth-child(3) {
+			animation-delay: 0.4s;
+		}
+
+		.loading-text {
+			font-size: 14px;
+			color: #333;
+			margin-top: 5px;
+		}
 		.chat {
 			display: flex;
 			flex-direction: column;
@@ -359,7 +398,12 @@ arnav.priyadarshi@sas.com
 		<div class="chat">
 			<div id="conversation-cn">
 				<h2 class="loading" id="loading-indicator-cn">
-					Loading response
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
 				</h2>
 			</div>
 			<form id="chatForm-cn">
