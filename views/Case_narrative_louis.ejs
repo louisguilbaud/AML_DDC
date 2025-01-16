@@ -785,13 +785,11 @@ arnav.priyadarshi@sas.com
 
 		function getCaseNarrative(event) {
 			const apiKey = document.getElementById("apiKeyContainer").textContent;
-			const filteredScenarioFiredEvents = document.getElementById(
-				"scenario_fired_event"
-			).textContent;
-			const filteredTransactions = document.getElementById(
-				"transactions"
-			).textContent;
+			const filteredScenarioFiredEvents = document.getElementById("scenario_fired_event").textContent;
+			const filteredTransactions = document.getElementById("transactions").textContent;
 			const partyInfo = document.getElementById("Party_info").textContent;
+			const networkinfo = document.getElementById("verticesJson").textContent;
+			const networklink = document.getElementById("edgesJson").textContent;
 			console.log("[debug]: CaseNarrative called");
 			event.preventDefault();
 
@@ -804,9 +802,9 @@ arnav.priyadarshi@sas.com
 			
 			Personal information on the customer: ${partyInfo}
 			
-			Network entity:${verticesJson}
+			Network entity:${networkinfo}
 
-			links between the entities in the network:${edgesJson}`;
+			links between the entities in the network:${networkinfo}`;
 
 			const newMessage = {
 				role: "user",
@@ -879,7 +877,8 @@ arnav.priyadarshi@sas.com
 					"transactions"
 				).textContent;
 				const partyInfo = document.getElementById("Party_info").textContent;
-
+				const networkinfo = document.getElementById("verticesJson").textContent;
+				const networklink = document.getElementById("edgesJson").textContent;
 				console.log("[debug]: form submitted");
 				event.preventDefault();
 				console.log("[debug]: called api button");
@@ -914,9 +913,9 @@ Filtered transactions: ${filteredTransactions}
 
 Personal information on the customer: ${partyInfo}
 
-Network entity:${verticesJson}
+Network entity:${networkinfo}
 
-links between the entities in the network:${edgesJson}`;
+links between the entities in the network:${networkinfo}`;
 
 					newMessage.content = userPrompt;
 				}
