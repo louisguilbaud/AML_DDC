@@ -166,19 +166,13 @@ arnav.priyadarshi@sas.com
 		}
 		
 		/* Full-screen overlay for loading state */
-		.loading-indicator-cn {
-			display: none; /* Hidden by default */
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(255, 255, 255, 0.8);
-            justify-content: center;
-            z-index: 1000;
+		.loading {
+			display: none;
+			  flex-direction: column;
+			  align-items: center;
+			  z-index: 2; /* Make sure the loading indicator appears above the overlay */
+			  color: white; /* Text color for the loading indicator */
+			  font-size: 20px;
 		}
 		
 		.dots {
@@ -389,7 +383,14 @@ arnav.priyadarshi@sas.com
 		<div class="chat">
 			<h1>Alerts Chatbot</h1>
 			<div id="conversation">
-				<h2 class="loading" id="loading-indicator">Loading response</h2>
+				<h2 class="loading" id="loading-indicator-cn">
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
+				</h2>
 			</div>
 			<form id="chatForm">
 				<div class="prompt">
