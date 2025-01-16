@@ -164,18 +164,15 @@ arnav.priyadarshi@sas.com
 				"Helvetica Neue", sans-serif;
 			color: #02022f;
 		}
-	
+		
+		/* Full-screen overlay for loading state */
 		.loading {
 			display: none;
-			position: fixed;
-			  top: 0;
-			  left: 0;
-			  width: 100%;
-			  height: 100%;
-			  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent grey background */
-			  justify-content: center;
+			  flex-direction: column;
 			  align-items: center;
-			  z-index: 1000;
+			  z-index: 2; /* Make sure the loading indicator appears above the overlay */
+			  color: white; /* Text color for the loading indicator */
+			  font-size: 20px;
 		}
 		
 		.dots {
@@ -208,6 +205,14 @@ arnav.priyadarshi@sas.com
 		.dot:nth-child(3) {
 			animation-delay: 0.4s;
 		}
+		
+		#conversation-cn.loaded:before {
+			  display: none; /* Hide the overlay */
+			}
+
+			#conversation-cn.loaded #loading-indicator {
+			  display: none; /* Hide the loading indicator */
+			}
 
 		.loading-text {
 			font-size: 14px;
@@ -244,7 +249,6 @@ arnav.priyadarshi@sas.com
 			padding-top: 12px;
 			padding-bottom: 12px;
 		}
-		
 
 		#conversation-cn {
 			display: flex;
@@ -260,7 +264,6 @@ arnav.priyadarshi@sas.com
 			padding-top: 12px;
 			padding-bottom: 12px;
 		}
-		
 
 		label {
 			margin-bottom: 0;
