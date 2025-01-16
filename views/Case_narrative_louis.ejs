@@ -166,13 +166,19 @@ arnav.priyadarshi@sas.com
 		}
 		
 		/* Full-screen overlay for loading state */
-		.loading {
-			display: none;
-			  flex-direction: column;
-			  align-items: center;
-			  z-index: 2; /* Make sure the loading indicator appears above the overlay */
-			  color: white; /* Text color for the loading indicator */
-			  font-size: 20px;
+		.loading-indicator-cn {
+			display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            justify-content: center;
+            z-index: 1000;
 		}
 		
 		.dots {
