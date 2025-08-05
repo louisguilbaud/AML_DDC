@@ -108,4 +108,8 @@ router.get("/new.html", function (req, res, next) {
 	res.render("new", { title: "new ddc" });
 });
 
+router.get("/aml_demo.html", function (req, res, next) {
+	res.render("aml_demo", { title: "new ddc" });
+});
+
 module.exports = router;
