@@ -1,1 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AML Alert Summarizer</title>
+  <script src="./javascripts/sas/util/messagingUtil.js"></script>
+  <style>
+    :root{--bg:#fbfbfd;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--border:rgba(0,0,0,.08);--primary:#007aff;--primary-press:#0a84ff}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
+    .container{max-width:880px;margin:7vh auto 10vh;padding:0 20px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 30px rgba(0,0,0,.06);padding:32px;display:grid;gap:18px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    h1{margin:0 0 6px 0;font-size:28px;font-weight:650;letter-spacing:-.02em}
+    .subtitle{margin:0;color:var(--muted);font-size:14px}
+    .row{display:flex;gap:10px;align-items:center}
+    button{appearance:none;border:none;cursor:pointer;font-family:inherit}
+    .btn-primary{background:var(--primary);color:#fff;border-radius:14px;padding:12px 18px;font-size:16px;font-weight:600;box-shadow:0 6px 18px rgba(0,122,255,.25);transition:transform .06s,box-shadow .2s,filter .2s}
+    .btn-primary:hover{filter:brightness(1.02)}.btn-primary:active{transform:scale(.985)}.btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.6);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite;display:none}@keyframes spin{to{transform:rotate(360deg)}}
+    .loading .spinner{display:inline-block}.loading .labeltext{display:none}
+    .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+    .summary{border:1px solid var(--border);border-radius:16px;background:#fafafa;padding:16px;min-height:140px;line-height:1.55;white-space:pre-wrap}
+    textarea{width:100%;min-height:120px;resize:vertical;padding:14px 16px;border-radius:16px;border:1px solid rgba(0,0,0,.12);background:#fff;outline:none;line-height:1.5}
+    textarea:focus{border-color:var(--primary-press);box-shadow:0 0 0 4px rgba(10,132,255,.12)}
+    .caption{font-size:12px;color:var(--muted)}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;padding:10px 14px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" role="region" aria-labelledby="title">
+      <div class="header">
+        <div>
+          <h1 id="title">AML Alert Summarizer</h1>
+          <p class="subtitle">Runs entirely in VA (DDC). Add comments and generate a concise summary.</p>
+          <div class="row" style="margin-top:8px">
+            <label for="model" class="caption">Model</label>
+            <select id="model">
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o mini</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <button id="summarizeBtn" class="btn-primary" aria-busy="false" disabled>
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="labeltext">Summarize</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="label">Generated Summary</div>
+        <div id="summary" class="summary" role="region" aria-live="polite">Waiting for API key from VA…</div>
+      </div>
+
+      <div>
+        <div class="label">Your Comments</div>
+        <textarea id="comments" placeholder="Add comments on the generated response and the alert in general… (stored locally)"></textarea>
+        <div class="row" style="justify-content:space-between;margin-top:8px">
+          <span id="charCount" class="caption">0 / 1000</span>
+          <div class="row">
+            <button id="clearBtn">Clear</button>
+            <button id="saveBtn">Save Comment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
+
+  <script>
+    // --- VA messaging: receive API key + optional alertId parameter ---
+    let OPENAI_KEY = null;
+    let ALERT_ID = null;
+
+    if (window.va && va.messagingUtil) {
+      va.messagingUtil.setOnDataReceivedCallback(function(vaMsgObj){
+        if (vaMsgObj?.data?.length) {
+          OPENAI_KEY = vaMsgObj.data[0][0]; // first cell of first row
+        }
+        if (vaMsgObj?.parameters?.length) {
+          ALERT_ID = vaMsgObj.parameters[0].value;
+        }
+        if (OPENAI_KEY) {
+          summaryEl.textContent = 'Press “Summarize” to generate a concise AML alert summary.';
+          summarizeBtn.disabled = false;
+        }
+      });
+    }
+
+    // --- UI refs ---
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    const summaryEl = document.getElementById('summary');
+    const commentsEl = document.getElementById('comments');
+    const charCountEl = document.getElementById('charCount');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const toast = document.getElementById('toast');
+    const modelSel = document.getElementById('model');
+
+    const COMMENT_LIMIT = 1000;
+    commentsEl.addEventListener('input', () => {
+      if (commentsEl.value.length > COMMENT_LIMIT) {
+        commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
+      }
+      charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
+    });
+    commentsEl.dispatchEvent(new Event('input'));
+
+    function showToast(msg){ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
+
+    function mockSummary(){
+      const now = new Date().toLocaleString();
+      return `Summary generated locally at ${now}
+• Alert ID: ${ALERT_ID || 'N/A'} (simulated)
+• Trigger: Unusual cash deposits followed by rapid outbound transfers.
+• Risk: Smurfing; new beneficiary; velocity spike.
+• Action: Escalate to EDD; obtain SoF; monitor 30 days.`;
+    }
+
+    async function summarize(){
+      const apiKey = OPENAI_KEY;
+      if (!apiKey){ summaryEl.textContent = 'No API key from VA.'; return; }
+
+      summarizeBtn.disabled = true;
+      summarizeBtn.classList.add('loading');
+      summarizeBtn.setAttribute('aria-busy','true');
+
+      const controller = new AbortController();
+      const t = setTimeout(()=>controller.abort(), 15000);
+
+      const prompt = `You are an AML investigator assistant. Create a concise alert summary in 6–8 lines.
+Include: (1) trigger/mechanism, (2) key transactions/patterns, (3) risk indicators, (4) recommended next actions.
+AlertId: ${ALERT_ID || 'unknown'}.`;
+
+      try{
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+          body: JSON.stringify({
+            model: modelSel.value,
+            messages: [
+              { role:'system', content:'Respond tersely. Use bullet-like lines, no markdown headings.' },
+              { role:'user', content: prompt }
+            ]
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(t);
+        if (!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        const content = data?.choices?.[0]?.message?.content?.trim();
+        summaryEl.textContent = content || 'No content received.';
+      } catch (e){
+        summaryEl.textContent = mockSummary();
+      } finally {
+        summarizeBtn.disabled = false;
+        summarizeBtn.classList.remove('loading');
+        summarizeBtn.setAttribute('aria-busy','false');
+      }
+    }
+
+    function saveComment(){
+      const key = 'aml-summary-comments';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      const entry = { ts:new Date().toISOString(), alertId: ALERT_ID || null, comment: commentsEl.value.trim(), summary: summaryEl.textContent.trim() };
+      if (!entry.comment){ showToast('Nothing to save'); return; }
+      existing.push(entry);
+      localStorage.setItem(key, JSON.stringify(existing));
+      showToast('Comment saved locally');
+    }
+    function clearComment(){ commentsEl.value=''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
+
+    summarizeBtn.addEventListener('click', summarize);
+    saveBtn.addEventListener('click', saveComment);
+    clearBtn.addEventListener('click', clearComment);
+
+    // Default state if VA messaging never arrives
+    setTimeout(()=>{ if (!OPENAI_KEY) summaryEl.textContent='Waiting for API key from VA…'; }, 500);
+  </script>
+</body>
+</html>
 
