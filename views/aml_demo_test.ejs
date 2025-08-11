@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Viya MAS Debug Demo (Token → Execute)</title>
+  <style>
+    :root{--bg:#0b0c10;--card:#111318;--fg:#e6e6e6;--muted:#9aa0a6;--accent:#3ea6ff;--ok:#22c55e;--err:#ef4444;--border:#1f2937}
+    *{box-sizing:border-box}html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+    .wrap{max-width:980px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px}
+    h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:0 0 6px;color:var(--muted)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    label{font-size:12px;color:var(--muted)}
+    input,select,textarea{background:#0e1116;border:1px solid #2a2f38;color:var(--fg);border-radius:10px;padding:9px 10px}
+    input[type="checkbox"]{width:auto}
+    textarea{min-height:120px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    button{background:var(--accent);color:#00131f;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;gap:12px}
+    .cols{grid-template-columns:1fr 1fr}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+    .pill{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--muted)}
+    .ok{color:var(--ok)} .err{color:var(--err)}
+    .small{font-size:12px;color:var(--muted)}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-radius:6px;padding:2px 6px;background:#0e1116}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Viya Intelligent Decisioning – End-to-End Debug Page</h1>
+      <div class="small">Runs: <span class="pill" id="originInfo"></span></div>
+
+      <div class="grid cols">
+        <div class="card">
+          <h2>Settings</h2>
+          <div class="row">
+            <label>Same-origin</label>
+            <input type="checkbox" id="sameOrigin" checked />
+            <span class="small">Use relative paths (<code>/SASLogon</code>, <code>/microanalyticScore</code>)</span>
+          </div>
+          <div class="row">
+            <label>Base URL</label>
+            <input id="baseUrl" style="min-width:380px" placeholder="https://sasserver.demo.sas.com" />
+          </div>
+          <div class="row">
+            <label>Client (Basic)</label>
+            <input id="clientBasic" style="min-width:380px" value="Basic c2FzLmNsaTo=" />
+          </div>
+          <div class="row">
+            <label>User</label><input id="user" value="viya_admin" />
+            <label>Pass</label><input id="pass" type="password" value="Orion123" />
+            <label>Mask secrets</label><input type="checkbox" id="mask" checked />
+          </div>
+          <div class="row">
+            <label>Module ID</label><input id="moduleId" value="aml_demo1_2" style="min-width:240px" />
+            <label>Alert ID</label><input id="alertId" value="ac21c93a-5d33-44ac-83e9-8914db4b700b" style="min-width:380px" />
+          </div>
+          <div class="row">
+            <button id="runAll">Run End-to-End</button>
+            <button id="getToken">Token only</button>
+            <button id="runMas">Execute only</button>
+            <button id="clear">Clear logs</button>
+          </div>
+          <div class="small">
+            Tip: For VA/DDC, keep <b>Same-origin</b> ON. If you host elsewhere (e.g. GitHub Pages), turn it OFF and set Base URL → you’ll need CORS allowed on Viya.
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Results</h2>
+          <div class="small">Access token (first 32 chars)</div>
+          <div class="mono" id="tokenPreview">—</div>
+          <div class="small" style="margin-top:8px">MAS JSON</div>
+          <textarea id="masJson" class="mono" placeholder="Response will appear here…"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Debug console</h2>
+        <div class="row">
+          <button id="copyLogs">Copy logs</button>
+          <span class="small">Shows timings, HTTP status, headers, bodies, and curl commands.</span>
+        </div>
+        <textarea id="logs" class="mono" style="min-height:260px" readonly></textarea>
+      </div>
+
+      <div class="card">
+        <h2>cURL (copy/paste to test outside browser)</h2>
+        <div class="grid cols">
+          <div>
+            <div class="row"><button id="copyCurlToken">Copy Token curl</button><span class="small"> (may include password)</span></div>
+            <textarea id="curlToken" class="mono" style="min-height:120px"></textarea>
+          </div>
+          <div>
+            <div class="row"><button id="copyCurlMas">Copy MAS curl</button><span class="small"> (needs token)</span></div>
+            <textarea id="curlMas" class="mono" style="min-height:120px"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+  const originInfo = el('originInfo');
+  originInfo.textContent = window.location.origin;
+
+  // UI refs
+  const sameOrigin = el('sameOrigin');
+  const baseUrl    = el('baseUrl');
+  const clientBasic= el('clientBasic');
+  const user       = el('user');
+  const pass       = el('pass');
+  const mask       = el('mask');
+  const moduleId   = el('moduleId');
+  const alertId    = el('alertId');
+  const runAllBtn  = el('runAll');
+  const getTokenBtn= el('getToken');
+  const runMasBtn  = el('runMas');
+  const clearBtn   = el('clear');
+  const tokenPreview = el('tokenPreview');
+  const masJson    = el('masJson');
+  const logs       = el('logs');
+  const curlToken  = el('curlToken');
+  const curlMas    = el('curlMas');
+
+  // Defaults
+  baseUrl.value = window.location.origin;
+
+  // Logging helpers
+  function now(){ return new Date().toISOString(); }
+  function maskIf(s){
+    if(!mask.checked) return s;
+    return s
+      .replace(/(password=)[^&\s]*/gi,'$1******')
+      .replace(/(Authorization:\s*Basic\s+)[A-Za-z0-9+/=]+/gi,'$1***')
+      .replace(/(bearer\s+)[A-Za-z0-9\.\-_]+/gi,'$1***');
+  }
+  function log(line="", obj){
+    const txt = `[${now()}] ${line}` + (obj!==undefined ? `\n${typeof obj==='string'?obj:JSON.stringify(obj,null,2)}` : "");
+    logs.value += txt + "\n";
+    logs.scrollTop = logs.scrollHeight;
+    console.log(line, obj);
+  }
+  function toHeaderObj(headers){
+    const o={}; headers.forEach((v,k)=>o[k]=v); return o;
+  }
+
+  function buildUrl(path){
+    if(sameOrigin.checked) return path;
+    const b = baseUrl.value.replace(/\/+$/,'');
+    return b + path;
+  }
+
+  function curlForToken(){
+    const url = buildUrl('/SASLogon/oauth/token');
+    const data = new URLSearchParams({
+      grant_type:'password',
+      username: user.value,
+      password: pass.value
+    }).toString();
+    return [
+      `curl -X POST '${url}'`,
+      `  -H 'Accept: application/json'`,
+      `  -H 'Authorization: ${clientBasic.value}'`,
+      `  -H 'Content-Type: application/x-www-form-urlencoded'`,
+      `  --data '${maskIf(data)}'`
+    ].join('\n');
+  }
+
+  function curlForMas(token){
+    const url = buildUrl(`/microanalyticScore/modules/${encodeURIComponent(moduleId.value)}/steps/execute`);
+    const body = JSON.stringify({inputs:[{name:'ALERT_ID_', value: alertId.value}]});
+    return [
+      `curl -X POST '${url}'`,
+      `  -H 'Accept: application/json'`,
+      `  -H 'Authorization: bearer ${maskIf(token||'YOUR_TOKEN')}'`,
+      `  -H 'Content-Type: application/json'`,
+      `  --data '${body.replace(/'/g,"'\\''")}'`
+    ].join('\n');
+  }
+
+  async function fetchDebug(url, options){
+    const start = performance.now();
+    let res, text = '', err = null;
+    try{
+      res = await fetch(url, options);
+      text = await res.text();
+    }catch(e){
+      err = e;
+    }
+    const ms = Math.round(performance.now()-start);
+    const entry = {
+      url,
+      method: options?.method||'GET',
+      duration_ms: ms,
+      request: {
+        headers: options?.headers||{},
+        body: options?.body||null,
+        credentials: options?.credentials||'same-origin'
+      },
+      response: res ? {
+        ok: res.ok,
+        status: res.status,
+        statusText: res.statusText,
+        headers: res.headers ? toHeaderObj(res.headers) : {},
+        bodyText: text
+      } : null,
+      error: err ? (err.message||String(err)) : null
+    };
+    log(`HTTP ${entry.method} ${url}`, entry);
+    return entry;
+  }
+
+  async function getAccessToken(){
+    const url = buildUrl('/SASLogon/oauth/token');
+    const body = new URLSearchParams({
+      grant_type:'password',
+      username: user.value,
+      password: pass.value
+    }).toString();
+
+    curlToken.value = curlForToken();
+
+    const r = await fetchDebug(url, {
+      method:'POST',
+      headers:{
+        'Accept':'application/json',
+        'Authorization': clientBasic.value,
+        'Content-Type':'application/x-www-form-urlencoded'
+      },
+      body,
+      credentials:'include' // same-origin cookies if any
+    });
+
+    if(!r.response){ throw new Error(`Network error (likely TLS/CORS): ${r.error}`); }
+    if(!r.response.ok){
+      throw new Error(`Token failed: ${r.response.status} ${r.response.statusText}\n${r.response.bodyText}`);
+    }
+    let token;
+    try{
+      token = JSON.parse(r.response.bodyText).access_token;
+    }catch(e){
+      // fallback: regex
+      const m = /"access_token"\s*:\s*"([^"]+)"/i.exec(r.response.bodyText);
+      token = m && m[1];
+    }
+    if(!token) throw new Error(`No access_token in response.\nBody:\n${r.response.bodyText}`);
+    tokenPreview.textContent = token.slice(0,32) + '…';
+    log('Got access_token');
+    return token;
+  }
+
+  async function executeMAS(token){
+    const url = buildUrl(`/microanalyticScore/modules/${encodeURIComponent(moduleId.value)}/steps/execute`);
+    const body = JSON.stringify({ inputs:[{ name:'ALERT_ID_', value: alertId.value }] });
+
+    curlMas.value = curlForMas(token);
+
+    const r = await fetchDebug(url, {
+      method:'POST',
+      headers:{
+        'Accept':'application/json',
+        'Authorization': `bearer ${token}`,
+        'Content-Type':'application/json'
+      },
+      body,
+      credentials:'include'
+    });
+
+    if(!r.response){ throw new Error(`Network error (likely TLS/CORS): ${r.error}`); }
+    if(!r.response.ok){
+      throw new Error(`MAS failed: ${r.response.status} ${r.response.statusText}\n${r.response.bodyText}`);
+    }
+    let json;
+    try{ json = JSON.parse(r.response.bodyText); }
+    catch(e){ throw new Error(`MAS returned non-JSON\n${r.response.bodyText}`); }
+
+    masJson.value = JSON.stringify(json, null, 2);
+    log('MAS execute OK');
+    return json;
+  }
+
+  // Buttons
+  getTokenBtn.onclick = async ()=>{
+    try{
+      logs.value = '';
+      const t = await getAccessToken();
+      alert('Token OK. See debug + curl.');
+      curlMas.value = curlForMas(t);
+    }catch(e){ alert(e.message); }
+  };
+
+  runMasBtn.onclick = async ()=>{
+    try{
+      const t = tokenPreview.textContent.includes('…') ? '__USE_PREVIEW__' : null;
+      let token = t==='__USE_PREVIEW__' ? null : null;
+      // we intentionally always fetch a fresh token for clarity
+      token = await getAccessToken();
+      await executeMAS(token);
+      alert('MAS OK. See response + logs.');
+    }catch(e){ alert(e.message); }
+  };
+
+  runAllBtn.onclick = async ()=>{
+    try{
+      logs.value = '';
+      masJson.value = '';
+      const token = await getAccessToken();
+      await executeMAS(token);
+      alert('End-to-end OK.');
+    }catch(e){ alert(e.message); }
+  };
+
+  clearBtn.onclick = ()=>{ logs.value=''; masJson.value=''; tokenPreview.textContent='—'; curlToken.value=''; curlMas.value=''; };
+
+  // Copy helpers
+  el('copyLogs').onclick     = ()=>{ navigator.clipboard.writeText(logs.value); };
+  el('copyCurlToken').onclick= ()=>{ navigator.clipboard.writeText(curlToken.value); };
+  el('copyCurlMas').onclick  = ()=>{ navigator.clipboard.writeText(curlMas.value); };
+
+  // If embedded in VA, pick up ALERT_ID param (optional)
+  if (window.va && va.messagingUtil) {
+    va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+      if (vaMsgObj?.parameters?.length) {
+        const aid = vaMsgObj.parameters[0].value;
+        if (aid) { alertId.value = aid; log('VA parameter ALERT_ID received', {alertId: aid}); }
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
