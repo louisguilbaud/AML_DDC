@@ -1,338 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Viya MAS Debug Demo (Token → Execute)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alert Summarizer</title>
   <style>
-    :root{--bg:#0b0c10;--card:#111318;--fg:#e6e6e6;--muted:#9aa0a6;--accent:#3ea6ff;--ok:#22c55e;--err:#ef4444;--border:#1f2937}
-    *{box-sizing:border-box}html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-    .wrap{max-width:980px;margin:24px auto;padding:0 16px;display:grid;gap:16px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:grid;gap:12px}
-    h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:0 0 6px;color:var(--muted)}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    label{font-size:12px;color:var(--muted)}
-    input,select,textarea{background:#0e1116;border:1px solid #2a2f38;color:var(--fg);border-radius:10px;padding:9px 10px}
-    input[type="checkbox"]{width:auto}
-    textarea{min-height:120px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-    button{background:var(--accent);color:#00131f;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .grid{display:grid;gap:12px}
-    .cols{grid-template-columns:1fr 1fr}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
-    .pill{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--muted)}
-    .ok{color:var(--ok)} .err{color:var(--err)}
-    .small{font-size:12px;color:var(--muted)}
-    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--border);border-radius:6px;padding:2px 6px;background:#0e1116}
+    :root {
+      --bg:#fbfbfd; --fg:#1d1d1f; --muted:#6e6e73; --card:#fff;
+      --border:rgba(0,0,0,.08); --primary:#0664d0; --primary-press:#0556b3;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
+    .container{max-width:880px;margin:7vh auto 10vh;padding:0 20px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:24px;
+      box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 30px rgba(0,0,0,.06);padding:32px;display:grid;gap:18px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+    h1{margin:0 0 6px 0;font-size:28px;font-weight:650;letter-spacing:-.02em}
+    .subtitle{margin:0;color:var(--muted);font-size:14px}
+    .row{display:flex;gap:10px;align-items:center}
+    button{appearance:none;border:none;cursor:pointer;font-family:inherit}
+    .btn-primary{background:var(--primary);color:#fff;border-radius:14px;padding:12px 18px;
+      font-size:16px;font-weight:600;box-shadow:0 6px 18px rgba(0,122,255,.25);
+      transition:transform .06s,box-shadow .2s,filter .2s}
+    .btn-primary:hover{filter:brightness(1.02)} .btn-primary:active{transform:scale(.985)}
+    .btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
+    .btn-secondary{background:#f2f2f7;color:var(--fg);border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600}
+    .btn-secondary:hover{filter:brightness(.97)} .btn-secondary:active{filter:brightness(.94)}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.6);border-top-color:#fff;border-radius:50%;
+      animation:spin 1s linear infinite;display:none}@keyframes spin{to{transform:rotate(360deg)}}
+    .loading .spinner{display:inline-block} .loading .labeltext{display:none}
+    .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+    .summary{border:1px solid var(--border);border-radius:14px;background:#fafafa;padding:14px;min-height:140px;white-space:normal;font-size:14px}
+    .summary h1{font-size:24px;margin:0 0 8px} .summary h2{font-size:18px;margin:14px 0 6px}
+    .summary p{margin:6px 0} .summary ul{margin:6px 0 6px 18px;padding-left:18px} .summary li{margin:3px 0}
+    .summary .cutoff{margin-top:10px;font-size:12px;color:var(--muted)}
+    textarea{width:100%;min-height:120px;resize:vertical;padding:14px 16px;border-radius:16px;border:1px solid rgba(0,0,0,.12);background:#fff;outline:none;line-height:1.5}
+    textarea:focus{border-color:var(--primary-press);box-shadow:0 0 0 4px rgba(10,132,255,.12)}
+    .caption{font-size:12px;color:var(--muted)}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;
+      padding:10px 14px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .working{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-weight:600}
+    .working .dots{display:inline-flex;gap:4px;margin-left:2px}
+    .working .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:.25;animation:dotpulse 1s ease-in-out infinite}
+    .working .dots i:nth-child(2){animation-delay:.2s} .working .dots i:nth-child(3){animation-delay:.4s}
+    @keyframes dotpulse{0%,100%{transform:translateY(0);opacity:.25}50%{transform:translateY(-3px);opacity:1}}
+    .skel{display:grid;gap:8px;margin-top:10px}
+    .skel .line{height:10px;border-radius:6px;background:linear-gradient(90deg,#ececec,#f7f7f7,#ececec);
+      background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Viya Intelligent Decisioning – End-to-End Debug Page</h1>
-      <div class="small">Runs: <span class="pill" id="originInfo"></span></div>
-
-      <div class="grid cols">
-        <div class="card">
-          <h2>Settings</h2>
-          <div class="row">
-            <label>Same-origin</label>
-            <input type="checkbox" id="sameOrigin" checked />
-            <span class="small">Use relative paths (<code>/SASLogon</code>, <code>/microanalyticScore</code>)</span>
-          </div>
-          <div class="row">
-            <label>Base URL</label>
-            <input id="baseUrl" style="min-width:380px" placeholder="https://sasserver.demo.sas.com" />
-          </div>
-          <div class="row">
-            <label>Client (Basic)</label>
-            <input id="clientBasic" style="min-width:380px" value="Basic c2FzLmNsaTo=" />
-          </div>
-          <div class="row">
-            <label>User</label><input id="user" value="viya_admin" />
-            <label>Pass</label><input id="pass" type="password" value="Orion123" />
-            <label>Mask secrets</label><input type="checkbox" id="mask" checked />
-          </div>
-          <div class="row">
-            <label>Module ID</label><input id="moduleId" value="aml_demo1_2" style="min-width:240px" />
-            <label>Alert ID</label><input id="alertId" value="ac21c93a-5d33-44ac-83e9-8914db4b700b" style="min-width:380px" />
-          </div>
-          <div class="row">
-            <button id="runAll">Run End-to-End</button>
-            <button id="getToken">Token only</button>
-            <button id="runMas">Execute only</button>
-            <button id="clear">Clear logs</button>
-          </div>
-          <div class="small">
-            Tip: For VA/DDC, keep <b>Same-origin</b> ON. If you host elsewhere (e.g. GitHub Pages), turn it OFF and set Base URL → you’ll need CORS allowed on Viya.
-          </div>
+  <div class="container">
+    <div class="card" role="region" aria-labelledby="title">
+      <div class="header">
+        <div>
+          <h1 id="title">Alert Summarizer</h1>
+          <p class="subtitle">Generate a concise summary with one click.</p>
         </div>
-
-        <div class="card">
-          <h2>Results</h2>
-          <div class="small">Access token (first 32 chars)</div>
-          <div class="mono" id="tokenPreview">—</div>
-          <div class="small" style="margin-top:8px">MAS JSON</div>
-          <textarea id="masJson" class="mono" placeholder="Response will appear here…"></textarea>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Debug console</h2>
         <div class="row">
-          <button id="copyLogs">Copy logs</button>
-          <span class="small">Shows timings, HTTP status, headers, bodies, and curl commands.</span>
+          <button id="summarizeBtn" class="btn-primary" aria-busy="false">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="labeltext">Summarize</span>
+          </button>
         </div>
-        <textarea id="logs" class="mono" style="min-height:260px" readonly></textarea>
       </div>
 
-      <div class="card">
-        <h2>cURL (copy/paste to test outside browser)</h2>
-        <div class="grid cols">
-          <div>
-            <div class="row"><button id="copyCurlToken">Copy Token curl</button><span class="small"> (may include password)</span></div>
-            <textarea id="curlToken" class="mono" style="min-height:120px"></textarea>
-          </div>
-          <div>
-            <div class="row"><button id="copyCurlMas">Copy MAS curl</button><span class="small"> (needs token)</span></div>
-            <textarea id="curlMas" class="mono" style="min-height:120px"></textarea>
+      <div>
+        <div class="label">Generated Summary</div>
+        <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to start.</div>
+      </div>
+
+      <div>
+        <div class="label">Your Comments</div>
+        <textarea id="comments" placeholder="Add comments on the generated response and the alert in general…"></textarea>
+        <div class="row" style="justify-content:space-between;margin-top:8px">
+          <span id="charCount" class="caption">0 / 1000</span>
+          <div class="row">
+            <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
+            <button id="saveBtn" class="btn-secondary" type="button">Save Comment</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-<script>
-(function(){
-  const el = id => document.getElementById(id);
-  const originInfo = el('originInfo');
-  originInfo.textContent = window.location.origin;
+  <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
-  // UI refs
-  const sameOrigin = el('sameOrigin');
-  const baseUrl    = el('baseUrl');
-  const clientBasic= el('clientBasic');
-  const user       = el('user');
-  const pass       = el('pass');
-  const mask       = el('mask');
-  const moduleId   = el('moduleId');
-  const alertId    = el('alertId');
-  const runAllBtn  = el('runAll');
-  const getTokenBtn= el('getToken');
-  const runMasBtn  = el('runMas');
-  const clearBtn   = el('clear');
-  const tokenPreview = el('tokenPreview');
-  const masJson    = el('masJson');
-  const logs       = el('logs');
-  const curlToken  = el('curlToken');
-  const curlMas    = el('curlMas');
+  <script>
+    // ---- CONFIG (edit if needed) -------------------------------------------
+    const MODULE_ID = new URLSearchParams(location.search).get('moduleId') || 'aml_demo1_3';
+    const ALERT_ID  = new URLSearchParams(location.search).get('alertId')
+                   || '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
+    // MAS execute endpoint (browser must be same-origin with Viya)
+    const MAS_EXECUTE_URL = `/microanalyticScore/modules/${encodeURIComponent(MODULE_ID)}/steps/execute`;
+    const CSRF_PRIMER_URL = `/microanalyticScore/modules`; // any GET on same service works
 
-  // Defaults
-  baseUrl.value = window.location.origin;
+    // ---- UI refs -----------------------------------------------------------
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    const summaryEl    = document.getElementById('summary');
+    const commentsEl   = document.getElementById('comments');
+    const charCountEl  = document.getElementById('charCount');
+    const saveBtn      = document.getElementById('saveBtn');
+    const clearBtn     = document.getElementById('clearBtn');
+    const toast        = document.getElementById('toast');
+    summarizeBtn.disabled = false;
+    summaryEl.textContent = 'Press “Summarize” to generate a concise alert summary.';
 
-  // Logging helpers
-  function now(){ return new Date().toISOString(); }
-  function maskIf(s){
-    if(!mask.checked) return s;
-    return s
-      .replace(/(password=)[^&\s]*/gi,'$1******')
-      .replace(/(Authorization:\s*Basic\s+)[A-Za-z0-9+/=]+/gi,'$1***')
-      .replace(/(bearer\s+)[A-Za-z0-9\.\-_]+/gi,'$1***');
-  }
-  function log(line="", obj){
-    const txt = `[${now()}] ${line}` + (obj!==undefined ? `\n${typeof obj==='string'?obj:JSON.stringify(obj,null,2)}` : "");
-    logs.value += txt + "\n";
-    logs.scrollTop = logs.scrollHeight;
-    console.log(line, obj);
-  }
-  function toHeaderObj(headers){
-    const o={}; headers.forEach((v,k)=>o[k]=v); return o;
-  }
-
-  function buildUrl(path){
-    if(sameOrigin.checked) return path;
-    const b = baseUrl.value.replace(/\/+$/,'');
-    return b + path;
-  }
-
-  function curlForToken(){
-    const url = buildUrl('/SASLogon/oauth/token');
-    const data = new URLSearchParams({
-      grant_type:'password',
-      username: user.value,
-      password: pass.value
-    }).toString();
-    return [
-      `curl -X POST '${url}'`,
-      `  -H 'Accept: application/json'`,
-      `  -H 'Authorization: ${clientBasic.value}'`,
-      `  -H 'Content-Type: application/x-www-form-urlencoded'`,
-      `  --data '${maskIf(data)}'`
-    ].join('\n');
-  }
-
-  function curlForMas(token){
-    const url = buildUrl(`/microanalyticScore/modules/${encodeURIComponent(moduleId.value)}/steps/execute`);
-    const body = JSON.stringify({inputs:[{name:'ALERT_ID_', value: alertId.value}]});
-    return [
-      `curl -X POST '${url}'`,
-      `  -H 'Accept: application/json'`,
-      `  -H 'Authorization: bearer ${maskIf(token||'YOUR_TOKEN')}'`,
-      `  -H 'Content-Type: application/json'`,
-      `  --data '${body.replace(/'/g,"'\\''")}'`
-    ].join('\n');
-  }
-
-  async function fetchDebug(url, options){
-    const start = performance.now();
-    let res, text = '', err = null;
-    try{
-      res = await fetch(url, options);
-      text = await res.text();
-    }catch(e){
-      err = e;
-    }
-    const ms = Math.round(performance.now()-start);
-    const entry = {
-      url,
-      method: options?.method||'GET',
-      duration_ms: ms,
-      request: {
-        headers: options?.headers||{},
-        body: options?.body||null,
-        credentials: options?.credentials||'same-origin'
-      },
-      response: res ? {
-        ok: res.ok,
-        status: res.status,
-        statusText: res.statusText,
-        headers: res.headers ? toHeaderObj(res.headers) : {},
-        bodyText: text
-      } : null,
-      error: err ? (err.message||String(err)) : null
-    };
-    log(`HTTP ${entry.method} ${url}`, entry);
-    return entry;
-  }
-
-  async function getAccessToken(){
-    const url = buildUrl('/SASLogon/oauth/token');
-    const body = new URLSearchParams({
-      grant_type:'password',
-      username: user.value,
-      password: pass.value
-    }).toString();
-
-    curlToken.value = curlForToken();
-
-    const r = await fetchDebug(url, {
-      method:'POST',
-      headers:{
-        'Accept':'application/json',
-        'Authorization': clientBasic.value,
-        'Content-Type':'application/x-www-form-urlencoded'
-      },
-      body,
-      credentials:'include' // same-origin cookies if any
-    });
-
-    if(!r.response){ throw new Error(`Network error (likely TLS/CORS): ${r.error}`); }
-    if(!r.response.ok){
-      throw new Error(`Token failed: ${r.response.status} ${r.response.statusText}\n${r.response.bodyText}`);
-    }
-    let token;
-    try{
-      token = JSON.parse(r.response.bodyText).access_token;
-    }catch(e){
-      // fallback: regex
-      const m = /"access_token"\s*:\s*"([^"]+)"/i.exec(r.response.bodyText);
-      token = m && m[1];
-    }
-    if(!token) throw new Error(`No access_token in response.\nBody:\n${r.response.bodyText}`);
-    tokenPreview.textContent = token.slice(0,32) + '…';
-    log('Got access_token');
-    return token;
-  }
-
-  async function executeMAS(token){
-    const url = buildUrl(`/microanalyticScore/modules/${encodeURIComponent(moduleId.value)}/steps/execute`);
-    const body = JSON.stringify({ inputs:[{ name:'ALERT_ID_', value: alertId.value }] });
-
-    curlMas.value = curlForMas(token);
-
-    const r = await fetchDebug(url, {
-      method:'POST',
-      headers:{
-        'Accept':'application/json',
-        'Authorization': `bearer ${token}`,
-        'Content-Type':'application/json'
-      },
-      body,
-      credentials:'include'
-    });
-
-    if(!r.response){ throw new Error(`Network error (likely TLS/CORS): ${r.error}`); }
-    if(!r.response.ok){
-      throw new Error(`MAS failed: ${r.response.status} ${r.response.statusText}\n${r.response.bodyText}`);
-    }
-    let json;
-    try{ json = JSON.parse(r.response.bodyText); }
-    catch(e){ throw new Error(`MAS returned non-JSON\n${r.response.bodyText}`); }
-
-    masJson.value = JSON.stringify(json, null, 2);
-    log('MAS execute OK');
-    return json;
-  }
-
-  // Buttons
-  getTokenBtn.onclick = async ()=>{
-    try{
-      logs.value = '';
-      const t = await getAccessToken();
-      alert('Token OK. See debug + curl.');
-      curlMas.value = curlForMas(t);
-    }catch(e){ alert(e.message); }
-  };
-
-  runMasBtn.onclick = async ()=>{
-    try{
-      const t = tokenPreview.textContent.includes('…') ? '__USE_PREVIEW__' : null;
-      let token = t==='__USE_PREVIEW__' ? null : null;
-      // we intentionally always fetch a fresh token for clarity
-      token = await getAccessToken();
-      await executeMAS(token);
-      alert('MAS OK. See response + logs.');
-    }catch(e){ alert(e.message); }
-  };
-
-  runAllBtn.onclick = async ()=>{
-    try{
-      logs.value = '';
-      masJson.value = '';
-      const token = await getAccessToken();
-      await executeMAS(token);
-      alert('End-to-end OK.');
-    }catch(e){ alert(e.message); }
-  };
-
-  clearBtn.onclick = ()=>{ logs.value=''; masJson.value=''; tokenPreview.textContent='—'; curlToken.value=''; curlMas.value=''; };
-
-  // Copy helpers
-  el('copyLogs').onclick     = ()=>{ navigator.clipboard.writeText(logs.value); };
-  el('copyCurlToken').onclick= ()=>{ navigator.clipboard.writeText(curlToken.value); };
-  el('copyCurlMas').onclick  = ()=>{ navigator.clipboard.writeText(curlMas.value); };
-
-  // If embedded in VA, pick up ALERT_ID param (optional)
-  if (window.va && va.messagingUtil) {
-    va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-      if (vaMsgObj?.parameters?.length) {
-        const aid = vaMsgObj.parameters[0].value;
-        if (aid) { alertId.value = aid; log('VA parameter ALERT_ID received', {alertId: aid}); }
+    const COMMENT_LIMIT = 1000;
+    commentsEl.addEventListener('input', () => {
+      if (commentsEl.value.length > COMMENT_LIMIT) {
+        commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
       }
+      charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
     });
-  }
-})();
-</script>
+    commentsEl.dispatchEvent(new Event('input'));
+
+    function showToast(msg){ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
+
+    // ---- MAS helpers -------------------------------------------------------
+    async function getCsrfToken() {
+      // prime CSRF token from the same service; rely on session cookies from VA
+      const res = await fetch(CSRF_PRIMER_URL, { method:'GET', credentials:'include' });
+      const hdr = res.headers;
+      return hdr.get('X-CSRF-TOKEN') || hdr.get('x-csrf-token') || '';
+    }
+
+    function renderWorking(message) {
+      summaryEl.innerHTML = `
+        <div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="skel"><div class="line" style="width:88%"></div>
+        <div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
+    }
+
+    function outputsToMap(outputs) {
+      const m = {};
+      (outputs || []).forEach(o => { m[o.name] = o.value; });
+      return m;
+    }
+
+    // ---- Main action -------------------------------------------------------
+    async function summarize() {
+      summarizeBtn.disabled = true;
+      summarizeBtn.classList.add('loading');
+      summarizeBtn.setAttribute('aria-busy', 'true');
+
+      const msgs = [
+        "Connecting to decision service","Executing model pipeline",
+        "Scoring with MAS","Aggregating outcome","Formatting summary"
+      ];
+      let i = 0; const timer = setInterval(()=>renderWorking(msgs[i++%msgs.length]), 1200);
+      renderWorking(msgs[0]);
+
+      try {
+        const csrf = await getCsrfToken();
+        if (!csrf) throw new Error("CSRF token not available");
+
+        const payload = {
+          inputs: [ { name: "ALERT_ID_", value: ALERT_ID } ]
+        };
+
+        const res = await fetch(MAS_EXECUTE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
+        });
+
+        const rawText = await res.text();
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${rawText.slice(0,500)}`);
+
+        let data; try { data = JSON.parse(rawText); } catch { throw new Error('Non-JSON response from MAS'); }
+
+        const outMap = outputsToMap(data.outputs);
+        const html1  = outMap['html1'];
+        const cutoff = outMap['CUTOFF_DATE'];
+
+        if (html1 || cutoff) {
+          summaryEl.innerHTML = `${html1 || ''}${cutoff ? `<div class="cutoff">${cutoff}</div>` : ''}`;
+        } else {
+          // fallback: show raw outputs
+          summaryEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        summaryEl.textContent = `Error:\n${e.message}`;
+        console.error(e);
+      } finally {
+        clearInterval(timer);
+        summarizeBtn.disabled = false;
+        summarizeBtn.classList.remove('loading');
+        summarizeBtn.setAttribute('aria-busy', 'false');
+      }
+    }
+
+    function saveComment() {
+      const key = 'aml-summary-comments';
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      const entry = {
+        ts: new Date().toISOString(),
+        alertId: ALERT_ID,
+        comment: commentsEl.value.trim(),
+        summary: summaryEl.textContent.trim()
+      };
+      if (!entry.comment){ showToast('Nothing to save'); return; }
+      existing.push(entry);
+      localStorage.setItem(key, JSON.stringify(existing));
+      showToast('Comment saved locally');
+    }
+
+    function clearComment(){ commentsEl.value=''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
+
+    summarizeBtn.addEventListener('click', summarize);
+    saveBtn.addEventListener('click', saveComment);
+    clearBtn.addEventListener('click', clearComment);
+  </script>
 </body>
 </html>
