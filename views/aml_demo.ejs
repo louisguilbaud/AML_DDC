@@ -1,31 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>AML Alert Summarizer</title>
-  <script src="./javascripts/sas/util/messagingUtil.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alert Summarizer</title>
   <style>
-    :root{--bg:#fbfbfd;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--border:rgba(0,0,0,.08);--primary:#007aff;--primary-press:#0a84ff}
-    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
+    :root {
+      --bg:#fbfbfd; --fg:#1d1d1f; --muted:#6e6e73; --card:#fff;
+      --border:rgba(0,0,0,.08); --primary:#0664d0; --primary-press:#0556b3;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
     .container{max-width:880px;margin:7vh auto 10vh;padding:0 20px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 30px rgba(0,0,0,.06);padding:32px;display:grid;gap:18px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:24px;
+      box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 30px rgba(0,0,0,.06);padding:32px;display:grid;gap:18px}
     .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
     h1{margin:0 0 6px 0;font-size:28px;font-weight:650;letter-spacing:-.02em}
     .subtitle{margin:0;color:var(--muted);font-size:14px}
     .row{display:flex;gap:10px;align-items:center}
     button{appearance:none;border:none;cursor:pointer;font-family:inherit}
-    .btn-primary{background:var(--primary);color:#fff;border-radius:14px;padding:12px 18px;font-size:16px;font-weight:600;box-shadow:0 6px 18px rgba(0,122,255,.25);transition:transform .06s,box-shadow .2s,filter .2s}
-    .btn-primary:hover{filter:brightness(1.02)}.btn-primary:active{transform:scale(.985)}.btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
-    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.6);border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite;display:none}@keyframes spin{to{transform:rotate(360deg)}}
-    .loading .spinner{display:inline-block}.loading .labeltext{display:none}
-    .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-    .summary{border:1px solid var(--border);border-radius:16px;background:#fafafa;padding:16px;min-height:140px;line-height:1.55;white-space:pre-wrap}
+    .btn-primary{background:var(--primary);color:#fff;border-radius:14px;padding:12px 18px;
+      font-size:16px;font-weight:600;box-shadow:0 6px 18px rgba(0,122,255,.25);
+      transition:transform .06s,box-shadow .2s,filter .2s}
+    .btn-primary:hover{filter:brightness(1.02)} .btn-primary:active{transform:scale(.985)}
+    .btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
+    .btn-secondary{background:#f2f2f7;color:var(--fg);border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600}
+    .btn-secondary:hover{filter:brightness(.97)} .btn-secondary:active{filter:brightness(.94)}
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.6);border-top-color:#fff;border-radius:50%;
+      animation:spin 1s linear infinite;display:none}@keyframes spin{to{transform:rotate(360deg)}}
+    .loading .spinner{display:inline-block} .loading .labeltext{display:none}
+    .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+    .summary{border:1px solid var(--border);border-radius:14px;background:#fafafa;padding:14px;min-height:140px;white-space:normal;font-size:14px}
+    .summary h1{font-size:24px;margin:0 0 8px} .summary h2{font-size:18px;margin:14px 0 6px}
+    .summary p{margin:6px 0} .summary ul{margin:6px 0 6px 18px;padding-left:18px} .summary li{margin:3px 0}
+    .summary .cutoff{margin-top:10px;font-size:12px;color:var(--muted)}
     textarea{width:100%;min-height:120px;resize:vertical;padding:14px 16px;border-radius:16px;border:1px solid rgba(0,0,0,.12);background:#fff;outline:none;line-height:1.5}
     textarea:focus{border-color:var(--primary-press);box-shadow:0 0 0 4px rgba(10,132,255,.12)}
     .caption{font-size:12px;color:var(--muted)}
-    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;padding:10px 14px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#111;color:#fff;
+      padding:10px 14px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:transform .35s,opacity .35s}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .working{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-weight:600}
+    .working .dots{display:inline-flex;gap:4px;margin-left:2px}
+    .working .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:.25;animation:dotpulse 1s ease-in-out infinite}
+    .working .dots i:nth-child(2){animation-delay:.2s} .working .dots i:nth-child(3){animation-delay:.4s}
+    @keyframes dotpulse{0%,100%{transform:translateY(0);opacity:.25}50%{transform:translateY(-3px);opacity:1}}
+    .skel{display:grid;gap:8px;margin-top:10px}
+    .skel .line{height:10px;border-radius:6px;background:linear-gradient(90deg,#ececec,#f7f7f7,#ececec);
+      background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
   </style>
 </head>
 <body>
@@ -33,18 +57,11 @@
     <div class="card" role="region" aria-labelledby="title">
       <div class="header">
         <div>
-          <h1 id="title">AML Alert Summarizer</h1>
-          <p class="subtitle">Runs entirely in VA (DDC). Add comments and generate a concise summary.</p>
-          <div class="row" style="margin-top:8px">
-            <label for="model" class="caption">Model</label>
-            <select id="model">
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4o-mini">GPT-4o mini</option>
-            </select>
-          </div>
+          <h1 id="title">Alert Summarizer</h1>
+          <p class="subtitle">Generate a concise summary with one click.</p>
         </div>
         <div class="row">
-          <button id="summarizeBtn" class="btn-primary" aria-busy="false" disabled>
+          <button id="summarizeBtn" class="btn-primary" aria-busy="false">
             <span class="spinner" aria-hidden="true"></span>
             <span class="labeltext">Summarize</span>
           </button>
@@ -53,17 +70,17 @@
 
       <div>
         <div class="label">Generated Summary</div>
-        <div id="summary" class="summary" role="region" aria-live="polite">Waiting for API key from VA…</div>
+        <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to start.</div>
       </div>
 
       <div>
         <div class="label">Your Comments</div>
-        <textarea id="comments" placeholder="Add comments on the generated response and the alert in general… (stored locally)"></textarea>
+        <textarea id="comments" placeholder="Add comments on the generated response and the alert in general…"></textarea>
         <div class="row" style="justify-content:space-between;margin-top:8px">
           <span id="charCount" class="caption">0 / 1000</span>
           <div class="row">
-            <button id="clearBtn">Clear</button>
-            <button id="saveBtn">Save Comment</button>
+            <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
+            <button id="saveBtn" class="btn-secondary" type="button">Save Comment</button>
           </div>
         </div>
       </div>
@@ -73,34 +90,24 @@
   <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
   <script>
-    // --- VA messaging: receive API key + optional alertId parameter ---
-    let OPENAI_KEY = null;
-    let ALERT_ID = null;
+    // ---- CONFIG (edit if needed) -------------------------------------------
+    const MODULE_ID = new URLSearchParams(location.search).get('moduleId') || 'aml_demo1_3';
+    const ALERT_ID  = new URLSearchParams(location.search).get('alertId')
+                   || '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
+    // MAS execute endpoint (browser must be same-origin with Viya)
+    const MAS_EXECUTE_URL = `/microanalyticScore/modules/${encodeURIComponent(MODULE_ID)}/steps/execute`;
+    const CSRF_PRIMER_URL = `/microanalyticScore/modules`; // any GET on same service works
 
-    if (window.va && va.messagingUtil) {
-      va.messagingUtil.setOnDataReceivedCallback(function(vaMsgObj){
-        if (vaMsgObj?.data?.length) {
-          OPENAI_KEY = vaMsgObj.data[0][0]; // first cell of first row
-        }
-        if (vaMsgObj?.parameters?.length) {
-          ALERT_ID = vaMsgObj.parameters[0].value;
-        }
-        if (OPENAI_KEY) {
-          summaryEl.textContent = 'Press “Summarize” to generate a concise AML alert summary.';
-          summarizeBtn.disabled = false;
-        }
-      });
-    }
-
-    // --- UI refs ---
+    // ---- UI refs -----------------------------------------------------------
     const summarizeBtn = document.getElementById('summarizeBtn');
-    const summaryEl = document.getElementById('summary');
-    const commentsEl = document.getElementById('comments');
-    const charCountEl = document.getElementById('charCount');
-    const saveBtn = document.getElementById('saveBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const toast = document.getElementById('toast');
-    const modelSel = document.getElementById('model');
+    const summaryEl    = document.getElementById('summary');
+    const commentsEl   = document.getElementById('comments');
+    const charCountEl  = document.getElementById('charCount');
+    const saveBtn      = document.getElementById('saveBtn');
+    const clearBtn     = document.getElementById('clearBtn');
+    const toast        = document.getElementById('toast');
+    summarizeBtn.disabled = false;
+    summaryEl.textContent = 'Press “Summarize” to generate a concise alert summary.';
 
     const COMMENT_LIMIT = 1000;
     commentsEl.addEventListener('input', () => {
@@ -113,75 +120,104 @@
 
     function showToast(msg){ toast.textContent = msg; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'), 1400); }
 
-    function mockSummary(){
-      const now = new Date().toLocaleString();
-      return `Summary generated locally at ${now}
-• Alert ID: ${ALERT_ID || 'N/A'} (simulated)
-• Trigger: Unusual cash deposits followed by rapid outbound transfers.
-• Risk: Smurfing; new beneficiary; velocity spike.
-• Action: Escalate to EDD; obtain SoF; monitor 30 days.`;
+    // ---- MAS helpers -------------------------------------------------------
+    async function getCsrfToken() {
+      // prime CSRF token from the same service; rely on session cookies from VA
+      const res = await fetch(CSRF_PRIMER_URL, { method:'GET', credentials:'include' });
+      const hdr = res.headers;
+      return hdr.get('X-CSRF-TOKEN') || hdr.get('x-csrf-token') || '';
     }
 
-    async function summarize(){
-      const apiKey = OPENAI_KEY;
-      if (!apiKey){ summaryEl.textContent = 'No API key from VA.'; return; }
+    function renderWorking(message) {
+      summaryEl.innerHTML = `
+        <div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="skel"><div class="line" style="width:88%"></div>
+        <div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
+    }
 
+    function outputsToMap(outputs) {
+      const m = {};
+      (outputs || []).forEach(o => { m[o.name] = o.value; });
+      return m;
+    }
+
+    // ---- Main action -------------------------------------------------------
+    async function summarize() {
       summarizeBtn.disabled = true;
       summarizeBtn.classList.add('loading');
-      summarizeBtn.setAttribute('aria-busy','true');
+      summarizeBtn.setAttribute('aria-busy', 'true');
 
-      const controller = new AbortController();
-      const t = setTimeout(()=>controller.abort(), 15000);
+      const msgs = [
+        "Connecting to decision service","Executing model pipeline",
+        "Scoring with MAS","Aggregating outcome","Formatting summary"
+      ];
+      let i = 0; const timer = setInterval(()=>renderWorking(msgs[i++%msgs.length]), 1200);
+      renderWorking(msgs[0]);
 
-      const prompt = `You are an AML investigator assistant. Create a concise alert summary in 6–8 lines.
-Include: (1) trigger/mechanism, (2) key transactions/patterns, (3) risk indicators, (4) recommended next actions.
-AlertId: ${ALERT_ID || 'unknown'}.`;
+      try {
+        const csrf = await getCsrfToken();
+        if (!csrf) throw new Error("CSRF token not available");
 
-      try{
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-          body: JSON.stringify({
-            model: modelSel.value,
-            messages: [
-              { role:'system', content:'Respond tersely. Use bullet-like lines, no markdown headings.' },
-              { role:'user', content: prompt }
-            ]
-          }),
-          signal: controller.signal
+        const payload = {
+          inputs: [ { name: "ALERT_ID_", value: ALERT_ID } ]
+        };
+
+        const res = await fetch(MAS_EXECUTE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf
+          },
+          credentials: 'include',
+          body: JSON.stringify(payload)
         });
-        clearTimeout(t);
-        if (!res.ok) throw new Error('HTTP '+res.status);
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content?.trim();
-        summaryEl.textContent = content || 'No content received.';
-      } catch (e){
-        summaryEl.textContent = mockSummary();
+
+        const rawText = await res.text();
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${rawText.slice(0,500)}`);
+
+        let data; try { data = JSON.parse(rawText); } catch { throw new Error('Non-JSON response from MAS'); }
+
+        const outMap = outputsToMap(data.outputs);
+        const html1  = outMap['html1'];
+        const cutoff = outMap['CUTOFF_DATE'];
+
+        if (html1 || cutoff) {
+          summaryEl.innerHTML = `${html1 || ''}${cutoff ? `<div class="cutoff">${cutoff}</div>` : ''}`;
+        } else {
+          // fallback: show raw outputs
+          summaryEl.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (e) {
+        summaryEl.textContent = `Error:\n${e.message}`;
+        console.error(e);
       } finally {
+        clearInterval(timer);
         summarizeBtn.disabled = false;
         summarizeBtn.classList.remove('loading');
-        summarizeBtn.setAttribute('aria-busy','false');
+        summarizeBtn.setAttribute('aria-busy', 'false');
       }
     }
 
-    function saveComment(){
+    function saveComment() {
       const key = 'aml-summary-comments';
       const existing = JSON.parse(localStorage.getItem(key) || '[]');
-      const entry = { ts:new Date().toISOString(), alertId: ALERT_ID || null, comment: commentsEl.value.trim(), summary: summaryEl.textContent.trim() };
+      const entry = {
+        ts: new Date().toISOString(),
+        alertId: ALERT_ID,
+        comment: commentsEl.value.trim(),
+        summary: summaryEl.textContent.trim()
+      };
       if (!entry.comment){ showToast('Nothing to save'); return; }
       existing.push(entry);
       localStorage.setItem(key, JSON.stringify(existing));
       showToast('Comment saved locally');
     }
+
     function clearComment(){ commentsEl.value=''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
 
     summarizeBtn.addEventListener('click', summarize);
     saveBtn.addEventListener('click', saveComment);
     clearBtn.addEventListener('click', clearComment);
-
-    // Default state if VA messaging never arrives
-    setTimeout(()=>{ if (!OPENAI_KEY) summaryEl.textContent='Waiting for API key from VA…'; }, 500);
   </script>
 </body>
 </html>
-
