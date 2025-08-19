@@ -204,7 +204,9 @@
                         border: 1px solid rgba(0, 0, 0, .12);
                         background: #fff;
                         outline: none;
-                        line-height: 1.5
+                        line-height: 1.5;
+                        overflow: hidden;   
+                        resize: none
                 }
 
                 textarea:focus {
@@ -369,6 +371,13 @@
                 summarizeBtn.disabled = false;
 
                 const COMMENT_LIMIT = 1000;
+                // Auto-expand the comment box
+                const autoResize = el => {
+                el.style.height = 'auto';
+                el.style.height = el.scrollHeight + 'px';
+                };
+                commentsEl.addEventListener('input', () => autoResize(commentsEl));
+                window.addEventListener('load', () => autoResize(commentsEl));
                 commentsEl.addEventListener('input', () => {
                         if (commentsEl.value.length > COMMENT_LIMIT) {
                                 commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
