@@ -174,7 +174,7 @@
       try{
         // 1) Get CSRF + call MAS for prompt + key
         const csrf = await getCsrfToken();
-        if (!csrf) throw new Error('CSRF token not available');
+        if (!csrf) throw new Error('CSRF token not available. Log in to SAS in this browser to solve.');
 
         const payload = { inputs: [ { name: "ALERT_ID_", value: ALERT_ID } ] };
         const masRes = await fetch(MODULE_URI, {
