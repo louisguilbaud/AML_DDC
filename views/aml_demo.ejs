@@ -5,6 +5,7 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Alert Summarizer</title>
+        <script src="./javascripts/sas/util/messagingUtil.js"></script>
         <style>
                 :root {
                         --bg: #fbfbfd;
@@ -353,7 +354,12 @@
                 // ===== CONFIG =====
                 const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_0/steps/execute';
                 const CSRF_PRIMER_URL = '/microanalyticScore/modules';
-                const ALERT_ID = '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
+                //const ALERT_ID = '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
+                let ALERT_ID = null;               // will be filled by VA
+                let resolveAlertIdReady;
+                const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
+
+
 
                 // OpenAI Responses API settings
                 const OPENAI_URL = 'https://api.openai.com/v1/responses';
@@ -367,7 +373,9 @@
                 const saveBtn = document.getElementById('saveBtn');
                 const clearBtn = document.getElementById('clearBtn');
                 const toast = document.getElementById('toast');
-                summarizeBtn.disabled = false;
+
+                // disable until VA sends the ID
+                summarizeBtn.disabled = true;
 
                 const COMMENT_LIMIT = 2000;
                 // Auto-expand the comment box
@@ -384,6 +392,27 @@
                         charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
                 });
                 commentsEl.dispatchEvent(new Event('input'));
+
+                // 1) If an alertId is provided via URL (optional fallback), use it
+                const urlAlertId = new URLSearchParams(location.search).get('alertId');
+                if (urlAlertId) {
+                ALERT_ID = urlAlertId;
+                resolveAlertIdReady?.(ALERT_ID);
+                summarizeBtn.disabled = false;
+                }
+
+                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
+                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                const paramVal = vaMsgObj?.parameters?.[0]?.value;
+                const dataVal  = vaMsgObj?.data?.[0]?.[0];
+                const candidate = paramVal || dataVal;
+
+                if (candidate && candidate !== ALERT_ID) {
+                ALERT_ID = String(candidate);
+                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                summarizeBtn.disabled = false;            // enable the button now that we have it
+                }
+                });
 
                 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
                 function renderWorking(message) {
@@ -441,6 +470,12 @@
 
                 // ===== Main action =====
                 async function summarize() {
+                        // Wait until VA supplies the alert id (or URL fallback)
+                        if (!ALERT_ID) {
+                        renderWorking('Waiting for Alert ID from Visual Analytics');
+                        await alertIdReady;
+                        }
+                        
                         summarizeBtn.disabled = true;
                         summarizeBtn.classList.add('loading');
                         summarizeBtn.setAttribute('aria-busy', 'true');
