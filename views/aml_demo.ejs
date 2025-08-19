@@ -445,7 +445,7 @@
                         summarizeBtn.classList.add('loading');
                         summarizeBtn.setAttribute('aria-busy', 'true');
 
-                        const msgs = [
+                        const loadingMessages = [
                         // Serious
                         "Investigating suspicious activity",
                         "Connecting the dots between transactions",
@@ -480,8 +480,16 @@
                         "Binge-watching transaction histories"
                         ];
 
-                        let i = 0; const timer = setInterval(() => renderWorking(msgs[i++ % msgs.length]), 2000);
-                        renderWorking(msgs[0]);
+                        // shuffle once, then cycle
+                        const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
+                        let msgIndex = 0;
+                        const ROTATE_MS = 4000; // slower pace
+
+                        renderWorking(shuffledMessages[msgIndex]);
+                        const timer = setInterval(() => {
+                        msgIndex = (msgIndex + 1) % shuffledMessages.length;
+                        renderWorking(shuffledMessages[msgIndex]);
+                        }, ROTATE_MS);
 
                         try {
                                 // 1) Get CSRF + call MAS for prompt + key
@@ -509,7 +517,6 @@
                                 if (!openaiKey) throw new Error('MAS output "key" (OpenAI API key) not found');
 
                                 // 2) Call OpenAI with MAS-provided key
-                                renderWorking(msgs[1]);
                                 const llmText = await callOpenAI(systemPrompt, openaiKey);
 
                                 // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
