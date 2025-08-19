@@ -337,7 +337,7 @@
                                 <textarea id="comments"
                                         placeholder="Add comments on the generated response and the alert in general…"></textarea>
                                 <div class="row" style="justify-content:space-between;margin-top:8px">
-                                        <span id="charCount" class="caption">0 / 1000</span>
+                                        <span id="charCount" class="caption">0 / 2000</span>
                                         <div class="row">
                                                 <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
                                                 <button id="saveBtn" class="btn-secondary" type="button">Save
@@ -370,7 +370,7 @@
                 const toast = document.getElementById('toast');
                 summarizeBtn.disabled = false;
 
-                const COMMENT_LIMIT = 1000;
+                const COMMENT_LIMIT = 2000;
                 // Auto-expand the comment box
                 const autoResize = el => {
                 el.style.height = 'auto';
