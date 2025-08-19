@@ -328,8 +328,7 @@
 
                         <div>
                                 <div class="label">Generated Summary</div>
-                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to
-                                        start.</div>
+                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to generate a concise alert summary, powered by GPT-5.</div>
                         </div>
 
                         <div>
@@ -446,8 +445,42 @@
                         summarizeBtn.classList.add('loading');
                         summarizeBtn.setAttribute('aria-busy', 'true');
 
-                        const msgs = ["Building prompt with MAS", "Calling LLM", "Formatting summary"];
-                        let i = 0; const timer = setInterval(() => renderWorking(msgs[i++ % msgs.length]), 1200);
+                        const msgs = [
+                        // Serious
+                        "Investigating suspicious activity",
+                        "Connecting the dots between transactions",
+                        "Cross-referencing KYC data",
+                        "Scanning network relationships",
+                        "Following the money trail",
+                        "Reviewing scenario triggers",
+                        "Generating advanced insights",
+                        "Running enhanced due diligence protocols",
+                        "Finding patterns no human could see",
+                        "Hunting for needle-in-a-haystack transfers",
+                        "Checking for unusual velocity spikes",
+                        "Sifting through transaction histories",
+                        "Raising potential red flags",
+                        "Flagging politically exposed persons",
+                        "Analyzing cash structuring patterns",
+                        "Verifying source of funds",
+
+	                 // Fun
+                        "Searching mattress stores (politely)",
+                        "Following the breadcrumbs",
+                        "Checking today's horoscope",
+                        "Patrolling the data streets at night",
+                        "With great power comes great compliance responsibility – Uncle Ben",
+                        "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
+                        "May the fraud be with you – Star Wars",
+                        "Looking for the usual suspects",
+                        "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
+                        "The name’s Bond... Transaction Bond – James Bond",
+                        "Houston, we have a suspicious transfer – Apollo 13",
+                        "Winter is coming... for fraudsters – Game of Thrones",
+                        "Binge-watching transaction histories"
+                        ];
+
+                        let i = 0; const timer = setInterval(() => renderWorking(msgs[i++ % msgs.length]), 2000);
                         renderWorking(msgs[0]);
 
                         try {
