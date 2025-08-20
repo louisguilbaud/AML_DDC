@@ -1,600 +1,1071 @@
+<!--
+Written by louis guilbaud & Arnav Priyadarshi
+Date: August 2024
+louis.guilbaud@sas.com
+arnav.priyadarshi@sas.com
+-->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Alert Summarizer</title>
-        <script src="./javascripts/sas/util/messagingUtil.js"></script>
-        <style>
-                :root {
-                        --bg: #fbfbfd;
-                        --fg: #1d1d1f;
-                        --muted: #6e6e73;
-                        --card: #fff;
-                        --border: rgba(0, 0, 0, .08);
-                        --primary: #0478CE;
-                        --primary-press: #0366AF
-                }
+	<script src="./javascripts/sas/util/messagingUtil.js"></script>
+	<script type="module" src="https://md-block.verou.me/md-block.js"></script>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<style>
+		*,
+		*::before,
+		*::after {
+			box-sizing: border-box;
+		}
 
-                * {
-                        box-sizing: border-box
-                }
+		* {
+			margin: 0;
+			padding: 0;
+		}
 
-                html,
-                body {
-                        height: 100%
-                }
+		body {
+			font-family: Arial, sans-serif;
+			font-size: 16px;
+			width: 80%;
+			display: flex;
+			flex-direction: column;
+			margin: 0 auto;
+			padding: 0px;
+			min-height: 100vh;
+			width: 100%; /* Allow full width */
+    			height: 100%;
+		}
 
-                body {
-                        margin: 0;
-                        background: var(--bg);
-                        color: var(--fg);
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
-                }
+		pre {
+			white-space: pre-wrap;
+			font-family: monospace;
+			font-size: 14px;
+		}
 
-                .container {
-                        width: min(92vw, 1280px); 
-                        max-width: 1280px;
-                        margin: 5vh auto 8vh;
-                        padding: 0 24px
-                }
+		details {
+			display: none;
+		}
 
-                .card {
-                        background: var(--card);
-                        border: 1px solid var(--border);
-                        border-radius: 24px;
-                        box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
-                        padding: 32px;
-                        display: grid;
-                        gap: 18px
-                }
+		.btn-primary {
+			background-color: #007bff;
+			border-color: #0a4079;
+			color: #fff;
+			padding: 10px 40px;
+			font-size: 16px;
+			cursor: pointer;
+			margin: 20px;
+			border-radius: 5px;
+			box-shadow: inset 0px 0px 0px -0.1px #0a0a0a;
+		}
 
-                .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        gap: 12px
-                }
+		.btn-primary:disabled {
+			background-color: #d6d6d6; /* Lighter background to indicate it's disabled */
+			border-color: #ccc;         /* Lighter border */
+			color: #888;                /* Greyed out text */
+			cursor: not-allowed;        /* Change cursor to not-allowed */
+			box-shadow: none;           /* Remove the inset shadow */
+			opacity: 0.65;              /* Slightly transparent */
+		}
 
-                h1 {
-                        margin: 0 0 6px 0;
-                        font-size: 28px;
-                        font-weight: 650;
-                        letter-spacing: -.02em
-                }
 
-                .subtitle {
-                        margin: 0;
-                        color: var(--muted);
-                        font-size: 14px
-                }
+		label {
+			margin-bottom: 10px;
+		}
 
-                .row {
-                        display: flex;
-                        gap: 10px;
-                        align-items: center
-                }
+		.prompt {
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-items: center;
+			margin-bottom: 20px;
+		}
 
-                button {
-                        appearance: none;
-                        border: none;
-                        cursor: pointer;
-                        font-family: inherit
-                }
+		textarea {
+			width: 60%;
+			min-height: 80px;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			text-wrap: wrap;
+			height: auto;
+			overflow: hidden;
+			resize: none;
+			padding: 0.8em;
+			font-size: 16px;
+			border: 1px solid #000000;
+		}
 
-                .btn-primary {
-                        background: var(--primary);
-                        color: #fff;
-                        border-radius: 14px;
-                        padding: 12px 18px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-                        transition: transform .06s, box-shadow .2s, filter .2s
-                }
+		/* Styling the container for label and dropdown */
+		.row {
+		  display: flex;
+		  align-items: center;
+		  gap: 10px; /* Space between label and dropdown */
+		}
 
-                .btn-primary:hover {
-                        filter: brightness(1.02)
-                }
+		/* Styling for the label */
+		.row label {
+		  font-size: 16px;
+		  color: #333;
+		}
 
-                .btn-primary:active {
-                        transform: scale(.985)
-                }
+		/* Styling for the dropdown */
+		#model-cn {
+		  background-color: #0379CE; /* Button color */
+		  color: white;
+		  font-size: 16px;
+		  padding: 12px 20px;
+		  border: none;
+		  border-radius: 5px;
+		  cursor: pointer;
+		  width: 190px; /* Button width */
+		  transition: background-color 0.3s ease;
+		  appearance: none; /* Remove default arrow */
+		  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='white' d='M0 0l5 6 5-6H0z'/%3E%3C/svg%3E");
+		  background-repeat: no-repeat;
+		  background-position: right 15px center;
+		  background-size: 10px;
+		}
 
-                .btn-primary:disabled {
-                        opacity: .65;
-                        cursor: not-allowed;
-                        box-shadow: none
-                }
+		/* Styling for the dropdown options */
+		#model-cn option {
+		  background-color: white; /* White background for options */
+		  color: black; /* Black text for options */
+		}
 
-                .btn-secondary {
-                        background: #f2f2f7;
-                        color: var(--fg);
-                        border-radius: 14px;
-                        padding: 10px 16px;
-                        font-size: 14px;
-                        font-weight: 600
-                }
+		/* Styling for the dropdown */
+		#model{
+		  background-color: #0379CE; /* Button color */
+		  color: white;
+		  font-size: 16px;
+		  padding: 12px 20px;
+		  border: none;
+		  border-radius: 5px;
+		  cursor: pointer;
+		  width: 190px; /* Button width */
+		  transition: background-color 0.3s ease;
+		  appearance: none; /* Remove default arrow */
+		  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='white' d='M0 0l5 6 5-6H0z'/%3E%3C/svg%3E");
+		  background-repeat: no-repeat;
+		  background-position: right 15px center;
+		  background-size: 10px;
+		}
 
-                .btn-secondary:hover {
-                        filter: brightness(.97)
-                }
+		/* Styling for the dropdown options */
+		#model option {
+		  background-color: white; /* White background for options */
+		  color: black; /* Black text for options */
+		}
+		
+		#chatgptResponse {
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			color: #02022f;
+		}
+		
+		/* Full-screen overlay for loading state */
+		.loading {
+			display: none;
+			  flex-direction: column;
+			  align-items: center;
+			  z-index: 2; /* Make sure the loading indicator appears above the overlay */
+			  color: white; /* Text color for the loading indicator */
+			  font-size: 20px;
+		}
+		
+		.dots {
+			display: flex;
+			justify-content: space-around;
+			align-items: center;
+			width: 60px;
+			margin-bottom: 5px;
+		}
 
-                .btn-secondary:active {
-                        filter: brightness(.94)
-                }
+		.dot {
+			width: 10px;
+			height: 10px;
+			margin: 3px;
+			background-color: #007bff; /* Blue color */
+			border-radius: 50%;
+			animation: bounce 0.6s infinite alternate;
+		}
 
-                .spinner {
-                        width: 16px;
-                        height: 16px;
-                        border: 2px solid rgba(255, 255, 255, .6);
-                        border-top-color: #fff;
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
-                        display: none
-                }
+		@keyframes bounce {
+			to {
+				transform: translateY(-10px);
+			}
+		}
 
-                @keyframes spin {
-                        to {
-                                transform: rotate(360deg)
-                        }
-                }
+		.dot:nth-child(2) {
+			animation-delay: 0.2s;
+		}
 
-                .loading .spinner {
-                        display: inline-block
-                }
+		.dot:nth-child(3) {
+			animation-delay: 0.4s;
+		}
 
-                .loading .labeltext {
-                        display: none
-                }
+		.loading-text {
+			font-size: 14px;
+			color: #333;
+			margin-top: 5px;
+		}
+		.chat {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			flex: 1;
+		}
 
-                .label {
-                        font-size: 12px;
-                        text-transform: uppercase;
-                        letter-spacing: .08em;
-                        color: var(--muted);
-                        margin-bottom: 8px
-                }
+		h1 {
+			margin-bottom: 0;
+		}
 
-                .summary {
-                        border: 1px solid var(--border);
-                        border-radius: 14px;
-                        background: #fafafa;
-                        padding: 14px;
-                        min-height: 140px;
-                        white-space: normal;
-                        font-size: 14px
-                }
+		h2 {
+			margin-top: 10px;
+			margin-bottom: 10px;
+		}
 
-                .summary h1 {
-                        font-size: 24px;
-                        margin: 0 0 8px
-                }
+		#conversation {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin: 20px;
+			margin-top: 0;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #eeeeee;
+			margin-bottom: 40px;
+			min-height: 200px;
+			padding-top: 12px;
+			padding-bottom: 12px;
+		}
 
-                .summary h2 {
-                        font-size: 18px;
-                        margin: 14px 0 6px
-                }
+		#conversation-cn {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin: 20px;
+			margin-top: 0;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #fefeff;
+			margin-bottom: 40px;
+			min-height: 200px;
+			padding-top: 12px;
+			padding-bottom: 12px;
+		}
 
-                .summary p {
-                        margin: 6px 0
-                }
+		label {
+			margin-bottom: 0;
+		}
 
-                .summary ul {
-                        margin: 6px 0 6px 18px;
-                        padding-left: 18px
-                }
+		.message {
+			padding: 24px;
+			border-radius: 5px;
+			background-color: #fefefe;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			width: 75%;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+			margin-left: 4px;
+			margin-right: 4px;
+			margin-bottom: 8px;
+		}
 
-                .summary li {
-                        margin: 3px 0
-                }
+		.case-narrative-message {
+			padding: 24px;
+			width: 100%;
+			border-radius: 5px;
+			background-color: #fefefe;
+			box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+			line-height: 1.5;
+			font-family: system-ui, -apple-system, BlinkMacSystemFont,
+				"Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+				"Helvetica Neue", sans-serif;
+		}
 
-                .summary .cutoff {
-                        margin-top: 10px;
-                        font-size: 12px;
-                        color: var(--muted)
-                }
+		.assistant-response {
+			/* the box is aligned to the left inside #conversation */
+			align-self: flex-start;
+			color: #010721;
+		}
 
-                textarea {
-                        width: 100%;
-                        min-height: 120px;
-                        resize: vertical;
-                        padding: 14px 16px;
-                        border-radius: 16px;
-                        border: 1px solid rgba(0, 0, 0, .12);
-                        background: #fff;
-                        outline: none;
-                        line-height: 1.5;
-                        overflow: hidden;   
-                        resize: none
-                }
+		.user-response {
+			/* the box is aligned to the right inside #conversation */
+			align-self: flex-end;
+		}
 
-                textarea:focus {
-                        border-color: var(--primary-press);
-                        box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
-                }
+		#chatForm {
+			flex: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding-bottom: 0.2rem;
+			width: 100%;
+		}
+		
+		.tab {
+            background-color: #f2f2f2;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .tablinks {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 8px 16px;
+            background-color: #fff;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .tablinks.active {
+            background-color: #0379CE;
+			color: white;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+		
+		
 
-                .caption {
-                        font-size: 12px;
-                        color: var(--muted)
-                }
-
-                .toast {
-                        position: fixed;
-                        left: 50%;
-                        bottom: 24px;
-                        transform: translateX(-50%) translateY(20px);
-                        background: #111;
-                        color: #fff;
-                        padding: 10px 14px;
-                        border-radius: 999px;
-                        box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-                        opacity: 0;
-                        pointer-events: none;
-                        transition: transform .35s, opacity .35s
-                }
-
-                .toast.show {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(0)
-                }
-
-                .working {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
-                        color: var(--muted);
-                        font-weight: 600
-                }
-
-                .working .dots {
-                        display: inline-flex;
-                        gap: 4px;
-                        margin-left: 2px
-                }
-
-                .working .dots i {
-                        width: 6px;
-                        height: 6px;
-                        border-radius: 50%;
-                        background: var(--muted);
-                        opacity: .25;
-                        animation: dotpulse 1s ease-in-out infinite
-                }
-
-                .working .dots i:nth-child(2) {
-                        animation-delay: .2s
-                }
-
-                .working .dots i:nth-child(3) {
-                        animation-delay: .4s
-                }
-
-                @keyframes dotpulse {
-
-                        0%,
-                        100% {
-                                transform: translateY(0);
-                                opacity: .25
-                        }
-
-                        50% {
-                                transform: translateY(-3px);
-                                opacity: 1
-                        }
-                }
-
-                .skel {
-                        display: grid;
-                        gap: 8px;
-                        margin-top: 10px
-                }
-
-                .skel .line {
-                        height: 10px;
-                        border-radius: 6px;
-                        background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
-                        background-size: 200% 100%;
-                        animation: shimmer 1.2s linear infinite
-                }
-
-                @keyframes shimmer {
-                        0% {
-                                background-position: 200% 0
-                        }
-
-                        100% {
-                                background-position: -200% 0
-                        }
-                }
-        </style>
+	</style>
+	<title>AML LLM</title>
 </head>
 
 <body>
-        <div class="container">
-                <div class="card" role="region" aria-labelledby="title">
-                        <div class="header">
-                                <div>
-                                        <h1 id="title">Alert Summarizer</h1>
-                                        <p class="subtitle">Generate a concise summary with one click.</p>
-                                </div>
-                                <div class="row">
-                                        <button id="summarizeBtn" class="btn-primary" aria-busy="false">
-                                                <span class="spinner" aria-hidden="true"></span>
-                                                <span class="labeltext">Summarize</span>
-                                        </button>
-                                </div>
-                        </div>
+	<details>
+		<summary>API Response</summary>
+		<h2>API response</h2>
+		<pre id="apiResponse"></pre>
+		<h2>Filtered Scenario Fired Events</h2>
+		<pre id="scenario_fired_event"></pre>
+		<h2>Filtered Transactions</h2>
+		<pre id="transactions"></pre>
+		<h2>Personal Information</h2>
+		<pre id="Party_info"></pre>
+		<h2>Nonnormalized graph</h2>
+		<pre id="postResponse"></pre>
+	</details>
+	<details>
+		<summary>Graph Of Transactions</summary>
+		<h2>Vertices JSON</h2>
+		<pre id="verticesJson"></pre>
+		<h2>Edges JSON</h2>
+		<pre id="edgesJson"></pre>
+		<p id="alertid"></p>
+	</details>
 
-                        <div>
-                                <div class="label">Generated Summary</div>
-                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to generate a concise alert summary, powered by GPT-5.</div>
-                        </div>
+	<div class="tab">
+		<button class="tablinks" onclick="openTab(event, 'CaseNarrative')" aria-label="Case Narrative" id="defaultOpen">
+			Alert Recommendation
+		</button>
+		<button class="tablinks" onclick="openTab(event, 'QnA')" aria-label="QnA" >
+			Q&A
+		</button>
+	</div>
 
-                        <div>
-                                <div class="label">Your Comments</div>
-                                <textarea id="comments"
-                                        placeholder="Add comments on the generated response and the alert in general…"></textarea>
-                                <div class="row" style="justify-content:space-between;margin-top:8px">
-                                        <span id="charCount" class="caption">0 / 2000</span>
-                                        <div class="row">
-                                                <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
-                                                <button id="saveBtn" class="btn-secondary" type="button">Save
-                                                        Comment</button>
-                                        </div>
-                                </div>
-                        </div>
-                </div>
-        </div>
+	<div id="QnA" class="tabcontent">
+		<div class="chat">
+			<h1>Alerts Chatbot</h1>
+			<div id="conversation">
+				<h2 class="loading" id="loading-indicator">
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
+				</h2>
+			</div>
+			<form id="chatForm">
+				<div class="prompt">
+					<label for="userPrompt"> Ask a question </label>
+					<textarea id="userPrompt" name="userPrompt"></textarea>
+				</div>
 
-        <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
+				<div class="row">
+					<label for="model">Model:</label>
+					<select id="model" name="model">
+						<option value="gpt-4o">GPT-4o</option>
+						<option value="gpt-4o-mini">GPT-4o mini</option>
+					</select>
+				</div>
+				<button disabled type="submit" class="btn-primary" id="callApiButton">
+					Send
+				</button>
+			</form>
+		</div>
+	</div>
 
-        <script>
-                // ===== CONFIG =====
-                const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_0/steps/execute';
-                const CSRF_PRIMER_URL = '/microanalyticScore/modules';
-                //const ALERT_ID = '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
-                let ALERT_ID = null;               // will be filled by VA
-                let resolveAlertIdReady;
-                const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
-                // track the source for diagnostics
-                let ALERT_ID_SOURCE = 'unset';
-                console.log('[id] init: waiting for alert id (from VA or URL)');
+	<div id="CaseNarrative" class="tabcontent">
+		<div class="chat">
+			<div id="conversation-cn">
+				<h2 class="loading" id="loading-indicator-cn">
+					<div class="dots">
+						<div class="dot"></div>
+						<div class="dot"></div>
+						<div class="dot"></div>
+					</div>
+					<p class="loading-text">Loading...</p>
+				</h2>
+			</div>
+			<form id="chatForm-cn">
+				<div class="row">
+					<label for="model-cn">Model:</label>
+					<select id="model-cn" name="model">
+						<option value="gpt-4o">GPT-4o</option>
+						<option value="gpt-4o-mini">GPT-4o mini</option>
+					</select>
+				</div>
+				<button disabled type="submit" class="btn-primary" id="callApiButton-cn">
+					Get Case Narrative
+				</button>
+			</form>
+		</div>
+	</div>
+
+	<p hidden><span id="apiKeyContainer"></span></p>
+	<p hidden><span id="alertid"></span></p>
+
+	<script>
+		"use strict";
+
+		const body = document.querySelector("body");
+		const tabcontents = document.querySelectorAll(".tabcontent");
+		const chats = document.querySelectorAll(".chat");
+		const qna = document.getElementById("QnA");
+		const qnaChat = qna.querySelector(".chat");
+		const casenarrative = document.getElementById("CaseNarrative");
+
+		function openTab(evt, tabName) {
+			let i, tabcontent, tablinks;
+			tabcontent = document.getElementsByClassName("tabcontent");
+			for (i = 0; i < tabcontent.length; i++) {
+				tabcontent[i].style.display = "none";
+			}
+			tablinks = document.getElementsByClassName("tablinks");
+			for (i = 0; i < tablinks.length; i++) {
+				tablinks[i].className = tablinks[i].className.replace(
+					" active",
+					""
+				);
+			}
+			const tab = document.getElementById(tabName);
+			tab.style.display = "block";
+
+			qna.style.height = qnaChat.scrollHeight + 50 + "px";
+			autoGrow(casenarrative);
+			autoGrow(qnaChat);
+			autoGrow(qna);
+			autoGrow(body);
+
+			evt.currentTarget.className += " active";
+		}
+
+		// Open the default tab
+		document.getElementById("defaultOpen").click();
+
+		function autoGrow(element) {
+			element.style.height = "auto";
+			element.style.height = element.scrollHeight + "px";
+		}
 
 
+		// Attach the autoGrow function to input event for all textareas
+		document.querySelectorAll("textarea").forEach(textarea => {
+			textarea.addEventListener("input", function () {
+				autoGrow(this);
+				autoGrow(body);
+				for (const tabcontent of tabcontents) {
+					autoGrow(tabcontent);
+				}
+			});
+			// Call autoGrow on page load to set initial height
+			autoGrow(textarea);
+			autoGrow(body);
+			for (const tabcontent of tabcontents) {
+					autoGrow(tabcontent);
+			}
+		});
 
-                // OpenAI Responses API settings
-                const OPENAI_URL = 'https://api.openai.com/v1/responses';
-                const OPENAI_MODEL = 'gpt-5-nano';
+		//=============================================
 
-                // ===== UI =====
-                const summarizeBtn = document.getElementById('summarizeBtn');
-                const summaryEl = document.getElementById('summary');
-                const commentsEl = document.getElementById('comments');
-                const charCountEl = document.getElementById('charCount');
-                const saveBtn = document.getElementById('saveBtn');
-                const clearBtn = document.getElementById('clearBtn');
-                const toast = document.getElementById('toast');
+		const myHeaders = new Headers();
+		myHeaders.append(
+			"Cookie",
+			"sas-ingress-nginx=6866adc2289a112d6ea7fd0775261540|f0e9e5d83f1b459459b54939af4feb2b"
+		);
 
-                // disable until VA sends the ID
-                summarizeBtn.disabled = true;
+		const requestOptions = {
+			method: "GET",
+			headers: myHeaders,
+			redirect: "follow"
+		};
+		
+		//Get VA parameters
+		va.messagingUtil.setOnDataReceivedCallback(updateURL);
 
-                const COMMENT_LIMIT = 2000;
-                // Auto-expand the comment box
-                const autoResize = el => {
-                el.style.height = 'auto';
-                el.style.height = el.scrollHeight + 'px';
-                };
-                commentsEl.addEventListener('input', () => autoResize(commentsEl));
-                window.addEventListener('load', () => autoResize(commentsEl));
-                commentsEl.addEventListener('input', () => {
-                        if (commentsEl.value.length > COMMENT_LIMIT) {
-                                commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
-                        }
-                        charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
-                });
-                commentsEl.dispatchEvent(new Event('input'));
+		function updateURL(vaMsgObj) {
+			console.log("Received vaMsgObj:", vaMsgObj);
+			if (vaMsgObj && vaMsgObj.data && vaMsgObj.data.length > 0) {
+				const apiKey = vaMsgObj.data[0][0];
+				console.log("[debug]: Fetched API Key:", apiKey);
+				document.getElementById("apiKeyContainer").textContent =
+					apiKey;
 
-                // 1) If an alertId is provided via URL (optional fallback), use it
-                const urlAlertId = new URLSearchParams(location.search).get('alertId');
-                if (urlAlertId) {
-                ALERT_ID = urlAlertId;
-                ALERT_ID_SOURCE = 'url';                                 
-                console.log('[id] Using URL parameter ?alertId=', ALERT_ID); 
-                resolveAlertIdReady?.(ALERT_ID);
-                summarizeBtn.disabled = false;
-                console.log('[id] summarizeBtn enabled (source=url)');   
-                }
+				// Extract the value from the parameters array
+				if (vaMsgObj.parameters && vaMsgObj.parameters.length > 0) {
+					const alert_id = vaMsgObj.parameters[0].value;
+					console.log(
+						"[debug]: Fetched Parameter Value:",
+						alert_id
+					);
+					document.getElementById("alertid").textContent =
+						alert_id;
+				} else {
+					document.getElementById("alertid").textContent =
+						"No parameter value available";
+				}
+			} else {
+				document.getElementById("apiKeyContainer").textContent =
+					"No API key available";
+				document.getElementById("alertid").textContent =
+					"No parameter value available";
+			}
+		}
 
-                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
-                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                console.log('[id] VA message received:', vaMsgObj);           
+		async function fetchData() {
+			const alertIdElement = document.getElementById("alertid");
+			let alertId = alertIdElement.textContent.trim(); // Get the alert ID from the element
 
-                const paramVal = vaMsgObj?.parameters?.[0]?.value;
-                const dataVal  = vaMsgObj?.data?.[0]?.[0];
+			if (!alertId) {
+				console.warn(
+					"[debug]: Alert ID is not immediately available. Waiting for it to be populated..."
+				);
 
-                console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
+				// Wait for the alert ID to be available
+				for (let i = 0; i < 10; i++) {
+					// Retry up to 10 times (adjust as needed)
+					await new Promise(resolve => setTimeout(resolve, 500)); // Wait for 500ms
+					alertId = alertIdElement.textContent.trim();
+					if (alertId) {
+						break; // Exit the loop once alertId is available
+					}
+				}
+			}
 
-                const candidate = paramVal || dataVal;
+			if (!alertId) {
+				console.error(
+					"Alert ID is still not available after waiting."
+				);
+				return;
+			}
+			const alertUrl = `https://sasserver.demo.sas.com/svi-alert/alerts/${alertId}`;
 
-                if (candidate && candidate !== ALERT_ID) {
-                ALERT_ID = String(candidate);
-                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data'; 
-                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                summarizeBtn.disabled = false;            // enable the button now that we have it
-                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
-                }
-                });
+			console.log("[debug]: called alerts data");
+			try {
+				const response = await fetch(alertUrl, requestOptions);
+				if (!response.ok) {
+					throw new Error(
+						"Network response was not ok " + response.statusText
+					);
+				}
+				const data = await response.json();
+				const currentAlertingEventId = data.currentAlertingEventId;
+				const actionableEntityId = data.actionableEntityId;
+				document.getElementById("apiResponse").innerHTML =
+					JSON.stringify(data, null, 2);
 
-                function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
-                function renderWorking(message) {
-                        summaryEl.innerHTML = `<div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
-      <div class="skel"><div class="line" style="width:88%"></div><div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
-                }
-                function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])); }
+				const alertingEventsUrl = `https://sasserver.demo.sas.com/svi-alert/alertingEvents/${currentAlertingEventId}`;
+				const alertingEventsResponse = await fetch(
+					alertingEventsUrl,
+					requestOptions
+				);
+				if (!alertingEventsResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						alertingEventsResponse.statusText
+					);
+				}
+				const alertingEventsData =
+					await alertingEventsResponse.json();
+				const filteredScenarioFiredEvents =
+					alertingEventsData.scenarioFiredEvents.map(event => ({
+						scenarioName: event.scenarioName,
+						scenarioDescription: event.scenarioDescription,
+						messageTemplateText: event.messageTemplateText
+					}));
+				document.getElementById("scenario_fired_event").innerHTML =
+					JSON.stringify(filteredScenarioFiredEvents, null, 2);
+				
+				console.log("[debug]: SFE:", filteredScenarioFiredEvents);
+				
+				const partyInfoUrl = `https://sasserver.demo.sas.com/SASVisualInvestigator/pages/PTY/${actionableEntityId}`;
+				const partyInfoResponse = await fetch(
+					partyInfoUrl,
+					requestOptions
+				);
+				if (!partyInfoResponse.ok) {
+					throw new Error(
+						"Network response was not ok " +
+						partyInfoResponse.statusText
+					);
+				}
+				const partyInfoData = await partyInfoResponse.json();
+				document.getElementById("Party_info").innerHTML =
+					JSON.stringify(partyInfoData.data, null, 2);
+					
+				console.log("[debug]: PTY info:", Party_info);
+			
+				async function getCsrfToken() {
+				const url =
+					"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+				try {
+					const response = await fetch(url, {
+						method: "GET",
+						credentials: "include"
+					});
+					const csrfToken = response.headers.get("X-CSRF-TOKEN");
+					if (!csrfToken) {
+						console.error(
+							"CSRF token not found in response headers"
+						);
+						throw new Error(
+							"CSRF token not found in response headers"
+						);
+					}
+					console.log("[debug]: csrfToken set");
+					return csrfToken;
+				} catch (error) {
+					console.error("[debug]: Error in getCsrfToken:", error);
+					throw error;
+				}
+			}
 
-                // ===== Helpers =====
-                async function getCsrfToken() {
-                        const res = await fetch(CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
-                        return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
-                }
-                function outputsToMap(outputs) { const m = {}; (outputs || []).forEach(o => m[o.name] = o.value); return m; }
+			async function postData(csrfToken) {
+				const actionableEntityIdnet = "actionableEntityId"; // Replace with the actual actionable entity ID
+				const alertIdnet = "alertId";
+				const url =
+					"https://sasserver.demo.sas.com/svi-sand/traversals?calculateMetrics=false&expansionLimit=2000";
+				const data = {
+					edgeTypes: ["social_link"],
+					depth: 3,
+					extendedFormat: true,
+					graphObjectIds: [
+						{
+							type: "PTY",
+							id: actionableEntityId
+						},
+						{
+							type: "alerts",
+							id: alertId
+						}
+					],
+					query: {
+						type: "object",
+						objectIds: [
+							{
+								type: "PTY",
+								id: actionableEntityId
+							}
+						]
+					}
+				};
 
-                function extractOpenAIText(j) {
-                        if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
-                        if (Array.isArray(j?.output)) {
-                                for (const item of j.output) {
-                                        const content = item?.content;
-                                        if (Array.isArray(content)) {
-                                                for (const c of content) {
-                                                        if (typeof c?.text === 'string' && c.text.trim()) return c.text;
-                                                        if (c?.type === 'output_text' && c?.text) return c.text;
-                                                }
-                                        }
-                                }
-                        }
-                        if (j?.choices?.[0]?.message?.content) return j.choices[0].message.content;
-                        return null;
-                }
+				const myHeaderspost = new Headers();
+				myHeaderspost.append("Content-Type", "application/json");
+				myHeaderspost.append(
+					"Cookie",
+					"sas-ingress-nginx=465a78167134495424fe1d90f9dbaa56|12b794cb5ca279bec1edb7e510234855"
+				);
+				myHeaderspost.append("X-CSRF-TOKEN", csrfToken);
 
-                async function callOpenAI(systemPrompt, apiKey) {
-                        const body = {
-                                model: OPENAI_MODEL,
-                                input: systemPrompt,
-                                reasoning: { effort: "medium" },
-                                text: { verbosity: "low" }
-                        };
-                        const res = await fetch(OPENAI_URL, {
-                                method: 'POST',
-                                headers: {
-                                        'Accept': 'application/json',
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${apiKey}`
-                                },
-                                body: JSON.stringify(body)
-                        });
-                        const json = await res.json().catch(() => ({}));
-                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = extractOpenAIText(json);
-                        if (!txt) throw new Error('LLM returned no text payload');
-                        return txt;
-                }
+				const requestOptionspost = {
+					method: "POST",
+					headers: myHeaderspost,
+					body: JSON.stringify(data),
+					redirect: "follow"
+				};
 
-                // ===== Main action =====
-                async function summarize() {
-                        // Wait until VA supplies the alert id (or URL fallback)
-                        if (!ALERT_ID) {
-                        renderWorking('Waiting for Alert ID from Visual Analytics');
-                        await alertIdReady;
-                        }
-                        console.log(`[id] summarize() with ALERT_ID=${ALERT_ID} (source=${ALERT_ID_SOURCE})`);
-                        
-                        summarizeBtn.disabled = true;
-                        summarizeBtn.classList.add('loading');
-                        summarizeBtn.setAttribute('aria-busy', 'true');
+				try {
+					const response = await fetch(url, requestOptionspost);
+					if (!response.ok) {
+						throw new Error(
+							"Network response was not ok " + response.statusText
+						);
+					}
+					const postResponseText = await response.json();
+					document.getElementById("postResponse").textContent =
+						JSON.stringify(postResponseText, null, 2);
 
-                        const loadingMessages = [
-                        // Serious
-                        "Investigating suspicious activity",
-                        "Connecting the dots between transactions",
-                        "Cross-referencing KYC data",
-                        "Scanning network relationships",
-                        "Following the money trail",
-                        "Reviewing scenario triggers",
-                        "Generating advanced insights",
-                        "Running enhanced due diligence protocols",
-                        "Finding patterns no human could see",
-                        "Hunting for needle-in-a-haystack transfers",
-                        "Checking for unusual velocity spikes",
-                        "Sifting through transaction histories",
-                        "Raising potential red flags",
-                        "Flagging politically exposed persons",
-                        "Analyzing cash structuring patterns",
-                        "Verifying source of funds",
+					const vertices = postResponseText.vertices.map(vertex => ({
+						type: vertex.type,
+						id: vertex.id,
+						typeLabel: vertex.typeLabel,
+						label: vertex.label
+					}));
 
-	                 // Fun
-                        "Searching mattress stores (politely)",
-                        "Following the breadcrumbs",
-                        "Checking today's horoscope",
-                        "Patrolling the data streets at night",
-                        "With great power comes great compliance responsibility – Uncle Ben",
-                        "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
-                        "May the fraud be with you – Star Wars",
-                        "Looking for the usual suspects",
-                        "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
-                        "The name’s Bond... Transaction Bond – James Bond",
-                        "Houston, we have a suspicious transfer – Apollo 13",
-                        "Winter is coming... for fraudsters – Game of Thrones",
-                        "Binge-watching transaction histories"
-                        ];
+					const edges = postResponseText.edges.map(edge => ({
+						id: edge.id,
+						endpoints: edge.endpoints.map(endpoint => ({
+							type: endpoint.type,
+							id: endpoint.id
+						})),
+						subtype: edge.subtype,
+						label: edge.label
+					}));
 
-                        // shuffle once, then cycle
-                        const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
-                        let msgIndex = 0;
-                        const ROTATE_MS = 4000; // slower pace
+					console.log("[debug]: set pty and graph data");
 
-                        renderWorking(shuffledMessages[msgIndex]);
-                        const timer = setInterval(() => {
-                        msgIndex = (msgIndex + 1) % shuffledMessages.length;
-                        renderWorking(shuffledMessages[msgIndex]);
-                        }, ROTATE_MS);
+					document.getElementById("verticesJson").textContent =
+						JSON.stringify(vertices, null, 2);
+					document.getElementById("edgesJson").textContent =
+						JSON.stringify(edges, null, 2);
+					
+					console.log("[debug]: Network entity:", verticesJson);
+					console.log("[debug]: Networks links:", edgesJson);
+				} catch (error) {
+					console.error("[debug]: Error in postData:", error);
+					document.getElementById(
+						"postResponse"
+					).textContent = `Error: ${error}`;
+				}
+			}
 
-                        try {
-                                // 1) Get CSRF + call MAS for prompt + key
-                                const csrf = await getCsrfToken();
-                                if (!csrf) throw new Error('CSRF token not available. Log in to SAS in this browser to solve.');
+				
 
-                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }] };
-                                const masRes = await fetch(MODULE_URI, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                                        credentials: 'include',
-                                        body: JSON.stringify(payload)
-                                });
+				const csrfToken = await getCsrfToken();
+				await postData(csrfToken);
+			} catch (error) {
+				console.error("Error:", error);
+				document.getElementById(
+					"postResponse"
+				).textContent = `Error: ${error}`;
+			}
+			console.log("[debug]: fetched data - all ok");
+			// make the buttons no longer disabled
+			document.getElementById("callApiButton").disabled = false;
+			document.getElementById("callApiButton-cn").disabled = false;
+			return true;
+		}
+		
+	
+		// chat GPT code
+		// ========================
 
-                                const masText = await masRes.text();
-                                if (!masRes.ok) throw new Error(`${masRes.status} ${masRes.statusText}\n${masText.slice(0, 500)}`);
+		const conversation = document.getElementById("conversation");
+		const conversationCN = document.getElementById("conversation-cn");
+		const form = document.getElementById("chatForm");
+		const formCN = document.getElementById("chatForm-cn");
+		const loading = document.getElementById("loading-indicator");
+		const loadingCN = document.getElementById("loading-indicator-cn");
 
-                                let masJson; try { masJson = JSON.parse(masText); } catch { throw new Error('Non-JSON response from MAS'); }
-                                const out = outputsToMap(masJson.outputs);
-                                const systemPrompt = out['systemPrompt'];
-                                const openaiKey = out['key'];
-                                const cutoff = out['CUTOFF_DATE'];
+		const apiUrl = "https://api.openai.com/v1/chat/completions";
 
-                                if (!systemPrompt) throw new Error('MAS output "systemPrompt" not found');
-                                if (!openaiKey) throw new Error('MAS output "key" (OpenAI API key) not found');
 
-                                // 2) Call OpenAI with MAS-provided key
-                                const llmText = await callOpenAI(systemPrompt, openaiKey);
+		const messages = [];
+		const systemPrompt = `You are a helpful Anti Money Laundering AI tool of a bank. You're used to reading and understanding complex JSON representations of alerts and can get why they're flagged based on filtered transactions and customer information. You are helping an Investigator make sense of the alerts that they're receiving by providing informative and actionable insights and discussing any issues that they're having, while not being afraid to admit your own ignorance and say that the answer may be unclear from just the data provided.
 
-                                // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
-                                summaryEl.innerHTML = `${llmText}${cutoff ? `<div class="cutoff">${cutoff}</div>` : ''}`;
-                        } catch (e) {
-                                summaryEl.textContent = `Error:\n${e.message}`;
-                                console.error(e);
-                        } finally {
-                                clearInterval(timer);
-                                summarizeBtn.disabled = false;
-                                summarizeBtn.classList.remove('loading');
-                                summarizeBtn.setAttribute('aria-busy', 'false');
-                        }
-                }
+			Make sure to output responses that are easy to understand and actionable.`;
+		const systemMessage = {
+			role: "assistant",
+			content: systemPrompt
+		};
+		messages.push(systemMessage);
 
-                function saveComment() {
-                        const key = 'aml-summary-comments';
-                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                        const entry = { ts: new Date().toISOString(), alertId: ALERT_ID, comment: commentsEl.value.trim(), summary: summaryEl.textContent.trim() };
-                        if (!entry.comment) { showToast('Nothing to save'); return; }
-                        existing.push(entry); localStorage.setItem(key, JSON.stringify(existing)); showToast('Comment saved locally');
-                }
-                function clearComment() { commentsEl.value = ''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
+		let firstMessage = true;
 
-                document.getElementById('summarizeBtn').addEventListener('click', summarize);
-                saveBtn.addEventListener('click', saveComment);
-                clearBtn.addEventListener('click', clearComment);
-        </script>
+
+		function getCaseNarrative(event) {
+			const apiKey = document.getElementById("apiKeyContainer").textContent;
+			const filteredScenarioFiredEvents = document.getElementById("scenario_fired_event").textContent;
+			const filteredTransactions = document.getElementById("transactions").textContent;
+			const partyInfo = document.getElementById("Party_info").textContent;
+			const networkinfo = document.getElementById("verticesJson").textContent;
+			const networklink = document.getElementById("edgesJson").textContent;
+			console.log("[debug]: CaseNarrative called");
+			event.preventDefault();
+
+			const model = document.getElementById("model-cn").value;
+			const userPrompt = `Based on the scenario scenarios that the customer trigger (also know as Scenario Fired Events), on the transactions and on the Personal information on the customer provide a detailed case narrative. This narrative should have a title 'alert recommendation for (name of the customer)', and will contains 4 parts. Write some senteces between the title and the first part. The first part will be reviewing the personal information and discover anything unusual also analyse the entity in the network and their link. The second part is analysing the scenario fired event and giving context based on the transactions and the personal information. You should give an specific analysis of each scenario fired event and a global analysis of all the scenario fired event.  In the 3 part you will perform a behavioral indicator and a risk assessment and in the last part you will give recommendations to investigator on what he should with this alert. try to avoid bullet point when it's possible and give as much as detail as possible. Excpet for the recommendations where you have to give bullet points. You may respond in Markdown and make that easy to read. Don't hesitate to add space or subparagraph 
+			
+			Filtered Scenario Fired Events: ${filteredScenarioFiredEvents}
+			
+			Filtered transactions: ${filteredTransactions}
+			
+			Personal information on the customer: ${partyInfo}
+			
+			Network entity:${networkinfo}
+
+			links between the entities in the network:${networkinfo}`;
+
+			const newMessage = {
+				role: "user",
+				content: userPrompt
+			};
+
+			for (let i = 0; i < formCN.children.length; i++) {
+				formCN.children[i].style.display = "none";
+			}
+
+			console.log("[debug]: prompt: ", userPrompt);
+			console.log("[debug]: model: ", model);
+
+			loadingCN.classList.toggle("loading");
+			autoGrow(conversationCN);
+
+			fetch(apiUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer " + apiKey
+				},
+				body: JSON.stringify({
+					model: model,
+					messages: [...messages, newMessage]
+				})
+			})
+				.then(response => response.json())
+				.then(data => {
+					loadingCN.classList.toggle("loading");
+					console.log("[debug]: chatgpt response", data);
+					const content = data.choices[0].message.content;
+					const inputTokens = data.usage.prompt_tokens;
+					const outputTokens = data.usage.completion_tokens;
+
+					const responseMessage = {
+						role: "assistant",
+						content: content
+					};
+					addMessage(responseMessage, true);
+					messages.push(responseMessage);
+					console.log("[debug]: messages", messages);
+
+					// log it to job execution
+					callJob(inputTokens, outputTokens);
+				})
+				.catch(error => {
+					loadingCN.classList.toggle("loading");
+					console.error("[debug]: Error:", error);
+					document.getElementById(
+						"chatgptResponse"
+					).textContent =
+						"Error occurred while fetching API data.";
+				});
+			console.log("[debug]: CaseNarrative end");
+		}
+
+		document
+			.getElementById("chatForm-cn")
+			.addEventListener("submit", getCaseNarrative);
+
+		document
+			.getElementById("chatForm")
+			.addEventListener("submit", function () {
+				const apiKey = document.getElementById("apiKeyContainer").textContent;
+				const filteredScenarioFiredEvents = document.getElementById(
+					"scenario_fired_event"
+				).textContent;
+				const filteredTransactions = document.getElementById(
+					"transactions"
+				).textContent;
+				const partyInfo = document.getElementById("Party_info").textContent;
+				const networkinfo = document.getElementById("verticesJson").textContent;
+				const networklink = document.getElementById("edgesJson").textContent;
+				console.log("[debug]: form submitted");
+				event.preventDefault();
+				console.log("[debug]: called api button");
+
+
+				const model = document.getElementById("model").value;
+
+
+				let userPrompt =
+					document.getElementById("userPrompt").value;
+				document.getElementById("userPrompt").value = "";
+
+				const newMessage = {
+					role: "user",
+					content: userPrompt
+				};
+				addMessage(newMessage, false);
+
+				if (firstMessage) {
+					firstMessage = false;
+
+
+					userPrompt = `${userPrompt}
+
+Here is the data on the alerts
+that our system generated. Please review this for your answer.
+
+
+Filtered Scenario Fired Events: ${filteredScenarioFiredEvents}
+
+Filtered transactions: ${filteredTransactions}
+
+Personal information on the customer: ${partyInfo}
+
+Network entity:${networkinfo}
+
+links between the entities in the network:${networkinfo}`;
+
+					newMessage.content = userPrompt;
+				}
+
+				messages.push(newMessage);
+				console.log("[debug]: prompt: ", userPrompt);
+				console.log("[debug]: model: ", model);
+
+				const loading =
+					document.getElementById("loading-indicator");
+				loading.classList.toggle("loading");
+				autoGrow(conversation);
+
+				fetch(apiUrl, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: "Bearer " + apiKey
+					},
+					body: JSON.stringify({
+						model: model,
+						messages: messages.map(message => {
+							return {
+								role: message.role,
+								content: message.content
+							};
+						})
+					})
+				})
+					.then(response => response.json())
+					.then(data => {
+						loading.classList.toggle("loading");
+						console.log("[debug]: chatgpt response", data);
+						const content = data.choices[0].message.content;
+						const inputTokens = data.usage.prompt_tokens;
+						const outputTokens = data.usage.completion_tokens;
+
+						const responseMessage = {
+							role: "assistant",
+							content: content
+						};
+						addMessage(responseMessage, false);
+						messages.push(responseMessage);
+						console.log("[debug]: messages", messages);
+
+						// log it to job execution
+						callJob(inputTokens, outputTokens);
+					})
+					.catch(error => {
+						loading.classList.toggle("loading");
+						console.error("[debug]: Error:", error);
+						document.getElementById(
+							"chatgptResponse"
+						).textContent =
+							"Error occurred while fetching API data.";
+					});
+			});
+
+		function addMessage(message, cn) {
+			const messageElement = document.createElement("md-block");
+			messageElement.classList.add("message");
+			messageElement.classList.add(message.role + "-response");
+			messageElement.innerHTML = message.content;
+
+			const convo = cn ? conversationCN : conversation;
+			convo.appendChild(messageElement);
+			if (cn) {
+				messageElement.classList.add("case-narrative-message");
+				messageElement.classList.remove("message");
+			}
+
+			autoGrow(conversation);
+			autoGrow(conversationCN);
+			autoGrow(body);
+
+			setTimeout(() => {
+				autoGrow(conversation);
+				autoGrow(conversationCN);
+				for (const chat of chats) {
+					autoGrow(chat);
+				}
+				autoGrow(qna);
+				autoGrow(casenarrative);
+				autoGrow(body);
+			}, 200);
+
+			setTimeout(() => {
+				autoGrow(conversation);
+				autoGrow(conversationCN);
+				for (const chat of chats) {
+					autoGrow(chat);
+				}
+				autoGrow(qna);
+				autoGrow(casenarrative);
+				autoGrow(body);
+			}, 500);
+		}
+
+		// calls the job on SASJobExecution
+		async function callJob(inputTokens, outputTokens) {
+			console.log("[debug]: called job execution");
+			const vajson = {
+				inputTokens: inputTokens,
+				outputTokens: outputTokens
+			};
+
+			const paramStr =
+				"?_program=" +
+				encodeURIComponent("/Public/Report/Prices") +
+				"&_action=" +
+				encodeURIComponent("execute") +
+				"&_outputType=ods_html5" +
+				"&vajson=" +
+				encodeURIComponent(JSON.stringify(vajson));
+			+"&_debug=log";
+
+			try {
+				const url = "/SASJobExecution/" + paramStr;
+
+				console.log("[debug]: Job URL: ", url);
+				// console.log("[debug]: vajson ", vajson);
+
+				const requestHeaders = new Headers();
+				requestHeaders.append("Accept", "text/html");
+
+				const requestOptions = {};
+				requestOptions.headers = requestHeaders;
+				requestOptions.method = "GET";
+
+				const response = await fetch(url, requestOptions);
+
+				if (!response.ok) {
+					const error = response.statusText;
+					console.log("[debug]: Job failed with error: ", error);
+				}
+
+				const jobOutput = await response.text();
+				// console.log("[debug]: Job output: ", jobOutput);
+				return jobOutput;
+			} catch (error) {
+				console.error("************** JOB FAILED ***************");
+				console.error("[debug]: Error: ", error);
+			}
+		}
+
+		// Fetch data on page load
+		document.addEventListener("DOMContentLoaded", function () {
+			fetchData();
+		});
+	</script>
 </body>
 
 </html>
