@@ -48,6 +48,7 @@
                         padding: 32px;
                         display: grid;
                         gap: 18px
+                        
                 }
 
                 .header {
@@ -308,6 +309,65 @@
                                 background-position: -200% 0
                         }
                 }
+
+                /* === CHATBOT === */
+                .chat {
+                border: 1px solid var(--border);
+                border-radius: 14px;
+                background: #fff;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                }
+                .chat-messages {
+                max-height: 260px;
+                overflow: auto;
+                display: grid;
+                gap: 10px;
+                padding-right: 4px;
+                }
+                .msg { display: flex; }
+                .msg .bubble {
+                border: 1px solid var(--border);
+                background: #f7f7f7;
+                color: var(--fg);
+                padding: 10px 12px;
+                border-radius: 14px 14px 4px 14px;
+                font-size: 14px;
+                line-height: 1.35;
+                max-width: 72%;
+                box-shadow: 0 1px 2px rgba(0,0,0,.04);
+                }
+                .msg.user { justify-content: flex-end; }
+                .msg.user .bubble {
+                background: var(--primary);
+                color: #fff;
+                border-color: transparent;
+                border-radius: 14px 14px 14px 4px;
+                }
+                .chat-input { display: flex; gap: 8px; }
+                #chatText {
+                flex: 1;
+                border: 1px solid rgba(0,0,0,.12);
+                border-radius: 14px;
+                padding: 12px 14px;
+                font: inherit;
+                outline: none;
+                }
+                #chatText:focus {
+                border-color: var(--primary-press);
+                box-shadow: 0 0 0 4px rgba(10,132,255,.12);
+                }
+                .typing { display: inline-flex; align-items: center; gap: 6px; }
+                .typing .dots { display: inline-flex; gap: 4px; }
+                .typing .dots i {
+                width: 6px; height: 6px; border-radius: 50%;
+                background: var(--muted); opacity: .35;
+                animation: dotpulse 1s ease-in-out infinite;
+                }
+                .typing .dots i:nth-child(2){ animation-delay: .2s; }
+                .typing .dots i:nth-child(3){ animation-delay: .4s; }
         </style>
 </head>
 
@@ -345,6 +405,19 @@
                                         </div>
                                 </div>
                         </div>
+
+                        <!-- Chatbot -->
+                        <div>
+                                <div class="label">Chat (demo)</div>
+                                <div class="chat" id="chat">
+                                        <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
+                                        <div class="chat-input">
+                                                <input id="chatText" type="text" placeholder="Ask a quick question about this alert…" />
+                                                <button id="chatSendBtn" class="btn-primary" type="button">Send</button>
+                                        </div>
+                                </div>
+                        </div>
+
                 </div>
         </div>
 
@@ -358,12 +431,15 @@
                 let ALERT_ID = null;               // will be filled by VA
                 let resolveAlertIdReady;
                 const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
+                // track the source for diagnostics
+                let ALERT_ID_SOURCE = 'unset';
+                console.log('[id] init: waiting for alert id (from VA or URL)');
 
 
 
                 // OpenAI Responses API settings
                 const OPENAI_URL = 'https://api.openai.com/v1/responses';
-                const OPENAI_MODEL = 'gpt-5';
+                const OPENAI_MODEL = 'gpt-5-nano';
 
                 // ===== UI =====
                 const summarizeBtn = document.getElementById('summarizeBtn');
@@ -397,20 +473,31 @@
                 const urlAlertId = new URLSearchParams(location.search).get('alertId');
                 if (urlAlertId) {
                 ALERT_ID = urlAlertId;
+                ALERT_ID_SOURCE = 'url';                                 
+                console.log('[id] Using URL parameter ?alertId=', ALERT_ID); 
                 resolveAlertIdReady?.(ALERT_ID);
                 summarizeBtn.disabled = false;
+                console.log('[id] summarizeBtn enabled (source=url)');   
                 }
 
                 // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
                 va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                console.log('[id] VA message received:', vaMsgObj);           
+
                 const paramVal = vaMsgObj?.parameters?.[0]?.value;
                 const dataVal  = vaMsgObj?.data?.[0]?.[0];
+
+                console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
+
                 const candidate = paramVal || dataVal;
 
                 if (candidate && candidate !== ALERT_ID) {
                 ALERT_ID = String(candidate);
+                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data'; 
+                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
                 resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
                 summarizeBtn.disabled = false;            // enable the button now that we have it
+                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
                 }
                 });
 
@@ -475,6 +562,7 @@
                         renderWorking('Waiting for Alert ID from Visual Analytics');
                         await alertIdReady;
                         }
+                        console.log(`[id] summarize() with ALERT_ID=${ALERT_ID} (source=${ALERT_ID_SOURCE})`);
                         
                         summarizeBtn.disabled = true;
                         summarizeBtn.classList.add('loading');
@@ -579,6 +667,75 @@
                 document.getElementById('summarizeBtn').addEventListener('click', summarize);
                 saveBtn.addEventListener('click', saveComment);
                 clearBtn.addEventListener('click', clearComment);
+
+                // === CHATBOT ===
+                const chatMessages = document.getElementById('chatMessages');
+                const chatText = document.getElementById('chatText');
+                const chatSendBtn = document.getElementById('chatSendBtn');
+
+                function addMessage(role, html) {
+                const wrap = document.createElement('div');
+                wrap.className = 'msg ' + role;
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = html;
+                wrap.appendChild(bubble);
+                chatMessages.appendChild(wrap);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+
+                function showBotThinking() {
+                const wrap = document.createElement('div');
+                wrap.className = 'msg bot';
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
+                wrap.appendChild(bubble);
+                chatMessages.appendChild(wrap);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                return () => { wrap.remove(); };
+                }
+
+                function handleSend() {
+                const text = chatText.value.trim();
+                if (!text) return;
+                addMessage('user', escapeHtml(text));
+                chatText.value = '';
+                chatSendBtn.disabled = true;
+
+                const stopThinking = showBotThinking();
+
+                // Simulate latency, then return a canned response
+                setTimeout(() => {
+                stopThinking();
+                const demoReply = `
+                <strong>Demo response</strong><br>
+                Thanks for your question! This chat is in <em>demo mode</em> (no live model calls yet).
+                ${ALERT_ID ? `<br>Context: <code>ALERT_ID=${escapeHtml(ALERT_ID)}</code>.` : ''}
+                <br><br>Try asking:
+                <ul style="margin:6px 0 0 18px">
+                        <li>“Why was this alert triggered?”</li>
+                        <li>“Show top 3 risk factors.”</li>
+                        <li>“What should I review next?”</li>
+                </ul>`;
+                addMessage('bot', demoReply);
+                chatSendBtn.disabled = false;
+                chatText.focus();
+                }, 900 + Math.random() * 700);
+                }
+
+                // Enter to send (Shift+Enter to add a newline later if you switch to a textarea)
+                chatSendBtn.addEventListener('click', handleSend);
+                chatText.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+                }
+                });
+
+                // Seed with a welcome message
+                addMessage('bot', `Hi! I’m a demo chatbot. Ask anything about the summary above and I’ll reply with a sample response.`);
+
         </script>
 </body>
 
