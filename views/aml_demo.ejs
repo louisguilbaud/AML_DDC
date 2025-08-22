@@ -14,7 +14,8 @@
                         --card: #fff;
                         --border: rgba(0, 0, 0, .08);
                         --primary: #0478CE;
-                        --primary-press: #0366AF
+                        --primary-press: #0366AF;
+                        --content-indent: 14px;
                 }
 
                 * {
@@ -156,7 +157,7 @@
                         letter-spacing: .08em;
                         color: var(--muted);
                         margin-bottom: 8px;
-                        padding-left: 14px; 
+                        padding-left: var(--content-indent);
                 }
 
                 .summary {
@@ -310,6 +311,9 @@
                                 background-position: -200% 0
                         }
                 }
+
+                #charCount { margin-left: var(--content-indent); }                 
+                .header > div:first-child { padding-left: var(--content-indent); } 
 
                 /* === CHATBOT === */
                 .chat {
