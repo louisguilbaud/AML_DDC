@@ -448,6 +448,9 @@
                 const OPENAI_SUMMARY_MODEL = 'gpt-5';
                 const OPENAI_CHAT_MODEL     = 'gpt-5-mini';
 
+                // === CHAT MEMORY ===
+                const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
+
                 // ===== UI =====
                 const summarizeBtn = document.getElementById('summarizeBtn');
                 const summaryEl = document.getElementById('summary');
@@ -545,25 +548,32 @@
                 }
 
                 // Build the chat system prompt locally using MAS "chat" data string + user message.
-                function buildChatPrompt(dataString, userMessage) {
-                const system = [
-                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
-                'Customer/alert-specific facts MUST come only from the Data section.',
-                'If a requested detail is missing in Data, write "[DATA] Not available in provided data." Do not invent values.',
-                'You MAY add general AML knowledge (regulations, definitions, typologies).',
-                'Write in clear, friendly, natural prose — no bullet points. Keep it brief',
-                'Start by directly answering the question',
-                'When citing regulations, name the jurisdiction and add "(verify latest, this is not legal advice.)"; ',
-                'Avoid exposing or inferring PII beyond what appears in Data.',
-                `Alert ID: ${ALERT_ID || 'unknown'}`
-                ].join(' ');
+                function buildChatPrompt(dataString, userMessage, history = []) {
+                        const system = [
+                                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
+                                'Customer/alert-specific facts MUST come only from the Data section.',
+                                'If a requested detail is missing in Data, write "[DATA] Not available in provided data." Do not invent values.',
+                                'You MAY add general AML knowledge (regulations, definitions, typologies).',
+                                'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
+                                'Start by directly answering the question',
+                                'When citing regulations, name the jurisdiction and add "(verify latest, this is not legal advice.)"; ',
+                                'Avoid exposing or inferring PII beyond what appears in Data.',
+                                `Alert ID: ${ALERT_ID || 'unknown'}`
+                                ].join(' ');
 
-                return [
-                `SYSTEM:\n${system}`,
-                `DATA:\n${trimChars(dataString, 7000)}`,
-                `USER:\n${userMessage}`,
-                'ASSISTANT:'
-                ].join('\n\n');
+                        // Use up to the last 3 exchanges (i.e., 6 messages), excluding the current user message if already added.
+                        let hist = Array.isArray(history) ? history.slice() : [];
+                        if (hist.length && hist[hist.length - 1].role === 'user') hist.pop(); // drop current turn if already pushed
+                        const recent = hist.slice(-6);
+                        const historyBlock = recent.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+
+                        return [
+                                `SYSTEM:\n${system}`,
+                                historyBlock ? `HISTORY (last ${Math.floor(recent.length / 2)} exchanges):\n${trimChars(historyBlock, 2000)}` : null,
+                                `DATA:\n${trimChars(dataString, 7000)}`,
+                                `USER:\n${userMessage}`,
+                                'ASSISTANT:'
+                                ].filter(Boolean).join('\n\n');
                 }
 
                 async function chatQuery(userText) {
@@ -600,7 +610,7 @@
 
                 if (!openaiKey) throw new Error('OpenAI API key not found in MAS output');
 
-                const prompt = buildChatPrompt(dataString, userText);
+                const prompt = buildChatPrompt(dataString, userText, chatHistory);
                 const reply  = await callOpenAI(prompt, openaiKey, OPENAI_CHAT_MODEL);
                 return reply.trim();
                 }
@@ -777,17 +787,29 @@
                         chatText.value = '';
                         chatSendBtn.disabled = true;
 
+                         // store the user turn (plain text, not HTML)
+                        chatHistory.push({ role: 'user', content: text });
+
                         const stopThinking = showBotThinking();
-                        try {
-                        const reply = await chatQuery(text);
-                        addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
-                        } catch (e) {
-                        addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
-                        console.error('[chat] error:', e);
-                        } finally {
-                        stopThinking();
-                        chatSendBtn.disabled = false;
-                        chatText.focus();
+                                try {
+                                const reply = await chatQuery(text);
+                                addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
+                                chatHistory.push({ role: 'assistant', content: reply });
+                                if (chatHistory.length > 6) {
+                                        chatHistory.splice(0, chatHistory.length - 6);
+                                        } 
+                                }
+                                catch (e) {
+                                addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
+                                console.error('[chat] error:', e);
+                                // if error, remove the last user turn so history stays consistent
+                                if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') {
+                                chatHistory.pop();
+                                }
+                                } finally {
+                                stopThinking();
+                                chatSendBtn.disabled = false;
+                                chatText.focus();
                         }
                 }
 
@@ -803,8 +825,7 @@
 
                 // Seed with a welcome message
                 addMessage('bot',
-                "Hi! I’ll use your alert data and my general AML knowledge to help. " +
-                "I’ll mark sentences with [DATA] or [GENERAL] so you can see the source.");
+                "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What is on your mind?");
 
         </script>
 </body>
