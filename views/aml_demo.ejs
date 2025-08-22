@@ -35,7 +35,7 @@
                 }
 
                 .container {
-                        width: min(92vw, 1280px); 
+                        width: min(92vw, 1280px);
                         max-width: 1280px;
                         margin: 5vh auto 8vh;
                         padding: 0 24px
@@ -49,7 +49,6 @@
                         padding: 32px;
                         display: grid;
                         gap: 18px
-                        
                 }
 
                 .header {
@@ -209,7 +208,7 @@
                         background: #fff;
                         outline: none;
                         line-height: 1.5;
-                        overflow: hidden;   
+                        overflow: hidden;
                         resize: none
                 }
 
@@ -312,75 +311,125 @@
                         }
                 }
 
-                #charCount { margin-left: var(--content-indent); }                 
-                .header > div:first-child { padding-left: var(--content-indent); } 
+                #charCount {
+                        margin-left: var(--content-indent);
+                }
+
+                .header>div:first-child {
+                        padding-left: var(--content-indent);
+                }
 
                 /* === CHATBOT === */
                 .chat {
-                border: 1px solid var(--border);
-                border-radius: 14px;
-                background: #fafafa;
-                padding: 14px;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
+                        border: 1px solid var(--border);
+                        border-radius: 14px;
+                        background: #fafafa;
+                        padding: 14px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
                 }
+
                 .chat-messages {
-                max-height: 260px;
-                overflow: auto;
-                display: grid;
-                gap: 10px;
-                padding-right: 4px;
+                        max-height: 260px;
+                        overflow: auto;
+                        display: grid;
+                        gap: 10px;
+                        padding-right: 4px;
                 }
-                .msg { display: flex; }
+
+                .msg {
+                        display: flex;
+                }
+
                 .msg .bubble {
-                border: 1px solid var(--border);
-                background: #f7f7f7;
-                color: var(--fg);
-                padding: 10px 12px;
-                border-radius: 14px 14px 4px 14px;
-                font-size: 14px;
-                line-height: 1.35;
-                max-width: 72%;
-                box-shadow: 0 1px 2px rgba(0,0,0,.04);
+                        border: 1px solid var(--border);
+                        background: #f7f7f7;
+                        color: var(--fg);
+                        padding: 10px 12px;
+                        border-radius: 14px 14px 4px 14px;
+                        font-size: 14px;
+                        line-height: 1.35;
+                        max-width: 72%;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
                 }
+
                 /* Bot bubble: white on gray background */
                 .msg.bot .bubble {
-                background: #fff;
-                color: var(--fg);
-                border-color: var(--border);
+                        background: #fff;
+                        color: var(--fg);
+                        border-color: var(--border);
                 }
-                .msg.user { justify-content: flex-end; }
+
+                .msg.user {
+                        justify-content: flex-end;
+                }
+
                 .msg.user .bubble {
-                background: var(--primary);
-                color: #fff;
-                border-color: transparent;
-                border-radius: 14px 14px 14px 4px;
+                        background: var(--primary);
+                        color: #fff;
+                        border-color: transparent;
+                        border-radius: 14px 14px 14px 4px;
                 }
-                .chat-input { display: flex; gap: 8px; }
+
+                .chat-input {
+                        display: flex;
+                        gap: 8px;
+                }
+
                 #chatText {
-                flex: 1;
-                border: 1px solid rgba(0,0,0,.12);
-                border-radius: 14px;
-                padding: 12px 14px;
-                font: inherit;
-                outline: none;
+                        flex: 1;
+                        border: 1px solid rgba(0, 0, 0, .12);
+                        border-radius: 14px;
+                        padding: 12px 14px;
+                        font: inherit;
+                        outline: none;
                 }
+
                 #chatText:focus {
-                border-color: var(--primary-press);
-                box-shadow: 0 0 0 4px rgba(10,132,255,.12);
+                        border-color: var(--primary-press);
+                        box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
                 }
-                .typing { display: inline-flex; align-items: center; gap: 6px; }
-                .typing .dots { display: inline-flex; gap: 4px; }
+
+                .typing {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                }
+
+                .typing .dots {
+                        display: inline-flex;
+                        gap: 4px;
+                }
+
                 .typing .dots i {
-                width: 6px; height: 6px; border-radius: 50%;
-                background: var(--muted); opacity: .35;
-                animation: dotpulse 1s ease-in-out infinite;
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 50%;
+                        background: var(--muted);
+                        opacity: .35;
+                        animation: dotpulse 1s ease-in-out infinite;
                 }
-                .typing .dots i:nth-child(2){ animation-delay: .2s; }
-                .typing .dots i:nth-child(3){ animation-delay: .4s; }
-                input, textarea, button, select { font-family: inherit; font-size: inherit; }
-                #comments {font-size: 14px; }
+
+                .typing .dots i:nth-child(2) {
+                        animation-delay: .2s;
+                }
+
+                .typing .dots i:nth-child(3) {
+                        animation-delay: .4s;
+                }
+
+                input,
+                textarea,
+                button,
+                select {
+                        font-family: inherit;
+                        font-size: inherit;
+                }
+
+                #comments {
+                        font-size: 14px;
+                }
         </style>
 </head>
 
@@ -402,7 +451,8 @@
 
                         <div>
                                 <div class="label">Summary</div>
-                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to generate a concise alert summary, powered by GPT-5.</div>
+                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to
+                                        generate a concise alert summary, powered by GPT-5.</div>
                         </div>
 
                         <div>
@@ -423,10 +473,13 @@
                         <div>
                                 <div class="label">Chat</div>
                                 <div class="chat" id="chat">
-                                        <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
+                                        <div id="chatMessages" class="chat-messages" role="region" aria-live="polite">
+                                        </div>
                                         <div class="chat-input">
-                                                <input id="chatText" type="text" placeholder="Ask any question about this alert…" />
-                                                <button id="chatSendBtn" class="btn-primary" type="button" disabled>Send</button>
+                                                <input id="chatText" type="text"
+                                                        placeholder="Ask any question about this alert…" />
+                                                <button id="chatSendBtn" class="btn-primary" type="button"
+                                                        disabled>Send</button>
                                         </div>
                                 </div>
                         </div>
@@ -453,7 +506,7 @@
                 // OpenAI Responses API settings
                 const OPENAI_URL = 'https://api.openai.com/v1/responses';
                 const OPENAI_SUMMARY_MODEL = 'gpt-5';
-                const OPENAI_CHAT_MODEL     = 'gpt-5-mini';
+                const OPENAI_CHAT_MODEL = 'gpt-5-mini';
 
                 // === CHAT MEMORY ===
                 const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
@@ -473,8 +526,8 @@
                 const COMMENT_LIMIT = 2000;
                 // Auto-expand the comment box
                 const autoResize = el => {
-                el.style.height = 'auto';
-                el.style.height = el.scrollHeight + 'px';
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
                 };
                 commentsEl.addEventListener('input', () => autoResize(commentsEl));
                 window.addEventListener('load', () => autoResize(commentsEl));
@@ -489,33 +542,33 @@
                 // 1) If an alertId is provided via URL (optional fallback), use it
                 const urlAlertId = new URLSearchParams(location.search).get('alertId');
                 if (urlAlertId) {
-                ALERT_ID = urlAlertId;
-                ALERT_ID_SOURCE = 'url';                                 
-                console.log('[id] Using URL parameter ?alertId=', ALERT_ID); 
-                resolveAlertIdReady?.(ALERT_ID);
-                summarizeBtn.disabled = false;
-                console.log('[id] summarizeBtn enabled (source=url)');   
+                        ALERT_ID = urlAlertId;
+                        ALERT_ID_SOURCE = 'url';
+                        console.log('[id] Using URL parameter ?alertId=', ALERT_ID);
+                        resolveAlertIdReady?.(ALERT_ID);
+                        summarizeBtn.disabled = false;
+                        console.log('[id] summarizeBtn enabled (source=url)');
                 }
 
                 // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
                 va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                console.log('[id] VA message received:', vaMsgObj);           
+                        console.log('[id] VA message received:', vaMsgObj);
 
-                const paramVal = vaMsgObj?.parameters?.[0]?.value;
-                const dataVal  = vaMsgObj?.data?.[0]?.[0];
+                        const paramVal = vaMsgObj?.parameters?.[0]?.value;
+                        const dataVal = vaMsgObj?.data?.[0]?.[0];
 
-                console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
+                        console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
 
-                const candidate = paramVal || dataVal;
+                        const candidate = paramVal || dataVal;
 
-                if (candidate && candidate !== ALERT_ID) {
-                ALERT_ID = String(candidate);
-                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data'; 
-                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                summarizeBtn.disabled = false;            // enable the button now that we have it
-                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
-                }
+                        if (candidate && candidate !== ALERT_ID) {
+                                ALERT_ID = String(candidate);
+                                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
+                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
+                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                                summarizeBtn.disabled = false;            // enable the button now that we have it
+                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
+                        }
                 });
 
                 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
@@ -550,8 +603,8 @@
                 }
 
                 function trimChars(s, max = 8000) {
-                if (!s) return '';
-                return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
+                        if (!s) return '';
+                        return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
                 }
 
                 // Build the chat system prompt locally using MAS "chat" data string + user message.
@@ -566,7 +619,7 @@
                                 'When citing regulations, name the jurisdiction and add "(verify latest, this is not legal advice.)"; ',
                                 'Avoid exposing or inferring PII beyond what appears in Data.',
                                 `Alert ID: ${ALERT_ID || 'unknown'}`
-                                ].join(' ');
+                        ].join(' ');
 
                         // Use up to the last 3 exchanges (i.e., 6 messages), excluding the current user message if already added.
                         let hist = Array.isArray(history) ? history.slice() : [];
@@ -580,46 +633,46 @@
                                 `DATA:\n${trimChars(dataString, 7000)}`,
                                 `USER:\n${userMessage}`,
                                 'ASSISTANT:'
-                                ].filter(Boolean).join('\n\n');
+                        ].filter(Boolean).join('\n\n');
                 }
 
                 async function chatQuery(userText) {
-                // Ensure we have an ALERT_ID (VA or URL)
-                if (!ALERT_ID) {
-                addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
-                await alertIdReady;
-                }
+                        // Ensure we have an ALERT_ID (VA or URL)
+                        if (!ALERT_ID) {
+                                addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
+                                await alertIdReady;
+                        }
 
-                const csrf = await getCsrfToken();
-                if (!csrf) throw new Error('CSRF token missing');
+                        const csrf = await getCsrfToken();
+                        if (!csrf) throw new Error('CSRF token missing');
 
-                const payload = { 
-                inputs: [
-                { name: "ALERT_ID_", value: ALERT_ID },
-                { name: "SUMMARY_OR_CHAT_", value: "chat" }
-                ] 
-                };
+                        const payload = {
+                                inputs: [
+                                        { name: "ALERT_ID_", value: ALERT_ID },
+                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
+                                ]
+                        };
 
-                const masRes = await fetch(MODULE_URI, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-                });
+                        const masRes = await fetch(MODULE_URI, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                credentials: 'include',
+                                body: JSON.stringify(payload)
+                        });
 
-                const masText = await masRes.text();
-                if (!masRes.ok) throw new Error(`${masRes.status} ${masRes.statusText}\n${masText.slice(0, 500)}`);
+                        const masText = await masRes.text();
+                        if (!masRes.ok) throw new Error(`${masRes.status} ${masRes.statusText}\n${masText.slice(0, 500)}`);
 
-                let masJson; try { masJson = JSON.parse(masText); } catch { throw new Error('MAS returned non-JSON'); }
-                const out = outputsToMap(masJson.outputs);
-                const dataString = out['systemPrompt'] || ''; // <-- your MAS returns the raw data here
-                const openaiKey  = out['key'];
+                        let masJson; try { masJson = JSON.parse(masText); } catch { throw new Error('MAS returned non-JSON'); }
+                        const out = outputsToMap(masJson.outputs);
+                        const dataString = out['systemPrompt'] || ''; // <-- your MAS returns the raw data here
+                        const openaiKey = out['key'];
 
-                if (!openaiKey) throw new Error('OpenAI API key not found in MAS output');
+                        if (!openaiKey) throw new Error('OpenAI API key not found in MAS output');
 
-                const prompt = buildChatPrompt(dataString, userText, chatHistory);
-                const reply  = await callOpenAI(prompt, openaiKey, OPENAI_CHAT_MODEL);
-                return reply.trim();
+                        const prompt = buildChatPrompt(dataString, userText, chatHistory);
+                        const reply = await callOpenAI(prompt, openaiKey, OPENAI_CHAT_MODEL);
+                        return reply.trim();
                 }
 
                 async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL) {
@@ -649,48 +702,48 @@
                 async function summarize() {
                         // Wait until VA supplies the alert id (or URL fallback)
                         if (!ALERT_ID) {
-                        renderWorking('Waiting for Alert ID from Visual Analytics');
-                        await alertIdReady;
+                                renderWorking('Waiting for Alert ID from Visual Analytics');
+                                await alertIdReady;
                         }
                         console.log(`[id] summarize() with ALERT_ID=${ALERT_ID} (source=${ALERT_ID_SOURCE})`);
-                        
+
                         summarizeBtn.disabled = true;
                         summarizeBtn.classList.add('loading');
                         summarizeBtn.setAttribute('aria-busy', 'true');
 
                         const loadingMessages = [
-                        // Serious
-                        "Investigating suspicious activity",
-                        "Connecting the dots between transactions",
-                        "Cross-referencing KYC data",
-                        "Scanning network relationships",
-                        "Following the money trail",
-                        "Reviewing scenario triggers",
-                        "Generating advanced insights",
-                        "Running enhanced due diligence protocols",
-                        "Finding patterns no human could see",
-                        "Hunting for needle-in-a-haystack transfers",
-                        "Checking for unusual velocity spikes",
-                        "Sifting through transaction histories",
-                        "Raising potential red flags",
-                        "Flagging politically exposed persons",
-                        "Analyzing cash structuring patterns",
-                        "Verifying source of funds",
+                                // Serious
+                                "Investigating suspicious activity",
+                                "Connecting the dots between transactions",
+                                "Cross-referencing KYC data",
+                                "Scanning network relationships",
+                                "Following the money trail",
+                                "Reviewing scenario triggers",
+                                "Generating advanced insights",
+                                "Running enhanced due diligence protocols",
+                                "Finding patterns no human could see",
+                                "Hunting for needle-in-a-haystack transfers",
+                                "Checking for unusual velocity spikes",
+                                "Sifting through transaction histories",
+                                "Raising potential red flags",
+                                "Flagging politically exposed persons",
+                                "Analyzing cash structuring patterns",
+                                "Verifying source of funds",
 
-	                 // Fun
-                        "Searching mattress stores (politely)",
-                        "Following the breadcrumbs",
-                        "Checking today's horoscope",
-                        "Patrolling the data streets at night",
-                        "With great power comes great compliance responsibility – Uncle Ben",
-                        "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
-                        "May the fraud be with you – Star Wars",
-                        "Looking for the usual suspects",
-                        "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
-                        "The name’s Bond... Transaction Bond – James Bond",
-                        "Houston, we have a suspicious transfer – Apollo 13",
-                        "Winter is coming... for fraudsters – Game of Thrones",
-                        "Binge-watching transaction histories"
+                                // Fun
+                                "Searching mattress stores (politely)",
+                                "Following the breadcrumbs",
+                                "Checking today's horoscope",
+                                "Patrolling the data streets at night",
+                                "With great power comes great compliance responsibility – Uncle Ben",
+                                "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
+                                "May the fraud be with you – Star Wars",
+                                "Looking for the usual suspects",
+                                "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
+                                "The name’s Bond... Transaction Bond – James Bond",
+                                "Houston, we have a suspicious transfer – Apollo 13",
+                                "Winter is coming... for fraudsters – Game of Thrones",
+                                "Binge-watching transaction histories"
                         ];
 
                         // shuffle once, then cycle
@@ -700,8 +753,8 @@
 
                         renderWorking(shuffledMessages[msgIndex]);
                         const timer = setInterval(() => {
-                        msgIndex = (msgIndex + 1) % shuffledMessages.length;
-                        renderWorking(shuffledMessages[msgIndex]);
+                                msgIndex = (msgIndex + 1) % shuffledMessages.length;
+                                renderWorking(shuffledMessages[msgIndex]);
                         }, ROTATE_MS);
 
                         try {
@@ -709,7 +762,7 @@
                                 const csrf = await getCsrfToken();
                                 if (!csrf) throw new Error('CSRF token not available. Log in to SAS in this browser to solve.');
 
-                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }, { name: "SUMMARY_OR_CHAT_", value: 'summary' } ] };
+                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }, { name: "SUMMARY_OR_CHAT_", value: 'summary' }] };
                                 const masRes = await fetch(MODULE_URI, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
@@ -765,38 +818,38 @@
                 let chatBusy = false; // true while a request is in flight
 
                 const refreshSend = () => {
-                const empty = chatText.value.trim().length === 0;
-                chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
+                        const empty = chatText.value.trim().length === 0;
+                        chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
                 };
-               
+
 
                 // initialize + update on typing
                 refreshSend();
                 chatText.addEventListener('input', refreshSend);
 
-                
+
 
                 function addMessage(role, html) {
-                const wrap = document.createElement('div');
-                wrap.className = 'msg ' + role;
-                const bubble = document.createElement('div');
-                bubble.className = 'bubble';
-                bubble.innerHTML = html;
-                wrap.appendChild(bubble);
-                chatMessages.appendChild(wrap);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                        const wrap = document.createElement('div');
+                        wrap.className = 'msg ' + role;
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        bubble.innerHTML = html;
+                        wrap.appendChild(bubble);
+                        chatMessages.appendChild(wrap);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
 
                 function showBotThinking() {
-                const wrap = document.createElement('div');
-                wrap.className = 'msg bot';
-                const bubble = document.createElement('div');
-                bubble.className = 'bubble';
-                bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
-                wrap.appendChild(bubble);
-                chatMessages.appendChild(wrap);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                return () => { wrap.remove(); };
+                        const wrap = document.createElement('div');
+                        wrap.className = 'msg bot';
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
+                        wrap.appendChild(bubble);
+                        chatMessages.appendChild(wrap);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        return () => { wrap.remove(); };
                 }
 
                 async function handleSend() {
@@ -804,26 +857,26 @@
                         if (!text) return;
 
                         addMessage('user', escapeHtml(text));
-                        chatHistory.push({ role: 'user', content: text }); 
+                        chatHistory.push({ role: 'user', content: text });
                         chatText.value = '';
                         chatBusy = true;     // lock while thinking
                         refreshSend();
 
                         const stopThinking = showBotThinking();
                         try {
-                        const reply = await chatQuery(text);
-                        addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
-                        chatHistory.push({ role: 'assistant', content: reply });
-                        if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
+                                const reply = await chatQuery(text);
+                                addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
+                                chatHistory.push({ role: 'assistant', content: reply });
+                                if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
                         } catch (e) {
-                        addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
-                        console.error('[chat] error:', e);
-                        if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
+                                addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
+                                console.error('[chat] error:', e);
+                                if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
                         } finally {
-                        stopThinking();
-                        chatBusy = false;  // unlock, then reflect current input content
-                        refreshSend();     // stays disabled if the box is empty
-                        chatText.focus();
+                                stopThinking();
+                                chatBusy = false;  // unlock, then reflect current input content
+                                refreshSend();     // stays disabled if the box is empty
+                                chatText.focus();
                         }
                 }
 
@@ -831,15 +884,15 @@
                 // Enter to send (Shift+Enter to add a newline later if you switch to a textarea)
                 chatSendBtn.addEventListener('click', handleSend);
                 chatText.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-                }
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                        }
                 });
 
                 // Seed with a welcome message
                 addMessage('bot',
-                "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What is on your mind?");
+                        "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What is on your mind?");
 
         </script>
 </body>
