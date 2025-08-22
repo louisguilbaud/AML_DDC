@@ -394,12 +394,12 @@
                         </div>
 
                         <div>
-                                <div class="label">Generated Summary</div>
+                                <div class="label">Generate Summary</div>
                                 <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to generate a concise alert summary, powered by GPT-5.</div>
                         </div>
 
                         <div>
-                                <div class="label">Your Comments</div>
+                                <div class="label">Comments</div>
                                 <textarea id="comments"
                                         placeholder="Add comments on the generated response and the alert in general…"></textarea>
                                 <div class="row" style="justify-content:space-between;margin-top:8px">
@@ -414,7 +414,7 @@
 
                         <!-- Chatbot -->
                         <div>
-                                <div class="label">Chat (demo)</div>
+                                <div class="label">Chat</div>
                                 <div class="chat" id="chat">
                                         <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
                                         <div class="chat-input">
@@ -547,36 +547,25 @@
                 // Build the chat system prompt locally using MAS "chat" data string + user message.
                 function buildChatPrompt(dataString, userMessage) {
                 const system = [
-                        'You are a concise, professional AML assistant embedded in the SAS AML solution.',
-                        'Rules:',
-                        '1) CUSTOMER/ALERT-SPECIFIC facts MUST come ONLY from the Data section.',
-                        '2) You MAY add general AML knowledge (definitions, typologies, regulatory context).',
-                        '3) Clearly label each statement with [DATA] or [GENERAL].',
-                        '4) If a specific detail is not in Data, write: "[DATA] Not available in provided data." Do NOT invent values.',
-                        '5) Keep responses short and actionable (≤ 6 bullets or a 3–6 sentence paragraph).',
-                        '6) When citing regulations, name the jurisdiction (e.g., France/EU) and add "(verify latest)"; this is not legal advice.',
-                        '7) Do not expose or infer PII beyond what exists in Data.',
-                        '8) If the user’s question is purely general, answer with [GENERAL] items only and note: "No customer data referenced."',
-                        `Alert ID: ${ALERT_ID || 'unknown'}`
-                        ].join('\n');
+                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
+                'Customer/alert-specific facts MUST come only from the Data section.',
+                'You MAY add general AML knowledge (regulations, definitions, typologies).',
+                'Write in clear, natural prose — no bullet points. Keep it brief (about 4–7 sentences).',
+                'Start by directly answering the question, then add just enough context or next steps.',
+                'Label each sentence as [DATA] if it relies on the Data section, or [GENERAL] if it uses general knowledge.',
+                'If a requested detail is missing in Data, write "[DATA] Not available in provided data." Do not invent values.',
+                'When citing regulations, name the jurisdiction and add "(verify latest)"; this is not legal advice.',
+                'If the answer is purely general, include one sentence: "[GENERAL] No customer data referenced."',
+                'Avoid exposing or inferring PII beyond what appears in Data.',
+                `Alert ID: ${ALERT_ID || 'unknown'}`
+                ].join(' ');
 
-                        const format = [
-                        'Respond in ONE of these formats:',
-                        '• Bullet list (each line starts with [DATA] or [GENERAL]); OR',
-                        '• Two short sections:',
-                        '  Data findings:',
-                        '    - ...',
-                        '  General AML knowledge:',
-                        '    - ...',
-                        'Omit any empty section.'
-                        ].join('\n');
-
-                        return [
-                        `SYSTEM\n${system}\n\nOUTPUT FORMAT\n${format}`,
-                        `DATA\n${trimChars(dataString, 7000)}`,
-                        `USER QUESTION\n${userMessage}`,
-                        'ASSISTANT'
-                        ].join('\n\n');
+                return [
+                `SYSTEM:\n${system}`,
+                `DATA:\n${trimChars(dataString, 7000)}`,
+                `USER:\n${userMessage}`,
+                'ASSISTANT:'
+                ].join('\n\n');
                 }
 
                 async function chatQuery(userText) {
@@ -815,8 +804,9 @@
                 });
 
                 // Seed with a welcome message
-                addMessage('bot', `Hi! I can answer using both your alert Data and my general AML knowledge. ' +
-  'I’ll label each point as [DATA] or [GENERAL]. Ask away!`);
+                addMessage('bot',
+                "Hi! I’ll use your alert data and my general AML knowledge to help. " +
+                "I’ll mark sentences with [DATA] or [GENERAL] so you can see the source.");
 
         </script>
 </body>
