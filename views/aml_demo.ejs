@@ -155,7 +155,8 @@
                         text-transform: uppercase;
                         letter-spacing: .08em;
                         color: var(--muted);
-                        margin-bottom: 8px
+                        margin-bottom: 8px;
+                        padding-left: 14px; 
                 }
 
                 .summary {
@@ -184,7 +185,7 @@
 
                 .summary ul {
                         margin: 6px 0 6px 18px;
-                        padding-left: 18px
+                        padding-left: 14px
                 }
 
                 .summary li {
@@ -201,7 +202,7 @@
                         width: 100%;
                         min-height: 120px;
                         resize: vertical;
-                        padding: 14px 16px;
+                        padding: 14px 14px;
                         border-radius: 16px;
                         border: 1px solid rgba(0, 0, 0, .12);
                         background: #fff;
@@ -315,7 +316,7 @@
                 border: 1px solid var(--border);
                 border-radius: 14px;
                 background: #fafafa;
-                padding: 12px;
+                padding: 14px;
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
@@ -394,7 +395,7 @@
                         </div>
 
                         <div>
-                                <div class="label">Generate Summary</div>
+                                <div class="label">Summary</div>
                                 <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to generate a concise alert summary, powered by GPT-5.</div>
                         </div>
 
@@ -418,7 +419,7 @@
                                 <div class="chat" id="chat">
                                         <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
                                         <div class="chat-input">
-                                                <input id="chatText" type="text" placeholder="Ask a quick question about this alert…" />
+                                                <input id="chatText" type="text" placeholder="Ask any question about this alert…" />
                                                 <button id="chatSendBtn" class="btn-primary" type="button">Send</button>
                                         </div>
                                 </div>
@@ -552,7 +553,7 @@
                         const system = [
                                 'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
                                 'Customer/alert-specific facts MUST come only from the Data section.',
-                                'If a requested detail is missing in Data, write "[DATA] Not available in provided data." Do not invent values.',
+                                'If a requested detail is missing in Data, be very clear that it is missing. Do not invent values.',
                                 'You MAY add general AML knowledge (regulations, definitions, typologies).',
                                 'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
                                 'Start by directly answering the question',
