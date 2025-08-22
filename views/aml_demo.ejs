@@ -431,7 +431,7 @@
 
         <script>
                 // ===== CONFIG =====
-                const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_0/steps/execute';
+                const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
                 const CSRF_PRIMER_URL = '/microanalyticScore/modules';
                 //const ALERT_ID = '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
                 let ALERT_ID = null;               // will be filled by VA
@@ -445,7 +445,7 @@
 
                 // OpenAI Responses API settings
                 const OPENAI_URL = 'https://api.openai.com/v1/responses';
-                const OPENAI_MODEL = 'gpt-5-nano';
+                const OPENAI_MODEL = 'gpt-5-mini';
 
                 // ===== UI =====
                 const summarizeBtn = document.getElementById('summarizeBtn');
@@ -625,7 +625,7 @@
                                 const csrf = await getCsrfToken();
                                 if (!csrf) throw new Error('CSRF token not available. Log in to SAS in this browser to solve.');
 
-                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }] };
+                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }, { name: "SUMMARY_OR_CHAT_", value: 'summary' } ] };
                                 const masRes = await fetch(MODULE_URI, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
