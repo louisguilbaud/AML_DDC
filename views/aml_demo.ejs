@@ -547,19 +547,35 @@
                 // Build the chat system prompt locally using MAS "chat" data string + user message.
                 function buildChatPrompt(dataString, userMessage) {
                 const system = [
-                        'You are a concise, professional AML assistant embedded in SAS Visual Analytics.',
-                        'Answer ONLY using the Data section below; if a detail is not in Data, say it is not available.',
-                        'Keep responses short and actionable (2–6 bullet points or 1 brief paragraph).',
-                        'Avoid speculation; do not invent numbers, parties, or transactions.',
-                        'If useful, propose next steps a human analyst can take.',
+                        'You are a concise, professional AML assistant embedded in the SAS AML solution.',
+                        'Rules:',
+                        '1) CUSTOMER/ALERT-SPECIFIC facts MUST come ONLY from the Data section.',
+                        '2) You MAY add general AML knowledge (definitions, typologies, regulatory context).',
+                        '3) Clearly label each statement with [DATA] or [GENERAL].',
+                        '4) If a specific detail is not in Data, write: "[DATA] Not available in provided data." Do NOT invent values.',
+                        '5) Keep responses short and actionable (≤ 6 bullets or a 3–6 sentence paragraph).',
+                        '6) When citing regulations, name the jurisdiction (e.g., France/EU) and add "(verify latest)"; this is not legal advice.',
+                        '7) Do not expose or infer PII beyond what exists in Data.',
+                        '8) If the user’s question is purely general, answer with [GENERAL] items only and note: "No customer data referenced."',
                         `Alert ID: ${ALERT_ID || 'unknown'}`
-                        ].join(' ');
+                        ].join('\n');
+
+                        const format = [
+                        'Respond in ONE of these formats:',
+                        '• Bullet list (each line starts with [DATA] or [GENERAL]); OR',
+                        '• Two short sections:',
+                        '  Data findings:',
+                        '    - ...',
+                        '  General AML knowledge:',
+                        '    - ...',
+                        'Omit any empty section.'
+                        ].join('\n');
 
                         return [
-                        `SYSTEM:\n${system}`,
-                        `DATA:\n${trimChars(dataString, 7000)}`,
-                        `USER:\n${userMessage}`,
-                        'ASSISTANT:'
+                        `SYSTEM\n${system}\n\nOUTPUT FORMAT\n${format}`,
+                        `DATA\n${trimChars(dataString, 7000)}`,
+                        `USER QUESTION\n${userMessage}`,
+                        'ASSISTANT'
                         ].join('\n\n');
                 }
 
@@ -799,7 +815,8 @@
                 });
 
                 // Seed with a welcome message
-                addMessage('bot', `Hi! I’m a helpful chatbot. Ask anything about the summary above and I’ll reply with a sample response.`);
+                addMessage('bot', `Hi! I can answer using both your alert Data and my general AML knowledge. ' +
+  'I’ll label each point as [DATA] or [GENERAL]. Ask away!`);
 
         </script>
 </body>
