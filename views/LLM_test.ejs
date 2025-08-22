@@ -33,7 +33,7 @@ var selectedDocumentId = '';
 
 // Function to fetch API data
 function fetchApiData() {
-    fetch('https://sasserver.demo.sas.com/svi-datahub/documents/alerts/b63203ba-d218-410d-b3fe-95108afb5208/attachments')
+    fetch('https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/attachments')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -85,7 +85,7 @@ document.getElementById('downloadButton').addEventListener('click', function() {
     console.log('Selected Document ID:', selectedDocumentId); // Log the selected document ID
     if (selectedDocumentId) {
         // Construct download URL
-        var downloadUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/b63203ba-d218-410d-b3fe-95108afb5208/files/' + selectedDocumentId + '/content';
+        var downloadUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
         document.getElementById('documentViewer').src = downloadUrl;
         console.log('Download URL:', downloadUrl); // Log the download URL
 
