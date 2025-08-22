@@ -424,7 +424,7 @@
                                         <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
                                         <div class="chat-input">
                                                 <input id="chatText" type="text" placeholder="Ask any question about this alert…" />
-                                                <button id="chatSendBtn" class="btn-primary" type="button">Send</button>
+                                                <button id="chatSendBtn" class="btn-primary" type="button" disabled>Send</button>
                                         </div>
                                 </div>
                         </div>
@@ -760,6 +760,19 @@
                 const chatMessages = document.getElementById('chatMessages');
                 const chatText = document.getElementById('chatText');
                 const chatSendBtn = document.getElementById('chatSendBtn');
+                let chatBusy = false; // true while a request is in flight
+
+                const refreshSend = () => {
+                const empty = chatText.value.trim().length === 0;
+                chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
+                };
+               
+
+                // initialize + update on typing
+                refreshSend();
+                chatText.addEventListener('input', refreshSend);
+
+                
 
                 function addMessage(role, html) {
                 const wrap = document.createElement('div');
@@ -789,32 +802,26 @@
                         if (!text) return;
 
                         addMessage('user', escapeHtml(text));
+                        chatHistory.push({ role: 'user', content: text }); 
                         chatText.value = '';
-                        chatSendBtn.disabled = true;
-
-                         // store the user turn (plain text, not HTML)
-                        chatHistory.push({ role: 'user', content: text });
+                        chatBusy = true;     // lock while thinking
+                        refreshSend();
 
                         const stopThinking = showBotThinking();
-                                try {
-                                const reply = await chatQuery(text);
-                                addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
-                                chatHistory.push({ role: 'assistant', content: reply });
-                                if (chatHistory.length > 6) {
-                                        chatHistory.splice(0, chatHistory.length - 6);
-                                        } 
-                                }
-                                catch (e) {
-                                addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
-                                console.error('[chat] error:', e);
-                                // if error, remove the last user turn so history stays consistent
-                                if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') {
-                                chatHistory.pop();
-                                }
-                                } finally {
-                                stopThinking();
-                                chatSendBtn.disabled = false;
-                                chatText.focus();
+                        try {
+                        const reply = await chatQuery(text);
+                        addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
+                        chatHistory.push({ role: 'assistant', content: reply });
+                        if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
+                        } catch (e) {
+                        addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
+                        console.error('[chat] error:', e);
+                        if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
+                        } finally {
+                        stopThinking();
+                        chatBusy = false;  // unlock, then reflect current input content
+                        refreshSend();     // stays disabled if the box is empty
+                        chatText.focus();
                         }
                 }
 
