@@ -591,14 +591,23 @@
                         display: none;
                 }
 
-                .card::after {
+                .card.show-chat::after {
                         content: "Generative AI can make mistakes. Check important info.";
                         display: block;
-                        margin-top: 6px;
-                        padding-left: var(--content-indent);
+                        margin-top: 7px;
                         font-size: 11px;
                         color: var(--muted);
                         text-align: center;
+                }
+
+                .disclaimer-inline {
+                        position: absolute;
+                        left: 0;
+                        right: 0;
+                        text-align: center;
+                        font-size: 11px;
+                        color: var(--muted);
+                        pointer-events: none;
                 }
 
                 /* ===== font bump (minimal) ===== */
@@ -706,6 +715,8 @@
                                                 placeholder="Add comments on the generated response and the alert in general…"></textarea>
                                         <div class="row" style="justify-content:space-between;margin-top:8px">
                                                 <span id="charCount" class="caption">0 / 2000</span>
+                                                <span class="caption disclaimer-inline">Generative AI can make mistakes.
+                                                        Check important info.</span>
                                                 <div class="row">
                                                         <button id="clearBtn" class="btn-secondary"
                                                                 type="button">Clear</button>
