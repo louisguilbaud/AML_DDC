@@ -590,6 +590,60 @@
                 .card.show-chat #pane-summary {
                         display: none;
                 }
+
+                /* ===== font bump (minimal) ===== */
+                :root {
+                        --fs: 1.08;
+                }
+
+                /* 8% larger; try 1.05–1.12 */
+
+                body {
+                        font-size: calc(16px * var(--fs));
+                }
+
+                h1 {
+                        font-size: calc(28px * var(--fs));
+                }
+
+                .subtitle {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .btn-primary {
+                        font-size: calc(16px * var(--fs));
+                }
+
+                .btn-secondary,
+                .select-model {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .label,
+                .caption {
+                        font-size: calc(12px * var(--fs));
+                }
+
+                .summary {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .summary h1 {
+                        font-size: calc(24px * var(--fs));
+                }
+
+                .summary h2 {
+                        font-size: calc(18px * var(--fs));
+                }
+
+                .msg .bubble {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                #comments,
+                #chatText {
+                        font-size: calc(14px * var(--fs));
+                }
         </style>
 </head>
 
@@ -727,7 +781,7 @@
                         });
                         const out = outputsToMap(JSON.parse(await res.text()).outputs);
                         summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
-                        
+
                         console.log('[id] summaryCache ', summaryCache);
 
                         return summaryCache;
