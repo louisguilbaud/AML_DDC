@@ -432,10 +432,6 @@
                         font-size: 14px;
                 }
 
-                /* Put Summarize button to the left of the toggle */
-                .header .row #summarizeBtn { order: -1; }
-
-
                 /* --- view toggle + panes --- */
                 .viewtoggle {
                         position: relative;
@@ -478,14 +474,15 @@
                 /* --- ACTIVE LABEL COLOR (white over the blue pill) --- */
                 .card:not(.show-chat) .viewtoggle .label:first-child,
                 .card.show-chat .viewtoggle .label:nth-child(2) {
-                color: #fff !important;
+                        color: #fff !important;
                 }
 
                 /* --- SPACE BELOW THE SUMMARY BOX --- */
                 #pane-summary .summary {
-                margin-bottom: 20px;   /* add some space before the COMMENTS title */
+                        margin-bottom: 20px;
+                        /* add some space before the COMMENTS title */
                 }
-                
+
 
                 .viewtoggle .pill {
                         position: absolute;
@@ -508,7 +505,9 @@
                         transform: translateX(100%);
                 }
 
-                .card.show-chat #summarizeBtn { display: none; }
+                .card.show-chat #summarizeBtn {
+                        display: none;
+                }
 
                 /* show only one pane at a time */
                 #pane-chat {
@@ -539,10 +538,6 @@
                                                 <span class="label">Chat</span>
                                                 <span id="togglePill" class="pill" aria-hidden="true"></span>
                                         </div>
-                                        <button id="summarizeBtn" class="btn-primary" aria-busy="false">
-                                                <span class="spinner" aria-hidden="true"></span>
-                                                <span class="labeltext">Summarize</span>
-                                        </button>
                                 </div>
                         </div>
                         <div id="pane-summary">
@@ -551,6 +546,13 @@
                                         <div id="summary" class="summary" role="region" aria-live="polite">Press
                                                 “Summarize” to
                                                 generate a concise alert summary, powered by GPT-5.</div>
+                                </div>
+
+                                <div class="row" style="justify-content:flex-end;margin-top:8px">
+                                        <button id="summarizeBtn" class="btn-primary" aria-busy="false">
+                                                <span class="spinner" aria-hidden="true"></span>
+                                                <span class="labeltext">Summarize</span>
+                                        </button>
                                 </div>
 
                                 <div>
