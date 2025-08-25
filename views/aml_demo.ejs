@@ -368,8 +368,10 @@
                         display: grid;
                         gap: 10px;
                         padding-right: 4px;
-                        align-content: start; /* don't stretch grid tracks */
-                        align-items: start; /* don't stretch items */
+                        align-content: start;
+                        /* don't stretch grid tracks */
+                        align-items: start;
+                        /* don't stretch items */
                         grid-auto-rows: max-content;
                 }
 
@@ -673,7 +675,6 @@
                 // ===== CONFIG =====
                 const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
                 const CSRF_PRIMER_URL = '/microanalyticScore/modules';
-                //const ALERT_ID = '0fa7949f-39aa-4a83-974c-d4f2c375dec0'; // hardcoded for now
                 let ALERT_ID = null;               // will be filled by VA
                 let resolveAlertIdReady;
                 const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
@@ -705,6 +706,63 @@
                 // disable until VA sends the ID
                 summarizeBtn.disabled = true;
 
+                // === MAS PREFETCH (NEW) ===
+                let summaryCache = null, chatCache = null;
+                let summaryMasPromise = null, chatMasPromise = null;
+
+                async function prefetchSummary() {
+                        await alertIdReady;
+                        const csrf = await getCsrfToken();
+                        const payload = {
+                                inputs: [
+                                        { name: "ALERT_ID_", value: ALERT_ID },
+                                        { name: "SUMMARY_OR_CHAT_", value: "summary" }
+                                ]
+                        };
+                        const res = await fetch(MODULE_URI, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                credentials: 'include',
+                                body: JSON.stringify(payload)
+                        });
+                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                        summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
+                        return summaryCache;
+                }
+
+                async function prefetchChat() {
+                        await alertIdReady;
+                        const csrf = await getCsrfToken();
+                        const payload = {
+                                inputs: [
+                                        { name: "ALERT_ID_", value: ALERT_ID },
+                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
+                                ]
+                        };
+                        const res = await fetch(MODULE_URI, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                credentials: 'include',
+                                body: JSON.stringify(payload)
+                        });
+                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                        chatCache = { dataString: out['systemPrompt'] || '', key: out['key'] };
+                        return chatCache;
+                }
+
+                function startPrefetch() {
+                        if (!summaryMasPromise)
+                                summaryMasPromise = prefetchSummary().catch(e => {
+                                        console.error('[prefetch summary]', e); summaryMasPromise = null; throw e;
+                                });
+                        if (!chatMasPromise)
+                                chatMasPromise = (summaryMasPromise || prefetchSummary())
+                                        .then(() => prefetchChat())
+                                        .catch(e => { console.error('[prefetch chat]', e); chatMasPromise = null; throw e; });
+                }
+
+
+
                 const COMMENT_LIMIT = 2000;
                 // Auto-expand the comment box
                 const autoResize = el => {
@@ -729,6 +787,7 @@
                         console.log('[id] Using URL parameter ?alertId=', ALERT_ID);
                         resolveAlertIdReady?.(ALERT_ID);
                         summarizeBtn.disabled = false;
+                        startPrefetch();
                         console.log('[id] summarizeBtn enabled (source=url)');
                 }
 
@@ -749,6 +808,7 @@
                                 console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
                                 resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
                                 summarizeBtn.disabled = false;            // enable the button now that we have it
+                                startPrefetch();
                                 console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
                         }
                 });
@@ -825,35 +885,12 @@
                                 await alertIdReady;
                         }
 
-                        const csrf = await getCsrfToken();
-                        if (!csrf) throw new Error('CSRF token missing');
+                        const cc = chatCache || await (chatMasPromise || (startPrefetch(), chatMasPromise));
+                        const apiKey = cc.key || summaryCache?.key;
+                        if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
 
-                        const payload = {
-                                inputs: [
-                                        { name: "ALERT_ID_", value: ALERT_ID },
-                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
-                                ]
-                        };
-
-                        const masRes = await fetch(MODULE_URI, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                                credentials: 'include',
-                                body: JSON.stringify(payload)
-                        });
-
-                        const masText = await masRes.text();
-                        if (!masRes.ok) throw new Error(`${masRes.status} ${masRes.statusText}\n${masText.slice(0, 500)}`);
-
-                        let masJson; try { masJson = JSON.parse(masText); } catch { throw new Error('MAS returned non-JSON'); }
-                        const out = outputsToMap(masJson.outputs);
-                        const dataString = out['systemPrompt'] || ''; // <-- your MAS returns the raw data here
-                        const openaiKey = out['key'];
-
-                        if (!openaiKey) throw new Error('OpenAI API key not found in MAS output');
-
-                        const prompt = buildChatPrompt(dataString, userText, chatHistory);
-                        const reply = await callOpenAI(prompt, openaiKey, OPENAI_CHAT_MODEL);
+                        const prompt = buildChatPrompt(cc.dataString, userText, chatHistory);
+                        const reply = await callOpenAI(prompt, apiKey, OPENAI_CHAT_MODEL);
                         return reply.trim();
                 }
 
@@ -943,36 +980,16 @@
                         toggleEl.setAttribute('aria-busy', 'true');
 
                         try {
-                                // 1) Get CSRF + call MAS for prompt + key
-                                const csrf = await getCsrfToken();
-                                if (!csrf) throw new Error('CSRF token not available. Log in to SAS in this browser to solve.');
-
-                                const payload = { inputs: [{ name: "ALERT_ID_", value: ALERT_ID }, { name: "SUMMARY_OR_CHAT_", value: 'summary' }] };
-                                const masRes = await fetch(MODULE_URI, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                                        credentials: 'include',
-                                        body: JSON.stringify(payload)
-                                });
-
-                                const masText = await masRes.text();
-                                if (!masRes.ok) throw new Error(`${masRes.status} ${masRes.statusText}\n${masText.slice(0, 500)}`);
-
-                                let masJson; try { masJson = JSON.parse(masText); } catch { throw new Error('Non-JSON response from MAS'); }
-                                const out = outputsToMap(masJson.outputs);
-                                const systemPrompt = out['systemPrompt'];
-                                const openaiKey = out['key'];
-                                const cutoff = out['CUTOFF_DATE'];
-
-                                if (!systemPrompt) throw new Error('MAS output "systemPrompt" not found');
-                                if (!openaiKey) throw new Error('MAS output "key" (OpenAI API key) not found');
-
                                 // 2) Call OpenAI with MAS-provided key
-                                const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;   // NEW
-                                const llmText = await callOpenAI(systemPrompt, openaiKey, chosenModel);
+                                const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;
+                                const s = summaryCache || await (summaryMasPromise || (startPrefetch(), summaryMasPromise));
+                                if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
+                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
+
+                                const llmText = await callOpenAI(s.systemPrompt, s.key, chosenModel);
 
                                 // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
-                                summaryEl.innerHTML = `${llmText}${cutoff ? `<div class="cutoff">${cutoff}</div>` : ''}`;
+                                summaryEl.innerHTML = `${llmText}${s.cutoff ? `<div class="cutoff">${s.cutoff}</div>` : ''}`;
                         } catch (e) {
                                 summaryEl.textContent = `Error:\n${e.message}`;
                                 console.error(e);
