@@ -727,6 +727,9 @@
                         });
                         const out = outputsToMap(JSON.parse(await res.text()).outputs);
                         summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
+                        
+                        console.log('[id] summaryCache ', summaryCache);
+
                         return summaryCache;
                 }
 
