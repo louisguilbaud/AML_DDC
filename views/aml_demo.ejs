@@ -503,24 +503,25 @@
                 /* compact bouncing dots next to "Summary" */
                 .viewtoggle .mini-dots{
                 display: none;
-                margin-left: 6px;
-                gap: 4px;
+                margin-left: 4px;
+                gap: 3px;
                 align-items: center;
                 }
                 .viewtoggle .mini-dots i{
-                width: 6px;
-                height: 6px;
+                width: 4px;              /* smaller dots */
+                height: 4px;             /* smaller dots */
                 border-radius: 50%;
-                background: currentColor;   /* inherits label color: white on active, muted otherwise */
+                background: currentColor;
                 opacity: .35;
-                animation: dotpulse 1s ease-in-out infinite;
+                animation: dotpulse 1s ease-in-out infinite; /* reuse existing animation */
                 }
                 .viewtoggle .mini-dots i:nth-child(2){ animation-delay: .2s; }
                 .viewtoggle .mini-dots i:nth-child(3){ animation-delay: .4s; }
 
-                /* show the dots while summarizing (works in both Summary/Chat view) */
-                .viewtoggle.is-summarizing .mini-dots{ display: inline-flex; }
-
+                /* show dots ONLY during summarizing AND when Chat view is selected */
+                .card.show-chat .viewtoggle.is-summarizing .mini-dots{
+                display: inline-flex;
+                }
 
                 /* slide right when chat is active */
                 .card.show-chat .viewtoggle .pill {
