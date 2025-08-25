@@ -112,4 +112,8 @@ router.get("/aml_demo.html", function (req, res, next) {
 	res.render("aml_demo", { title: "new ddc" });
 });
 
+router.get("/Attachement_selector.html", function (req, res, next) {
+	res.render("Attachement_selector", { title: "Attachement_selector ddc" });
+});
+
 module.exports = router;
