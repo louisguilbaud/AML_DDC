@@ -471,17 +471,17 @@
                         /* sit above the pill */
                 }
 
-                /* active side: white text over blue pill; inactive stays gray */
-                .card:not(.show-chat) .viewtoggle .label:first-child {
-                        color: #fff;
-                }
-
-                /* Summary active */
+                /* --- ACTIVE LABEL COLOR (white over the blue pill) --- */
+                .card:not(.show-chat) .viewtoggle .label:first-child,
                 .card.show-chat .viewtoggle .label:last-child {
-                        color: #fff;
+                color: #fff !important;
                 }
 
-                /* Chat active */
+                /* --- SPACE BELOW THE SUMMARY BOX --- */
+                #pane-summary .summary {
+                margin-bottom: 20px;   /* add some space before the COMMENTS title */
+                }
+                
 
                 .viewtoggle .pill {
                         position: absolute;
@@ -996,7 +996,6 @@
                 const titleEl = document.getElementById('title');
                 const subtitleEl = document.querySelector('.subtitle');
                 const toggleEl = document.getElementById('viewToggle');
-                const pillEl = document.getElementById('togglePill');
 
                 function setView(showChat) {
                         cardEl.classList.toggle('show-chat', showChat);
