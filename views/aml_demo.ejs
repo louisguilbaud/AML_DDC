@@ -455,21 +455,33 @@
                         align-items: center;
                         justify-content: center;
                         font-size: 13px;
+                        margin: 0;
+                        /* reset global .label margin */
+                        padding: 0;
+                        /* reset global .label padding-left */
+                        text-transform: none;
+                        /* stop UPPERCASE */
+                        letter-spacing: 0;
+                        /* reset tracking */
+                        line-height: 1;
+                        /* consistent vertical centering */
                         color: var(--muted);
-                        padding-left: 0;
+                        position: relative;
+                        z-index: 1;
+                        /* sit above the pill */
                 }
 
-                /* active label in blue (Summary when summary view, Chat when chat view) */
+                /* active side: white text over blue pill; inactive stays gray */
                 .card:not(.show-chat) .viewtoggle .label:first-child {
-                        color: var(--primary);
-                        /* Summary active */
+                        color: #fff;
                 }
 
-
+                /* Summary active */
                 .card.show-chat .viewtoggle .label:last-child {
-                        color: var(--primary);
-                        /* Chat active */
+                        color: #fff;
                 }
+
+                /* Chat active */
 
                 .viewtoggle .pill {
                         position: absolute;
@@ -479,12 +491,12 @@
                         width: calc(50% - 4px);
                         border-radius: 999px;
                         background: var(--primary);
-                        color: #fff;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transition: transform .2s;
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+                        transition: transform .2s;
+                        z-index: 0;
+                        /* behind labels */
+                        pointer-events: none;
+                        /* decorative only */
                 }
 
                 /* slide right when chat is active */
@@ -519,7 +531,7 @@
                                         <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
                                                 <span class="label">Summary</span>
                                                 <span class="label">Chat</span>
-                                                <span id="togglePill" class="pill">Chat</span> <!-- shows the target -->
+                                                <span id="togglePill" class="pill" aria-hidden="true"></span>
                                         </div>
                                         <button id="summarizeBtn" class="btn-primary" aria-busy="false">
                                                 <span class="spinner" aria-hidden="true"></span>
@@ -993,7 +1005,6 @@
                                 ? 'Talk with a chatbot about the alert.'
                                 : 'Generate a concise summary with one click.';
                         toggleEl.setAttribute('aria-checked', showChat ? 'true' : 'false');
-                        pillEl.textContent = showChat ? 'Summary' : 'Chat'; // shows destination
                 }
 
                 // click anywhere on the toggle to switch
