@@ -431,6 +431,64 @@
                 #comments {
                         font-size: 14px;
                 }
+
+                /* --- view toggle + panes --- */
+                .viewtoggle {
+                        position: relative;
+                        display: flex;
+                        align-items: center;
+                        gap: 0;
+                        width: 200px;
+                        height: 36px;
+                        padding: 4px;
+                        border-radius: 999px;
+                        background: #f2f2f7;
+                        border: 1px solid var(--border);
+                        font-weight: 600;
+                        user-select: none;
+                        cursor: pointer;
+                }
+
+                .viewtoggle .label {
+                        flex: 1;
+                        text-align: center;
+                        font-size: 13px;
+                        color: var(--muted);
+                }
+
+                .viewtoggle .pill {
+                        position: absolute;
+                        top: 4px;
+                        left: 4px;
+                        height: 28px;
+                        width: calc(50% - 4px);
+                        border-radius: 999px;
+                        background: var(--primary);
+                        color: #fff;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transition: transform .2s;
+                        box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+                }
+
+                /* slide right when chat is active */
+                .card.show-chat .viewtoggle .pill {
+                        transform: translateX(100%);
+                }
+
+                /* show only one pane at a time */
+                #pane-chat {
+                        display: none;
+                }
+
+                .card.show-chat #pane-chat {
+                        display: block;
+                }
+
+                .card.show-chat #pane-summary {
+                        display: none;
+                }
         </style>
 </head>
 
@@ -443,44 +501,55 @@
                                         <p class="subtitle">Generate a concise summary with one click.</p>
                                 </div>
                                 <div class="row">
+                                        <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
+                                                <span class="label">Summary</span>
+                                                <span class="label">Chat</span>
+                                                <span id="togglePill" class="pill">Chat</span> <!-- shows the target -->
+                                        </div>
                                         <button id="summarizeBtn" class="btn-primary" aria-busy="false">
                                                 <span class="spinner" aria-hidden="true"></span>
                                                 <span class="labeltext">Summarize</span>
                                         </button>
                                 </div>
                         </div>
+                        <div id="pane-summary">
+                                <div>
+                                        <div class="label">Summary</div>
+                                        <div id="summary" class="summary" role="region" aria-live="polite">Press
+                                                “Summarize” to
+                                                generate a concise alert summary, powered by GPT-5.</div>
+                                </div>
 
-                        <div>
-                                <div class="label">Summary</div>
-                                <div id="summary" class="summary" role="region" aria-live="polite">Press “Summarize” to
-                                        generate a concise alert summary, powered by GPT-5.</div>
-                        </div>
-
-                        <div>
-                                <div class="label">Comments</div>
-                                <textarea id="comments"
-                                        placeholder="Add comments on the generated response and the alert in general…"></textarea>
-                                <div class="row" style="justify-content:space-between;margin-top:8px">
-                                        <span id="charCount" class="caption">0 / 2000</span>
-                                        <div class="row">
-                                                <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
-                                                <button id="saveBtn" class="btn-secondary" type="button">Save
-                                                        Comment</button>
+                                <div>
+                                        <div class="label">Comments</div>
+                                        <textarea id="comments"
+                                                placeholder="Add comments on the generated response and the alert in general…"></textarea>
+                                        <div class="row" style="justify-content:space-between;margin-top:8px">
+                                                <span id="charCount" class="caption">0 / 2000</span>
+                                                <div class="row">
+                                                        <button id="clearBtn" class="btn-secondary"
+                                                                type="button">Clear</button>
+                                                        <button id="saveBtn" class="btn-secondary" type="button">Save
+                                                                Comment</button>
+                                                </div>
                                         </div>
                                 </div>
                         </div>
 
                         <!-- Chatbot -->
-                        <div>
-                                <div class="label">Chat</div>
-                                <div class="chat" id="chat">
-                                        <div id="chatMessages" class="chat-messages" role="region" aria-live="polite">
-                                        </div>
-                                        <div class="chat-input">
-                                                <input id="chatText" type="text"
-                                                        placeholder="Ask any question about this alert…" />
-                                                <button id="chatSendBtn" class="btn-primary" type="button"
-                                                        disabled>Send</button>
+                        <div id="pane-chat">
+                                <div>
+                                        <div class="label">Chat</div>
+                                        <div class="chat" id="chat">
+                                                <div id="chatMessages" class="chat-messages" role="region"
+                                                        aria-live="polite">
+                                                </div>
+                                                <div class="chat-input">
+                                                        <input id="chatText" type="text"
+                                                                placeholder="Ask any question about this alert…" />
+                                                        <button id="chatSendBtn" class="btn-primary" type="button"
+                                                                disabled>Send</button>
+                                                </div>
                                         </div>
                                 </div>
                         </div>
@@ -894,6 +963,25 @@
                 // Seed with a welcome message
                 addMessage('bot',
                         "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+
+                // === VIEW TOGGLE ===
+                const cardEl = document.querySelector('.card');
+                const titleEl = document.getElementById('title');
+                const toggleEl = document.getElementById('viewToggle');
+                const pillEl = document.getElementById('togglePill');
+
+                function setView(showChat) {
+                        cardEl.classList.toggle('show-chat', showChat);
+                        titleEl.textContent = showChat ? 'Alert Chat' : 'Alert Summarizer';
+                        toggleEl.setAttribute('aria-checked', showChat ? 'true' : 'false');
+                        pillEl.textContent = showChat ? 'Summary' : 'Chat'; // shows destination
+                }
+
+                // click anywhere on the toggle to switch
+                toggleEl.addEventListener('click', () => setView(!cardEl.classList.contains('show-chat')));
+
+                // default to Summary view
+                setView(false);
 
         </script>
 </body>
