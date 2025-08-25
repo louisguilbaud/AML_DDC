@@ -591,6 +591,15 @@
                         display: none;
                 }
 
+                .card::after {
+                        content: "Generative AI can make mistakes. Check important info.";
+                        display: block;
+                        margin-top: 6px;
+                        padding-left: var(--content-indent);
+                        font-size: 11px;
+                        color: var(--muted);
+                }
+
                 /* ===== font bump (minimal) ===== */
                 :root {
                         --fs: 1.08;
@@ -644,7 +653,10 @@
                 #chatText {
                         font-size: calc(14px * var(--fs));
                 }
-                .viewtoggle .label { font-size: calc(14px * var(--fs)); }
+
+                .viewtoggle .label {
+                        font-size: calc(14px * var(--fs));
+                }
         </style>
 </head>
 
