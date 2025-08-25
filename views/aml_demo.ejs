@@ -500,6 +500,28 @@
                         /* decorative only */
                 }
 
+                /* compact bouncing dots next to "Summary" */
+                .viewtoggle .mini-dots{
+                display: none;
+                margin-left: 6px;
+                gap: 4px;
+                align-items: center;
+                }
+                .viewtoggle .mini-dots i{
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: currentColor;   /* inherits label color: white on active, muted otherwise */
+                opacity: .35;
+                animation: dotpulse 1s ease-in-out infinite;
+                }
+                .viewtoggle .mini-dots i:nth-child(2){ animation-delay: .2s; }
+                .viewtoggle .mini-dots i:nth-child(3){ animation-delay: .4s; }
+
+                /* show the dots while summarizing (works in both Summary/Chat view) */
+                .viewtoggle.is-summarizing .mini-dots{ display: inline-flex; }
+
+
                 /* slide right when chat is active */
                 .card.show-chat .viewtoggle .pill {
                         transform: translateX(100%);
@@ -534,7 +556,7 @@
                                 </div>
                                 <div class="row">
                                         <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
-                                                <span class="label">Summary</span>
+                                                <span class="label">Summary<span class="mini-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>
                                                 <span class="label">Chat</span>
                                                 <span id="togglePill" class="pill" aria-hidden="true"></span>
                                         </div>
@@ -862,6 +884,9 @@
                                 renderWorking(shuffledMessages[msgIndex]);
                         }, ROTATE_MS);
 
+                        toggleEl.classList.add('is-summarizing');
+                        toggleEl.setAttribute('aria-busy','true');
+
                         try {
                                 // 1) Get CSRF + call MAS for prompt + key
                                 const csrf = await getCsrfToken();
@@ -900,6 +925,8 @@
                                 summarizeBtn.disabled = false;
                                 summarizeBtn.classList.remove('loading');
                                 summarizeBtn.setAttribute('aria-busy', 'false');
+                                toggleEl.classList.remove('is-summarizing');
+                                toggleEl.removeAttribute('aria-busy');
                         }
                 }
 
