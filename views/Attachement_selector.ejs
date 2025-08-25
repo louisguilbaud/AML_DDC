@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Call Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
 
+<div class="container" id="resultContainer">
+    <h2>Select a Document</h2>
+    <select id="documentSelect">
+        <option value="">Select a document</option>
+    </select>
+    <button id="downloadButton">Download Document</button>
+</div>
+
+<div id="selectedDocumentId"></div>
+
+<iframe id="documentViewer" sandbox="allow-downloads"></iframe>
+
+<script>
+// Global variable to store selected document ID
+var selectedDocumentId = '';
+
+// Function to fetch API data
+function fetchApiData() {
+    fetch('https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/attachments')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Display document names
+            displayDocumentNames(data);
+        })
+        .catch(error => {
+            console.error('There was a problem with the fetch operation:', error);
+            document.getElementById('documentSelect').innerHTML = '<option value="">Error fetching data from the API</option>';
+        });
+}
+
+// Function to display document names in a dropdown list
+function displayDocumentNames(data) {
+    var documentSelect = document.getElementById('documentSelect');
+    var selectedOptionValue = documentSelect.value;
+    documentSelect.innerHTML = '<option value="">Select a document</option>';
+    data.items.forEach(item => {
+        var option = document.createElement('option');
+        option.value = item.id; // You can assign any unique identifier here
+        option.textContent = item.name;
+        if (item.id === selectedOptionValue) {
+            option.selected = true; // Retain the selected option after refresh
+        }
+        documentSelect.appendChild(option);
+    });
+}
+
+// Function to handle document selection
+document.getElementById('documentSelect').addEventListener('change', function(event) {
+    selectedDocumentId = event.target.value;
+    console.log('Selected Document ID:', selectedDocumentId); // Log the selected document ID
+    if (selectedDocumentId) {
+        // Display selected document ID
+        document.getElementById('selectedDocumentId').textContent = 'Selected Document ID: ' + selectedDocumentId;
+    } else {
+        // No document selected
+        document.getElementById('selectedDocumentId').textContent = '';
+    }
+});
+
+// Function to handle document download
+document.getElementById('downloadButton').addEventListener('click', function() {
+    console.log('Download Button Clicked');
+    console.log('Selected Document ID:', selectedDocumentId); // Log the selected document ID
+    if (selectedDocumentId) {
+        // Construct download URL
+        var downloadUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
+        document.getElementById('documentViewer').src = downloadUrl;
+        console.log('Download URL:', downloadUrl); // Log the download URL
+
+        // Create a temporary anchor element
+        var downloadLink = document.createElement('a');
+        downloadLink.href = downloadUrl;
+        downloadLink.download = ''; // This should prompt the browser to download the file with its original name
+        document.body.appendChild(downloadLink);
+
+        // Trigger the click event on the anchor element
+        downloadLink.click();
+
+        // Clean up - remove the anchor element
+        document.body.removeChild(downloadLink);
+    } else {
+        // No document selected, show alert
+        alert('Please select a document first.');
+    }
+});
+
+// Initial fetch when the page loads
+fetchApiData();
+
+// Polling interval (in milliseconds)
+const pollingInterval = 5000; // 5 seconds
+
+// Set up polling
+setInterval(fetchApiData, pollingInterval);
+
+</script>
+
+</body>
+</html>
