@@ -1,66 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API Call Example - Summarize with ChatGPT</title>
     <title>API Call Example</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-@@ -11,13 +11,6 @@
+        }
+        .container {
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-        }
-        #summaryBox {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ccc;
-            background: #f9f9f9;
-            white-space: pre-wrap;
         }
     </style>
 </head>
 <body>
-@@ -27,36 +20,17 @@
+
+<div class="container" id="resultContainer">
+    <h2>Select a Document</h2>
     <select id="documentSelect">
         <option value="">Select a document</option>
     </select>
-    <button id="summarizeButton">Summarize Document</button>
 </div>
 
 <div id="selectedDocumentId"></div>
-<div id="summaryBox">Summary will appear here...</div>
 
-<script>
-
-//Get VA parameters
-va.messagingUtil.setOnDataReceivedCallback(updateURL);
-
-		function updateURL(vaMsgObj) {
-			console.log("Received vaMsgObj:", vaMsgObj);
-			if (vaMsgObj && vaMsgObj.data && vaMsgObj.data.length > 0) {
-				const apiKey = vaMsgObj.data[0][0];
-				console.log("[debug]: Fetched API Key:", apiKey);
-				document.getElementById("apiKeyContainer").textContent =
-					apiKey;
-			} else {
-				document.getElementById("apiKeyContainer").textContent =
-					"No API key available";
-				document.getElementById("alertid").textContent =
-					"No parameter value available";
-			}
-}
 <iframe id="documentViewer" sandbox="allow-downloads"></iframe>
 
 <script>
 // Global variable to store selected document ID
 var selectedDocumentId = '';
 
-// Function to fetch API data (list of attachments)
 // Function to fetch API data
 function fetchApiData() {
     fetch('https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/attachments')
         .then(response => {
-@@ -66,6 +40,7 @@ function fetchApiData() {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
             return response.json();
         })
         .then(data => {
@@ -68,11 +44,11 @@ function fetchApiData() {
             displayDocumentNames(data);
         })
         .catch(error => {
-@@ -74,93 +49,44 @@ function fetchApiData() {
+            console.error('There was a problem with the fetch operation:', error);
+            document.getElementById('documentSelect').innerHTML = '<option value="">Error fetching data from the API</option>';
         });
 }
 
-// Populate dropdown with document names
 // Function to display document names in a dropdown list
 function displayDocumentNames(data) {
     var documentSelect = document.getElementById('documentSelect');
@@ -80,18 +56,15 @@ function displayDocumentNames(data) {
     documentSelect.innerHTML = '<option value="">Select a document</option>';
     data.items.forEach(item => {
         var option = document.createElement('option');
-        option.value = item.id;
         option.value = item.id; // You can assign any unique identifier here
         option.textContent = item.name;
         if (item.id === selectedOptionValue) {
-            option.selected = true;
             option.selected = true; // Retain the selected option after refresh
         }
         documentSelect.appendChild(option);
     });
 }
 
-// Handle document selection
 // Function to handle document selection
 document.getElementById('documentSelect').addEventListener('change', function(event) {
     selectedDocumentId = event.target.value;
@@ -105,73 +78,16 @@ document.getElementById('documentSelect').addEventListener('change', function(ev
     }
 });
 
-// Handle summarization
-document.getElementById('summarizeButton').addEventListener('click', function() {
-    const apiKey = document.getElementById("apiKeyContainer").textContent;
-    if (selectedDocumentId) {
-        var contentUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
-
-        // Fetch the document content from SAS
-        fetch(contentUrl, {
-            method: 'GET',
-            credentials: 'include' // include cookies if needed
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch document content');
-            }
-            return response.text(); // assuming text-based docs (txt, json, csv, etc.)
-        })
-        .then(docText => {
-            // Send content to ChatGPT for summarization
-            return fetch("https://api.openai.com/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + apiKey
-                },
-                body: JSON.stringify({
-                    model: "gpt-4o-mini", // or gpt-4o, gpt-3.5-turbo, etc.
-                    messages: [
-                        { role: "system", content: "You are an assistant that summarizes documents." },
-                        { role: "user", content: "Summarize this document:\n\n" + docText }
-                    ],
-                    temperature: 0.3
-                })
-            });
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("ChatGPT API error");
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Show the summary in the page
-            const summary = data.choices[0].message.content;
-            document.getElementById("summaryBox").textContent = summary;
-        })
-        .catch(error => {
-            console.error("Summarization error:", error);
-            document.getElementById("summaryBox").textContent = "Error summarizing the document.";
-        });
 // Initial fetch when the page loads
 fetchApiData();
 
-    } else {
-        alert('Please select a document first.');
-    }
-});
 // Polling interval (in milliseconds)
 const pollingInterval = 5000; // 5 seconds
 
-// Initial fetch of document list
-fetchApiData();
 // Set up polling
 setInterval(fetchApiData, pollingInterval);
 
-// Polling every 5 seconds
-setInterval(fetchApiData, 5000);
 </script>
 
 </body>
+</html>
