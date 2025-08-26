@@ -24,9 +24,27 @@
 
 <div id="selectedDocumentId"></div>
 
-<iframe id="documentViewer" sandbox="allow-downloads"></iframe>
-
+<p hidden><span id="apiKeyContainer"></span></p>
 <script>
+
+//Get VA parameters
+va.messagingUtil.setOnDataReceivedCallback(updateURL);
+
+		function updateURL(vaMsgObj) {
+			console.log("Received vaMsgObj:", vaMsgObj);
+			if (vaMsgObj && vaMsgObj.data && vaMsgObj.data.length > 0) {
+				const apiKey = vaMsgObj.data[0][0];
+				console.log("[debug]: Fetched API Key:", apiKey);
+				document.getElementById("apiKeyContainer").textContent =
+					apiKey;
+
+			} else {
+				document.getElementById("apiKeyContainer").textContent =
+					"No API key available";
+				document.getElementById("alertid").textContent =
+					"No parameter value available";
+			}
+		}
 // Global variable to store selected document ID
 var selectedDocumentId = '';
 
