@@ -45,20 +45,6 @@ va.messagingUtil.setOnDataReceivedCallback(updateURL);
 				console.log("[debug]: Fetched API Key:", apiKey);
 				document.getElementById("apiKeyContainer").textContent =
 					apiKey;
-
-				// Extract the value from the parameters array
-				if (vaMsgObj.parameters && vaMsgObj.parameters.length > 0) {
-					const alert_id = vaMsgObj.parameters[0].value;
-					console.log(
-						"[debug]: Fetched Parameter Value:",
-						alert_id
-					);
-					document.getElementById("alertid").textContent =
-						alert_id;
-				} else {
-					document.getElementById("alertid").textContent =
-						"No parameter value available";
-				}
 			} else {
 				document.getElementById("apiKeyContainer").textContent =
 					"No API key available";
