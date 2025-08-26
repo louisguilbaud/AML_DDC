@@ -25,8 +25,6 @@
 
 <div id="selectedDocumentId"></div>
 
-<iframe id="documentViewer" sandbox="allow-downloads"></iframe>
-
 <script>
 // Global variable to store selected document ID
 var selectedDocumentId = '';
@@ -81,27 +79,42 @@ document.getElementById('documentSelect').addEventListener('change', function(ev
 
 // Function to handle document download
 document.getElementById('downloadButton').addEventListener('click', function() {
-    console.log('Download Button Clicked');
-    console.log('Selected Document ID:', selectedDocumentId); // Log the selected document ID
     if (selectedDocumentId) {
-        // Construct download URL
         var downloadUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
-        document.getElementById('documentViewer').src = downloadUrl;
-        console.log('Download URL:', downloadUrl); // Log the download URL
 
-        // Create a temporary anchor element
-        var downloadLink = document.createElement('a');
-        downloadLink.href = downloadUrl;
-        downloadLink.download = ''; // This should prompt the browser to download the file with its original name
-        document.body.appendChild(downloadLink);
+        fetch(downloadUrl, {
+            method: 'GET',
+            credentials: 'include' // if cookies/session are needed
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to download file');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            // Create a temporary link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
 
-        // Trigger the click event on the anchor element
-        downloadLink.click();
+            // Optionally, use the name from the dropdown
+            const select = document.getElementById('documentSelect');
+            const selectedOption = select.options[select.selectedIndex];
+            a.download = selectedOption.textContent || 'document';
 
-        // Clean up - remove the anchor element
-        document.body.removeChild(downloadLink);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            // Release object URL
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Download error:', error);
+            alert('Failed to download document.');
+        });
     } else {
-        // No document selected, show alert
         alert('Please select a document first.');
     }
 });
