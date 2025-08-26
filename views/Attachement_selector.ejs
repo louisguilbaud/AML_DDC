@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>API Call Example</title>
+    <title>API Call Example - Summarize with ChatGPT</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -10,6 +10,13 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+        }
+        #summaryBox {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background: #f9f9f9;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -20,16 +27,17 @@
     <select id="documentSelect">
         <option value="">Select a document</option>
     </select>
-    <button id="downloadButton">Download Document</button>
+    <button id="summarizeButton">Summarize Document</button>
 </div>
 
 <div id="selectedDocumentId"></div>
+<div id="summaryBox">Summary will appear here...</div>
 
 <script>
 // Global variable to store selected document ID
 var selectedDocumentId = '';
 
-// Function to fetch API data
+// Function to fetch API data (list of attachments)
 function fetchApiData() {
     fetch('https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/attachments')
         .then(response => {
@@ -39,7 +47,6 @@ function fetchApiData() {
             return response.json();
         })
         .then(data => {
-            // Display document names
             displayDocumentNames(data);
         })
         .catch(error => {
@@ -48,86 +55,92 @@ function fetchApiData() {
         });
 }
 
-// Function to display document names in a dropdown list
+// Populate dropdown with document names
 function displayDocumentNames(data) {
     var documentSelect = document.getElementById('documentSelect');
     var selectedOptionValue = documentSelect.value;
     documentSelect.innerHTML = '<option value="">Select a document</option>';
     data.items.forEach(item => {
         var option = document.createElement('option');
-        option.value = item.id; // You can assign any unique identifier here
+        option.value = item.id;
         option.textContent = item.name;
         if (item.id === selectedOptionValue) {
-            option.selected = true; // Retain the selected option after refresh
+            option.selected = true;
         }
         documentSelect.appendChild(option);
     });
 }
 
-// Function to handle document selection
+// Handle document selection
 document.getElementById('documentSelect').addEventListener('change', function(event) {
     selectedDocumentId = event.target.value;
-    console.log('Selected Document ID:', selectedDocumentId); // Log the selected document ID
     if (selectedDocumentId) {
-        // Display selected document ID
         document.getElementById('selectedDocumentId').textContent = 'Selected Document ID: ' + selectedDocumentId;
     } else {
-        // No document selected
         document.getElementById('selectedDocumentId').textContent = '';
     }
 });
 
-// Function to handle document download
-document.getElementById('downloadButton').addEventListener('click', function() {
+// Handle summarization
+document.getElementById('summarizeButton').addEventListener('click', function() {
     if (selectedDocumentId) {
-        var downloadUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
+        var contentUrl = 'https://sasserver.demo.sas.com/svi-datahub/documents/alerts/0fa7949f-39aa-4a83-974c-d4f2c375dec0/files/' + selectedDocumentId + '/content';
 
-        fetch(downloadUrl, {
+        // Fetch the document content from SAS
+        fetch(contentUrl, {
             method: 'GET',
-            credentials: 'include' // if cookies/session are needed
+            credentials: 'include' // include cookies if needed
         })
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to download file');
+                throw new Error('Failed to fetch document content');
             }
-            return response.blob();
+            return response.text(); // assuming text-based docs (txt, json, csv, etc.)
         })
-        .then(blob => {
-            // Create a temporary link
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-
-            // Optionally, use the name from the dropdown
-            const select = document.getElementById('documentSelect');
-            const selectedOption = select.options[select.selectedIndex];
-            a.download = selectedOption.textContent || 'document';
-
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-
-            // Release object URL
-            window.URL.revokeObjectURL(url);
+        .then(docText => {
+            // Send content to ChatGPT for summarization
+            return fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer YOUR_OPENAI_API_KEY" // <-- Replace with your key
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini", // or gpt-4o, gpt-3.5-turbo, etc.
+                    messages: [
+                        { role: "system", content: "You are an assistant that summarizes documents." },
+                        { role: "user", content: "Summarize this document:\n\n" + docText }
+                    ],
+                    temperature: 0.3
+                })
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("ChatGPT API error");
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Show the summary in the page
+            const summary = data.choices[0].message.content;
+            document.getElementById("summaryBox").textContent = summary;
         })
         .catch(error => {
-            console.error('Download error:', error);
-            alert('Failed to download document.');
+            console.error("Summarization error:", error);
+            document.getElementById("summaryBox").textContent = "Error summarizing the document.";
         });
+
     } else {
         alert('Please select a document first.');
     }
 });
 
-// Initial fetch when the page loads
+// Initial fetch of document list
 fetchApiData();
 
-// Polling interval (in milliseconds)
-const pollingInterval = 5000; // 5 seconds
-
-// Set up polling
-setInterval(fetchApiData, pollingInterval);
-
+// Polling every 5 seconds
+setInterval(fetchApiData, 5000);
 </script>
 
 </body>
