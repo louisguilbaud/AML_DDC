@@ -888,8 +888,7 @@
                         const candidate = paramVal || dataVal;
                         
                         //if (candidate && candidate !== ALERT_ID) {
-                                //ALERT_ID = String(candidate);
-                                ALERT_ID = paramVal;
+                                ALERT_ID = String(candidate);
                                 ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
                                 console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
                                 resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
