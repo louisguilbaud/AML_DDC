@@ -886,16 +886,16 @@
                         console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
 
                         const candidate = paramVal || dataVal;
-                        const ALERT_ID = vaMsgObj.parameters[0].value;
-                        summarizeBtn.disabled = false;
+                        
                         //if (candidate && candidate !== ALERT_ID) {
                                 //ALERT_ID = String(candidate);
-                                //ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
-                                //console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                                //resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                                //summarizeBtn.disabled = false;            // enable the button now that we have it
-                                //startPrefetch();
-                                //console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
+                                ALERT_ID = vaMsgObj.parameters[0].value;
+                                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
+                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
+                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                                summarizeBtn.disabled = false;            // enable the button now that we have it
+                                startPrefetch();
+                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
                         //}
                 });
 
