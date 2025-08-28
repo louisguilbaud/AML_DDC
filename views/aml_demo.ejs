@@ -2,909 +2,1213 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Alert Summarizer</title>
-    <script src="./javascripts/sas/util/messagingUtil.js"></script>
-    <style>
-        :root {
-            --bg: #fff;
-            --fg: #1d1d1f;
-            --muted: #6e6e73;
-            --card: #fff;
-            --border: rgba(0, 0, 0, .08);
-            --primary: #0478CE;
-            --primary-press: #0366AF;
-            --content-indent: 14px;
-            --primary-soft: #E8F3FF;
-            --grey-soft: #fafafa;
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
-        html,
-        body {
-            height: 100%
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
-        }
-
-        .container {
-            width: min(96vw, 1440px);
-            max-width: 1440px;
-            margin: 2vh auto 8vh;
-            padding: 0 24px
-        }
-
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
-            padding: 32px;
-            display: grid;
-            gap: 18px
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px
-        }
-
-        h1 {
-            margin: 0 0 6px 0;
-            font-size: 28px;
-            font-weight: 650;
-            letter-spacing: -.02em
-        }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px
-        }
-
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: center
-        }
-
-        button {
-            appearance: none;
-            border: none;
-            cursor: pointer;
-            font-family: inherit
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: #fff;
-            border-radius: 14px;
-            padding: 12px 18px;
-            font-size: 16px;
-            font-weight: 600;
-            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-            transition: transform .06s, box-shadow .2s, filter .2s
-        }
-
-        .btn-primary:hover {
-            filter: brightness(1.02)
-        }
-
-        .btn-primary:active {
-            transform: scale(.985)
-        }
-
-        .btn-primary:disabled {
-            opacity: .65;
-            cursor: not-allowed;
-            box-shadow: none
-        }
-
-        .btn-secondary {
-            background: var(--grey-soft);
-            color: var(--fg);
-            border-radius: 14px;
-            padding: 10px 16px;
-            font-size: 14px;
-            font-weight: 600
-        }
-
-        .btn-secondary:hover {
-            filter: brightness(.97)
-        }
-
-        .btn-secondary:active {
-            filter: brightness(.94)
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, .6);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            display: none
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg)
-            }
-        }
-
-        .loading .spinner {
-            display: inline-block
-        }
-
-        .loading .labeltext {
-            display: none
-        }
-
-        .label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-            margin-bottom: 8px;
-            padding-left: var(--content-indent);
-        }
-
-        /* visually hidden label for a11y */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* compact select styled like your secondary buttons */
-        .select-model {
-            background: var(--grey-soft);
-            color: var(--fg);
-            border: none;
-            border-radius: 14px;
-            padding: 10px 12px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .select-model:disabled {
-            opacity: .65;
-            cursor: not-allowed;
-        }
-
-        .summary {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            min-height: 140px;
-            white-space: normal;
-            font-size: 14px
-        }
-
-        .summary h1 {
-            font-size: 24px;
-            margin: 0 0 8px
-        }
-
-        .summary h2 {
-            font-size: 18px;
-            margin: 14px 0 6px
-        }
-
-        .summary p {
-            margin: 6px 0
-        }
-
-        .summary ul {
-            margin: 6px 0 6px 18px;
-            padding-left: 14px
-        }
-
-        .summary li {
-            margin: 3px 0
-        }
-
-        .summary .cutoff {
-            margin-top: 10px;
-            font-size: 12px;
-            color: var(--muted)
-        }
-
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            resize: vertical;
-            padding: 14px 14px;
-            border-radius: 16px;
-            border: 1px solid rgba(0, 0, 0, .12);
-            background: #fff;
-            outline: none;
-            line-height: 1.5;
-            overflow: hidden;
-            resize: none
-        }
-
-        textarea:focus {
-            border-color: var(--primary-press);
-            box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
-        }
-
-        .caption {
-            font-size: 12px;
-            color: var(--muted)
-        }
-
-        .toast {
-            position: fixed;
-            left: 50%;
-            bottom: 24px;
-            transform: translateX(-50%) translateY(20px);
-            background: #111;
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 999px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-            opacity: 0;
-            pointer-events: none;
-            transition: transform .35s, opacity .35s
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0)
-        }
-
-        .working {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--muted);
-            font-weight: 600
-        }
-
-        .working .dots {
-            display: inline-flex;
-            gap: 4px;
-            margin-left: 2px
-        }
-
-        .working .dots i {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--muted);
-            opacity: .25;
-            animation: dotpulse 1s ease-in-out infinite
-        }
-
-        .working .dots i:nth-child(2) {
-            animation-delay: .2s
-        }
-
-        .working .dots i:nth-child(3) {
-            animation-delay: .4s
-        }
-
-        @keyframes dotpulse {
-
-            0%,
-            100% {
-                transform: translateY(0);
-                opacity: .25
-            }
-
-            50% {
-                transform: translateY(-3px);
-                opacity: 1
-            }
-        }
-
-        .skel {
-            display: grid;
-            gap: 8px;
-            margin-top: 10px
-        }
-
-        .skel .line {
-            height: 10px;
-            border-radius: 6px;
-            background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
-            background-size: 200% 100%;
-            animation: shimmer 1.2s linear infinite
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: 200% 0
-            }
-
-            100% {
-                background-position: -200% 0
-            }
-        }
-
-        #charCount {
-            margin-left: var(--content-indent);
-        }
-
-        .header>div:first-child {
-            padding-left: var(--content-indent);
-        }
-
-        /* === CHATBOT === */
-        .chat {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .chat-messages {
-            min-height: 273px;
-            max-height: clamp(360px, 55vh, 720px);
-            overflow: auto;
-            display: grid;
-            gap: 10px;
-            padding-right: 4px;
-            align-content: start;
-            /* don't stretch grid tracks */
-            align-items: start;
-            /* don't stretch items */
-            grid-auto-rows: max-content;
-        }
-
-        .msg {
-            display: flex;
-        }
-
-        .msg .bubble {
-            border: 1px solid var(--border);
-            background: #f7f7f7;
-            color: var(--fg);
-            padding: 10px 12px;
-            border-radius: 14px 14px 4px 14px;
-            font-size: 14px;
-            line-height: 1.35;
-            max-width: 72%;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
-        }
-
-        /* Bot bubble: white on gray background */
-        .msg.bot .bubble {
-            background: #fff;
-            color: var(--fg);
-            border-color: var(--border);
-        }
-
-        .msg.user {
-            justify-content: flex-end;
-        }
-
-        .msg.user .bubble {
-            background: var(--primary-soft);
-            color: var(--fg);
-            border-color: var(--border);
-            border-radius: 14px 14px 14px 4px;
-        }
-
-        .chat-input {
-            display: flex;
-            gap: 8px;
-        }
-
-        #chatText {
-            flex: 1;
-            border: 1px solid rgba(0, 0, 0, .12);
-            border-radius: 14px;
-            padding: 12px 14px;
-            font: inherit;
-            outline: none;
-        }
-
-        #chatText:focus {
-            border-color: var(--primary-press);
-            box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
-        }
-
-        .typing {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .typing .dots {
-            display: inline-flex;
-            gap: 4px;
-        }
-
-        .typing .dots i {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--muted);
-            opacity: .35;
-            animation: dotpulse 1s ease-in-out infinite;
-        }
-
-        .typing .dots i:nth-child(2) {
-            animation-delay: .2s;
-        }
-
-        .typing .dots i:nth-child(3) {
-            animation-delay: .4s;
-        }
-
-        input,
-        textarea,
-        button,
-        select {
-            font-family: inherit;
-            font-size: inherit;
-        }
-
-        #comments {
-            font-size: 14px;
-        }
-
-        /* --- view toggle + panes --- */
-        .viewtoggle {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0;
-            width: 200px;
-            height: 36px;
-            padding: 4px;
-            border-radius: 999px;
-            background: var(--grey-soft);
-            border: 1px solid var(--border);
-            font-weight: 600;
-            user-select: none;
-            cursor: pointer;
-        }
-
-        .viewtoggle .label {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            margin: 0;
-            /* reset global .label margin */
-            padding: 0;
-            /* reset global .label padding-left */
-            text-transform: none;
-            /* stop UPPERCASE */
-            letter-spacing: 0;
-            /* reset tracking */
-            line-height: 1;
-            /* consistent vertical centering */
-            color: var(--muted);
-            position: relative;
-            z-index: 1;
-            /* sit above the pill */
-        }
-
-        /* --- ACTIVE LABEL COLOR (white over the blue pill) --- */
-        .card:not(.show-chat) .viewtoggle .label:first-child,
-        .card.show-chat .viewtoggle .label:nth-child(2) {
-            color: #fff !important;
-        }
-
-        /* --- SPACE BELOW THE SUMMARY BOX --- */
-        #pane-summary .summary {
-            margin-bottom: 20px;
-            /* add some space before the COMMENTS title */
-        }
-
-
-        .viewtoggle .pill {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            height: 28px;
-            width: calc(50% - 4px);
-            border-radius: 999px;
-            background: var(--primary);
-            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-            transition: transform .2s;
-            z-index: 0;
-            /* behind labels */
-            pointer-events: none;
-            /* decorative only */
-        }
-
-        /* compact bouncing dots next to "Summary" */
-        .viewtoggle .mini-dots {
-            display: none;
-            margin-left: 4px;
-            gap: 3px;
-            align-items: center;
-        }
-
-        .viewtoggle .mini-dots i {
-            width: 4px;
-            /* smaller dots */
-            height: 4px;
-            /* smaller dots */
-            border-radius: 50%;
-            background: currentColor;
-            opacity: .35;
-            animation: dotpulse 1s ease-in-out infinite;
-            /* reuse existing animation */
-        }
-
-        .viewtoggle .mini-dots i:nth-child(2) {
-            animation-delay: .2s;
-        }
-
-        .viewtoggle .mini-dots i:nth-child(3) {
-            animation-delay: .4s;
-        }
-
-        /* show dots ONLY during summarizing AND when Chat view is selected */
-        .card.show-chat .viewtoggle.is-summarizing .mini-dots {
-            display: inline-flex;
-        }
-
-        /* slide right when chat is active */
-        .card.show-chat .viewtoggle .pill {
-            transform: translateX(100%);
-        }
-
-        .card.show-chat #summarizeBtn {
-            display: none;
-        }
-
-        /* show only one pane at a time */
-        #pane-chat {
-            display: none;
-        }
-
-        .card.show-chat #pane-chat {
-            display: block;
-        }
-
-        .card.show-chat #pane-summary {
-            display: none;
-        }
-
-        .card.show-chat::after {
-            content: "Generative AI can make mistakes. Check important info.";
-            display: block;
-            margin-top: 7px;
-            font-size: 13px;
-            color: var(--muted);
-            text-align: center;
-        }
-
-        .disclaimer-inline {
-            position: absolute;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 11px;
-            color: var(--muted);
-            pointer-events: none;
-        }
-
-        /* ===== font bump (minimal) ===== */
-        :root {
-            --fs: 1.08;
-        }
-
-        /* 8% larger; try 1.05–1.12 */
-
-        body {
-            font-size: calc(16px * var(--fs));
-        }
-
-        h1 {
-            font-size: calc(28px * var(--fs));
-        }
-
-        .subtitle {
-            font-size: calc(14px * var(--fs));
-        }
-
-        .btn-primary {
-            font-size: calc(16px * var(--fs));
-        }
-
-        .btn-secondary,
-        .select-model {
-            font-size: calc(14px * var(--fs));
-        }
-
-        .label,
-        .caption {
-            font-size: calc(12px * var(--fs));
-        }
-
-        .summary {
-            font-size: calc(14px * var(--fs));
-        }
-
-        .summary h1 {
-            font-size: calc(24px * var(--fs));
-        }
-
-        .summary h2 {
-            font-size: calc(18px * var(--fs));
-        }
-
-        .msg .bubble {
-            font-size: calc(14px * var(--fs));
-        }
-
-        #comments,
-        #chatText {
-            font-size: calc(14px * var(--fs));
-        }
-
-        .viewtoggle .label {
-            font-size: calc(14px * var(--fs));
-        }
-    </style>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Alert Summarizer</title>
+        <script src="./javascripts/sas/util/messagingUtil.js"></script>
+        <style>
+                :root {
+                        --bg: #fff;
+                        --fg: #1d1d1f;
+                        --muted: #6e6e73;
+                        --card: #fff;
+                        --border: rgba(0, 0, 0, .08);
+                        --primary: #0478CE;
+                        --primary-press: #0366AF;
+                        --content-indent: 14px;
+                        --primary-soft: #E8F3FF;
+                        --grey-soft: #fafafa;
+                }
+
+                * {
+                        box-sizing: border-box
+                }
+
+                html,
+                body {
+                        height: 100%
+                }
+
+                body {
+                        margin: 0;
+                        background: var(--bg);
+                        color: var(--fg);
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
+                }
+
+                 .container {
+                        width: min(96vw, 1440px);
+                        max-width: 1440px;
+                        margin: 2vh auto 8vh;
+                        padding: 0 24px
+                    width: 100vw;      
+                    max-width: 2800px;        
+                }
+
+                .card {
+                        background: var(--card);
+                        border: 1px solid var(--border);
+                        border-radius: 24px;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
+                        padding: 32px;
+                        display: grid;
+                        gap: 18px
+                }
+
+                .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        gap: 12px
+                }
+
+                h1 {
+                        margin: 0 0 6px 0;
+                        font-size: 28px;
+                        font-weight: 650;
+                        letter-spacing: -.02em
+                }
+
+                .subtitle {
+                        margin: 0;
+                        color: var(--muted);
+                        font-size: 14px
+                }
+
+                .row {
+                        display: flex;
+                        gap: 10px;
+                        align-items: center
+                }
+
+                button {
+                        appearance: none;
+                        border: none;
+                        cursor: pointer;
+                        font-family: inherit
+                }
+
+                .btn-primary {
+                        background: var(--primary);
+                        color: #fff;
+                        border-radius: 14px;
+                        padding: 12px 18px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+                        transition: transform .06s, box-shadow .2s, filter .2s
+                }
+
+                .btn-primary:hover {
+                        filter: brightness(1.02)
+                }
+
+                .btn-primary:active {
+                        transform: scale(.985)
+                }
+
+                .btn-primary:disabled {
+                        opacity: .65;
+                        cursor: not-allowed;
+                        box-shadow: none
+                }
+
+                .btn-secondary {
+                        background: var(--grey-soft);
+                        color: var(--fg);
+                        border-radius: 14px;
+                        padding: 10px 16px;
+                        font-size: 14px;
+                        font-weight: 600
+                }
+
+                .btn-secondary:hover {
+                        filter: brightness(.97)
+                }
+
+                .btn-secondary:active {
+                        filter: brightness(.94)
+                }
+
+                .spinner {
+                        width: 16px;
+                        height: 16px;
+                        border: 2px solid rgba(255, 255, 255, .6);
+                        border-top-color: #fff;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                        display: none
+                }
+
+                @keyframes spin {
+                        to {
+                                transform: rotate(360deg)
+                        }
+                }
+
+                .loading .spinner {
+                        display: inline-block
+                }
+
+                .loading .labeltext {
+                        display: none
+                }
+
+                .label {
+                        font-size: 12px;
+                        text-transform: uppercase;
+                        letter-spacing: .08em;
+                        color: var(--muted);
+                        margin-bottom: 8px;
+                        padding-left: var(--content-indent);
+                }
+
+                /* visually hidden label for a11y */
+                .sr-only {
+                        position: absolute;
+                        width: 1px;
+                        height: 1px;
+                        padding: 0;
+                        margin: -1px;
+                        overflow: hidden;
+                        clip: rect(0, 0, 0, 0);
+                        white-space: nowrap;
+                        border: 0;
+                }
+
+                /* compact select styled like your secondary buttons */
+                .select-model {
+                        background: var(--grey-soft);
+                        color: var(--fg);
+                        border: none;
+                        border-radius: 14px;
+                        padding: 10px 12px;
+                        font-size: 14px;
+                        font-weight: 600;
+                }
+
+                .select-model:disabled {
+                        opacity: .65;
+                        cursor: not-allowed;
+                }
+
+                .summary {
+                        border: 1px solid var(--border);
+                        border-radius: 14px;
+                        background: var(--grey-soft);
+                        padding: 14px;
+                        min-height: 140px;
+                        white-space: normal;
+                        font-size: 14px
+                }
+
+                .summary h1 {
+                        font-size: 24px;
+                        margin: 0 0 8px
+                }
+
+                .summary h2 {
+                        font-size: 18px;
+                        margin: 14px 0 6px
+                }
+
+                .summary p {
+                        margin: 6px 0
+                }
+
+                .summary ul {
+                        margin: 6px 0 6px 18px;
+                        padding-left: 14px
+                }
+
+                .summary li {
+                        margin: 3px 0
+                }
+
+                .summary .cutoff {
+                        margin-top: 10px;
+                        font-size: 12px;
+                        color: var(--muted)
+                }
+
+                textarea {
+                        width: 100%;
+                        min-height: 120px;
+                        resize: vertical;
+                        padding: 14px 14px;
+                        border-radius: 16px;
+                        border: 1px solid rgba(0, 0, 0, .12);
+                        background: #fff;
+                        outline: none;
+                        line-height: 1.5;
+                        overflow: hidden;
+                        resize: none
+                }
+
+                textarea:focus {
+                        border-color: var(--primary-press);
+                        box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
+                }
+
+                .caption {
+                        font-size: 12px;
+                        color: var(--muted)
+                }
+
+                .toast {
+                        position: fixed;
+                        left: 50%;
+                        bottom: 24px;
+                        transform: translateX(-50%) translateY(20px);
+                        background: #111;
+                        color: #fff;
+                        padding: 10px 14px;
+                        border-radius: 999px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+                        opacity: 0;
+                        pointer-events: none;
+                        transition: transform .35s, opacity .35s
+                }
+
+                .toast.show {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0)
+                }
+
+                .working {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        color: var(--muted);
+                        font-weight: 600
+                }
+
+                .working .dots {
+                        display: inline-flex;
+                        gap: 4px;
+                        margin-left: 2px
+                }
+
+                .working .dots i {
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 50%;
+                        background: var(--muted);
+                        opacity: .25;
+                        animation: dotpulse 1s ease-in-out infinite
+                }
+
+                .working .dots i:nth-child(2) {
+                        animation-delay: .2s
+                }
+
+                .working .dots i:nth-child(3) {
+                        animation-delay: .4s
+                }
+
+                @keyframes dotpulse {
+
+                        0%,
+                        100% {
+                                transform: translateY(0);
+                                opacity: .25
+                        }
+
+                        50% {
+                                transform: translateY(-3px);
+                                opacity: 1
+                        }
+                }
+
+                .skel {
+                        display: grid;
+                        gap: 8px;
+                        margin-top: 10px
+                }
+
+                .skel .line {
+                        height: 10px;
+                        border-radius: 6px;
+                        background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
+                        background-size: 200% 100%;
+                        animation: shimmer 1.2s linear infinite
+                }
+
+                @keyframes shimmer {
+                        0% {
+                                background-position: 200% 0
+                        }
+
+                        100% {
+                                background-position: -200% 0
+                        }
+                }
+
+                #charCount {
+                        margin-left: var(--content-indent);
+                }
+
+                .header>div:first-child {
+                        padding-left: var(--content-indent);
+                }
+
+                /* === CHATBOT === */
+                .chat {
+                        border: 1px solid var(--border);
+                        border-radius: 14px;
+                        background: var(--grey-soft);
+                        padding: 14px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                }
+
+                .chat-messages {
+                        min-height: 273px;
+                        max-height: clamp(360px, 55vh, 720px);
+                        overflow: auto;
+                        display: grid;
+                        gap: 10px;
+                        padding-right: 4px;
+                        align-content: start;
+                        /* don't stretch grid tracks */
+                        align-items: start;
+                        /* don't stretch items */
+                        grid-auto-rows: max-content;
+                }
+
+                .msg {
+                        display: flex;
+                }
+
+                .msg .bubble {
+                        border: 1px solid var(--border);
+                        background: #f7f7f7;
+                        color: var(--fg);
+                        padding: 10px 12px;
+                        border-radius: 14px 14px 4px 14px;
+                        font-size: 14px;
+                        line-height: 1.35;
+                        max-width: 72%;
+                        box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+                }
+
+                /* Bot bubble: white on gray background */
+                .msg.bot .bubble {
+                        background: #fff;
+                        color: var(--fg);
+                        border-color: var(--border);
+                }
+
+                .msg.user {
+                        justify-content: flex-end;
+                }
+
+                .msg.user .bubble {
+                        background: var(--primary-soft);
+                        color: var(--fg);
+                        border-color: var(--border);
+                        border-radius: 14px 14px 14px 4px;
+                }
+
+                .chat-input {
+                        display: flex;
+                        gap: 8px;
+                }
+
+                #chatText {
+                        flex: 1;
+                        border: 1px solid rgba(0, 0, 0, .12);
+                        border-radius: 14px;
+                        padding: 12px 14px;
+                        font: inherit;
+                        outline: none;
+                }
+
+                #chatText:focus {
+                        border-color: var(--primary-press);
+                        box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
+                }
+
+                .typing {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                }
+
+                .typing .dots {
+                        display: inline-flex;
+                        gap: 4px;
+                }
+
+                .typing .dots i {
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 50%;
+                        background: var(--muted);
+                        opacity: .35;
+                        animation: dotpulse 1s ease-in-out infinite;
+                }
+
+                .typing .dots i:nth-child(2) {
+                        animation-delay: .2s;
+                }
+
+                .typing .dots i:nth-child(3) {
+                        animation-delay: .4s;
+                }
+
+                input,
+                textarea,
+                button,
+                select {
+                        font-family: inherit;
+                        font-size: inherit;
+                }
+
+                #comments {
+                        font-size: 14px;
+                }
+
+                /* --- view toggle + panes --- */
+                .viewtoggle {
+                        position: relative;
+                        display: flex;
+                        align-items: center;
+                        gap: 0;
+                        width: 200px;
+                        height: 36px;
+                        padding: 4px;
+                        border-radius: 999px;
+                        background: var(--grey-soft);
+                        border: 1px solid var(--border);
+                        font-weight: 600;
+                        user-select: none;
+                        cursor: pointer;
+                }
+
+                .viewtoggle .label {
+                        flex: 1;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                        margin: 0;
+                        /* reset global .label margin */
+                        padding: 0;
+                        /* reset global .label padding-left */
+                        text-transform: none;
+                        /* stop UPPERCASE */
+                        letter-spacing: 0;
+                        /* reset tracking */
+                        line-height: 1;
+                        /* consistent vertical centering */
+                        color: var(--muted);
+                        position: relative;
+                        z-index: 1;
+                        /* sit above the pill */
+                }
+
+                /* --- ACTIVE LABEL COLOR (white over the blue pill) --- */
+                .card:not(.show-chat) .viewtoggle .label:first-child,
+                .card.show-chat .viewtoggle .label:nth-child(2) {
+                        color: #fff !important;
+                }
+
+                /* --- SPACE BELOW THE SUMMARY BOX --- */
+                #pane-summary .summary {
+                        margin-bottom: 20px;
+                        /* add some space before the COMMENTS title */
+                }
+
+
+                .viewtoggle .pill {
+                        position: absolute;
+                        top: 4px;
+                        left: 4px;
+                        height: 28px;
+                        width: calc(50% - 4px);
+                        border-radius: 999px;
+                        background: var(--primary);
+                        box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+                        transition: transform .2s;
+                        z-index: 0;
+                        /* behind labels */
+                        pointer-events: none;
+                        /* decorative only */
+                }
+
+                /* compact bouncing dots next to "Summary" */
+                .viewtoggle .mini-dots {
+                        display: none;
+                        margin-left: 4px;
+                        gap: 3px;
+                        align-items: center;
+                }
+
+                .viewtoggle .mini-dots i {
+                        width: 4px;
+                        /* smaller dots */
+                        height: 4px;
+                        /* smaller dots */
+                        border-radius: 50%;
+                        background: currentColor;
+                        opacity: .35;
+                        animation: dotpulse 1s ease-in-out infinite;
+                        /* reuse existing animation */
+                }
+
+                .viewtoggle .mini-dots i:nth-child(2) {
+                        animation-delay: .2s;
+                }
+
+                .viewtoggle .mini-dots i:nth-child(3) {
+                        animation-delay: .4s;
+                }
+
+                /* show dots ONLY during summarizing AND when Chat view is selected */
+                .card.show-chat .viewtoggle.is-summarizing .mini-dots {
+                        display: inline-flex;
+                }
+
+                /* slide right when chat is active */
+                .card.show-chat .viewtoggle .pill {
+                        transform: translateX(100%);
+                }
+
+                .card.show-chat #summarizeBtn {
+                        display: none;
+                }
+
+                /* show only one pane at a time */
+                #pane-chat {
+                        display: none;
+                }
+
+                .card.show-chat #pane-chat {
+                        display: block;
+                }
+
+                .card.show-chat #pane-summary {
+                        display: none;
+                }
+
+                .card.show-chat::after {
+                        content: "Generative AI can make mistakes. Check important info.";
+                        display: block;
+                        margin-top: 7px;
+                        font-size: 13px;
+                        color: var(--muted);
+                        text-align: center;
+                }
+
+                .disclaimer-inline {
+                        position: absolute;
+                        left: 0;
+                        right: 0;
+                        text-align: center;
+                        font-size: 11px;
+                        color: var(--muted);
+                        pointer-events: none;
+                }
+
+                /* ===== font bump (minimal) ===== */
+                :root {
+                        --fs: 1.08;
+                }
+
+                /* 8% larger; try 1.05–1.12 */
+
+                body {
+                        font-size: calc(16px * var(--fs));
+                }
+
+                h1 {
+                        font-size: calc(28px * var(--fs));
+                }
+
+                .subtitle {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .btn-primary {
+                        font-size: calc(16px * var(--fs));
+                }
+
+                .btn-secondary,
+                .select-model {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .label,
+                .caption {
+                        font-size: calc(12px * var(--fs));
+                }
+
+                .summary {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .summary h1 {
+                        font-size: calc(24px * var(--fs));
+                }
+
+                .summary h2 {
+                        font-size: calc(18px * var(--fs));
+                }
+
+                .msg .bubble {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                #comments,
+                #chatText {
+                        font-size: calc(14px * var(--fs));
+                }
+
+                .viewtoggle .label {
+                        font-size: calc(14px * var(--fs));
+                }
+        </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="card" role="region" aria-labelledby="title">
-            <div class="header">
-                <div>
-                    <h1 id="title">Alert Summarizer</h1>
-                    <p class="subtitle">Generate a concise summary with one click.</p>
-                </div>
-                <div class="row">
-                    <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
-                        <span class="label">Summary<span class="mini-dots" aria-hidden="true"><i></i><i></i><i></i></span></span>
-                        <span class="label">Chat</span>
-                        <span id="togglePill" class="pill" aria-hidden="true"></span>
-                    </div>
-                </div>
-            </div>
-            <div id="pane-summary">
-                <div>
-                    <div class="label">Summary</div>
-                    <div id="summary" class="summary" role="region" aria-live="polite">Press
-                        “Summarize” to
-                        generate a concise alert summary.</div>
-                </div>
-
-                <div class="row" style="justify-content:flex-end;margin-top:8px">
-                    <label for="modelSelect" class="sr-only">Model</label>
-                    <select id="modelSelect" class="select-model" aria-label="Model">
-                        <option value="gpt-5-nano" selected>GPT-5 nano</option>
-                        <option value="gpt-5-mini">GPT-5 mini</option>
-                        <option value="gpt-5">GPT-5</option>
-
-                    </select>
-
-                    <button id="summarizeBtn" class="btn-primary" aria-busy="false">
-                        <span class="spinner" aria-hidden="true"></span>
-                        <span class="labeltext">Summarize</span>
-                    </button>
-                </div>
-
-                <div>
-                    <div class="label">Comments</div>
-                    <textarea id="comments" placeholder="Add comments on the generated response and the alert in general…"></textarea>
-                    <div class="row" style="justify-content:space-between;margin-top:8px">
-                        <span id="charCount" class="caption">0 / 2000</span>
-                        <span class="caption disclaimer-inline">Generative AI can make mistakes.
-                            Check important info.</span>
-                        <div class="row">
-                            <button id="clearBtn" class="btn-secondary" type="button">Clear</button>
-                            <button id="saveBtn" class="btn-secondary" type="button">Save
-                                Comment</button>
+        <div class="container">
+                <div class="card" role="region" aria-labelledby="title">
+                        <div class="header">
+                                <div>
+                                        <h1 id="title">Alert Summarizer</h1>
+                                        <p class="subtitle">Generate a concise summary with one click.</p>
+                                </div>
+                                <div class="row">
+                                        <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
+                                                <span class="label">Summary<span class="mini-dots"
+                                                                aria-hidden="true"><i></i><i></i><i></i></span></span>
+                                                <span class="label">Chat</span>
+                                                <span id="togglePill" class="pill" aria-hidden="true"></span>
+                                        </div>
+                                </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                        <div id="pane-summary">
+                                <div>
+                                        <div class="label">Summary</div>
+                                        <div id="summary" class="summary" role="region" aria-live="polite">Press
+                                                “Summarize” to
+                                                generate a concise alert summary.</div>
+                                </div>
 
-            <div id="pane-chat">
-                <div>
-                    <div class="label">Chat</div>
-                    <div class="chat" id="chat">
-                        <div id="chatMessages" class="chat-messages" role="region" aria-live="polite">
-                        </div>
-                        <div class="chat-input">
-                            <input id="chatText" type="text" placeholder="Ask any question about this alert…" />
-                            <button id="chatSendBtn" class="btn-primary" type="button" disabled>Send</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                                <div class="row" style="justify-content:flex-end;margin-top:8px">
+                                        <label for="modelSelect" class="sr-only">Model</label>
+                                        <select id="modelSelect" class="select-model" aria-label="Model">
+                                                <option value="gpt-5-nano" selected>GPT-5 nano</option>
+                                                <option value="gpt-5-mini" >GPT-5 mini</option>
+                                                <option value="gpt-5">GPT-5</option>
 
+                                        </select>
+
+                                        <button id="summarizeBtn" class="btn-primary" aria-busy="false">
+                                                <span class="spinner" aria-hidden="true"></span>
+                                                <span class="labeltext">Summarize</span>
+                                        </button>
+                                </div>
+
+                                <div>
+                                        <div class="label">Comments</div>
+                                        <textarea id="comments"
+                                                placeholder="Add comments on the generated response and the alert in general…"></textarea>
+                                        <div class="row" style="justify-content:space-between;margin-top:8px">
+                                                <span id="charCount" class="caption">0 / 2000</span>
+                                                <span class="caption disclaimer-inline">Generative AI can make mistakes.
+                                                        Check important info.</span>
+                                                <div class="row">
+                                                        <button id="clearBtn" class="btn-secondary"
+                                                                type="button">Clear</button>
+                                                        <button id="saveBtn" class="btn-secondary" type="button">Save
+                                                                Comment</button>
+                                                </div>
+                                        </div>
+                                </div>
+                        </div>
+
+                        <!-- Chatbot -->
+                        <div id="pane-chat">
+                                <div>
+                                        <div class="label">Chat</div>
+                                        <div class="chat" id="chat">
+                                                <div id="chatMessages" class="chat-messages" role="region"
+                                                        aria-live="polite">
+                                                </div>
+                                                <div class="chat-input">
+                                                        <input id="chatText" type="text"
+                                                                placeholder="Ask any question about this alert…" />
+                                                        <button id="chatSendBtn" class="btn-primary" type="button"
+                                                                disabled>Send</button>
+                                                </div>
+                                        </div>
+                                </div>
+                        </div>
+
+                </div>
         </div>
-    </div>
 
-    <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
+        <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
-    <script>
-        // ===== CONFIG =====
-        const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
-        const CSRF_PRIMER_URL = '/microanalyticScore/modules';
-        let ALERT_ID = null; // will be filled by VA
-        let resolveAlertIdReady;
-        const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
-        // track the source for diagnostics
-        let ALERT_ID_SOURCE = 'unset';
-        console.log('[id] init: waiting for alert id (from VA or URL)');
+        <script>
+                // ===== CONFIG =====
+                const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
+                const CSRF_PRIMER_URL = '/microanalyticScore/modules';
+                let ALERT_ID = null;               // will be filled by VA
+                let resolveAlertIdReady;
+                const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
+                // track the source for diagnostics
+                let ALERT_ID_SOURCE = 'unset';
+                console.log('[id] init: waiting for alert id (from VA or URL)');
 
-        // OpenAI Responses API settings
-        const OPENAI_URL = 'https://api.openai.com/v1/responses';
-        const OPENAI_SUMMARY_MODEL = 'gpt-5-mini';
-        const OPENAI_CHAT_MODEL = 'gpt-5-mini';
 
-        // === CHAT MEMORY ===
-        const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
 
-        // ===== UI =====
-        const summarizeBtn = document.getElementById('summarizeBtn');
-        const summaryEl = document.getElementById('summary');
-        const commentsEl = document.getElementById('comments');
-        const charCountEl = document.getElementById('charCount');
-        const saveBtn = document.getElementById('saveBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const toast = document.getElementById('toast');
-        const modelSelect = document.getElementById('modelSelect');
+                // OpenAI Responses API settings
+                const OPENAI_URL = 'https://api.openai.com/v1/responses';
+                const OPENAI_SUMMARY_MODEL = 'gpt-5-mini';
+                const OPENAI_CHAT_MODEL = 'gpt-5-mini';
 
-        // disable until VA sends the ID
-        summarizeBtn.disabled = true;
+                // === CHAT MEMORY ===
+                const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
 
-        // === MAS PREFETCH (NEW) ===
-        let summaryCache = null,
-            chatCache = null;
-        let summaryMasPromise = null,
-            chatMasPromise = null;
+                // ===== UI =====
+                const summarizeBtn = document.getElementById('summarizeBtn');
+                const summaryEl = document.getElementById('summary');
+                const commentsEl = document.getElementById('comments');
+                const charCountEl = document.getElementById('charCount');
+                const saveBtn = document.getElementById('saveBtn');
+                const clearBtn = document.getElementById('clearBtn');
+                const toast = document.getElementById('toast');
+                const modelSelect = document.getElementById('modelSelect');
 
-        async function prefetchSummary() {
-            await alertIdReady;
-            const csrf = await getCsrfToken();
-            const payload = {
-                inputs: [{
-                    name: "ALERT_ID_",
-                    value: ALERT_ID
-                }, {
-                    name: "SUMMARY_OR_CHAT_",
-                    value: "summary"
-                }]
-            };
-            const res = await fetch(MODULE_URI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf
-                },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
 
-            const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                // disable until VA sends the ID
+                summarizeBtn.disabled = true;
 
-            console.log("MAS mapped outputs:", out);
-            summaryCache = {
-                systemPrompt: out['systemPrompt'],
-                key: out['key'],
-                cutoff: out['CUTOFF_DATE']
-            };
+                // === MAS PREFETCH (NEW) ===
+                let summaryCache = null, chatCache = null;
+                let summaryMasPromise = null, chatMasPromise = null;
 
-            console.log('[id] summaryCache ', summaryCache);
+                async function prefetchSummary() {
+                        await alertIdReady;
+                        const csrf = await getCsrfToken();
+                        const payload = {
+                                inputs: [
+                                        { name: "ALERT_ID_", value: ALERT_ID },
+                                        { name: "SUMMARY_OR_CHAT_", value: "summary" }
+                                ]
+                        };
+                        const res = await fetch(MODULE_URI, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                credentials: 'include',
+                                body: JSON.stringify(payload)
+                        });
+                        
+                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                        
+                        console.log("MAS mapped outputs:", out); 
+                        summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
 
-            return summaryCache;
-        }
+                        console.log('[id] summaryCache ', summaryCache);
 
-        async function prefetchChat() {
-            await alertIdReady;
-            const csrf = await getCsrfToken();
-            const payload = {
-                inputs: [{
-                    name: "ALERT_ID_",
-                    value: ALERT_ID
-                }, {
-                    name: "SUMMARY_OR_CHAT_",
-                    value: "chat"
-                }]
-            };
-            const res = await fetch(MODULE_URI, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrf
-                },
-                credentials: 'include',
-                body: JSON.stringify(payload)
-            });
-            const out = outputsToMap(JSON.parse(await res.text()).outputs);
-            chatCache = {
-                dataString: out['systemPrompt'] || '',
-                key: out['key']
-            };
-            return chatCache;
-        }
-
-        function startPrefetch() {
-            if (!summaryMasPromise)
-                summaryMasPromise = prefetchSummary().catch(e => {
-                    console.error('Failed to prefetch summary:', e);
-                    return null;
-                });
-            if (!chatMasPromise)
-                chatMasPromise = prefetchChat().catch(e => {
-                    console.error('Failed to prefetch chat:', e);
-                    return null;
-                });
-        }
-
-        // The corrected streamOpenAIResponse function
-        async function streamOpenAIResponse(messages, targetEl) {
-            targetEl.innerHTML = '';
-            const controller = new AbortController();
-            const signal = controller.signal;
-            const payload = {
-                messages,
-                stream: true,
-                model: modelSelect.value,
-            };
-
-            try {
-                const response = await fetch(OPENAI_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload),
-                    signal,
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                        return summaryCache;
                 }
 
-                const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-                let fullResponse = '';
-                while (true) {
-                    const {
-                        value,
-                        done
-                    } = await reader.read();
-                    if (done) break;
-                    fullResponse += value;
-                    targetEl.innerHTML = marked.parse(fullResponse); // Use a markdown parser
+                async function prefetchChat() {
+                        await alertIdReady;
+                        const csrf = await getCsrfToken();
+                        const payload = {
+                                inputs: [
+                                        { name: "ALERT_ID_", value: ALERT_ID },
+                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
+                                ]
+                        };
+                        const res = await fetch(MODULE_URI, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                credentials: 'include',
+                                body: JSON.stringify(payload)
+                        });
+                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                        chatCache = { dataString: out['systemPrompt'] || '', key: out['key'] };
+                        return chatCache;
                 }
-                return fullResponse;
-            } catch (error) {
-                console.error('Streaming failed:', error);
-                targetEl.innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
-                return null;
-            } finally {
-                controller.abort();
-            }
-        }
-    </script>
+
+                function startPrefetch() {
+                        if (!summaryMasPromise)
+                                summaryMasPromise = prefetchSummary().catch(e => {
+                                        console.error('[prefetch summary]', e); summaryMasPromise = null; throw e;
+                                });
+                        if (!chatMasPromise)
+                                chatMasPromise = (summaryMasPromise || prefetchSummary())
+                                        .then(() => prefetchChat())
+                                        .catch(e => { console.error('[prefetch chat]', e); chatMasPromise = null; throw e; });
+                }
+
+
+
+                const COMMENT_LIMIT = 2000;
+                // Auto-expand the comment box
+                const autoResize = el => {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                };
+                commentsEl.addEventListener('input', () => autoResize(commentsEl));
+                window.addEventListener('load', () => autoResize(commentsEl));
+                commentsEl.addEventListener('input', () => {
+                        if (commentsEl.value.length > COMMENT_LIMIT) {
+                                commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
+                        }
+                        charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
+                });
+                commentsEl.dispatchEvent(new Event('input'));
+
+                // 1) If an alertId is provided via URL (optional fallback), use it
+                const urlAlertId = new URLSearchParams(location.search).get('alertId');
+                if (urlAlertId) {
+                        ALERT_ID = urlAlertId;
+                        ALERT_ID_SOURCE = 'url';
+                        console.log('[id] Using URL parameter ?alertId=', ALERT_ID);
+                        resolveAlertIdReady?.(ALERT_ID);
+                        summarizeBtn.disabled = false;
+                        startPrefetch();
+                        console.log('[id] summarizeBtn enabled (source=url)');
+                }
+
+                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
+                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                        console.log('[id] VA message received:', vaMsgObj);
+
+                        const paramVal = vaMsgObj?.parameters?.[0]?.value;
+                        const dataVal = vaMsgObj?.data?.[0]?.[0];
+
+                        console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
+
+                        const candidate = paramVal || dataVal;
+                        
+                        //if (candidate && candidate !== ALERT_ID) {
+                                ALERT_ID = String(candidate);
+                                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
+                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
+                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                                summarizeBtn.disabled = false;            // enable the button now that we have it
+                                startPrefetch();
+                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
+                        //}
+                });
+
+                function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
+                function renderWorking(message) {
+                        summaryEl.innerHTML = `<div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="skel"><div class="line" style="width:88%"></div><div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
+                }
+                function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])); }
+
+                // ===== Helpers =====
+                async function getCsrfToken() {
+                        const res = await fetch(CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
+                        return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
+                }
+                function outputsToMap(outputs) { const m = {}; (outputs || []).forEach(o => m[o.name] = o.value); return m; }
+
+                function extractOpenAIText(j) {
+                        if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
+                        if (Array.isArray(j?.output)) {
+                                for (const item of j.output) {
+                                        const content = item?.content;
+                                        if (Array.isArray(content)) {
+                                                for (const c of content) {
+                                                        if (typeof c?.text === 'string' && c.text.trim()) return c.text;
+                                                        if (c?.type === 'output_text' && c?.text) return c.text;
+                                                }
+                                        }
+                                }
+                        }
+                        if (j?.choices?.[0]?.message?.content) return j.choices[0].message.content;
+                        return null;
+                }
+
+                function trimChars(s, max = 8000) {
+                        if (!s) return '';
+                        return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
+                }
+
+                // Build the chat system prompt locally using MAS "chat" data string + user message.
+                function buildChatPrompt(dataString, userMessage, history = []) {
+                        const system = [
+                                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
+                                'Customer/alert-specific facts MUST come only from the Data section.',
+                                'If a requested detail is missing in Data, be very clear that it is missing. Do not invent values.',
+                                'You MAY add general AML knowledge (regulations, definitions, typologies).',
+                                'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
+                                'Start by directly answering the question',
+                                'Only answer questions related to AML',
+                                'Avoid exposing or inferring PII beyond what appears in Data.',
+                                `Alert ID: ${ALERT_ID || 'unknown'}`
+                        ].join(' ');
+
+                        // Use up to the last 3 exchanges (i.e., 6 messages), excluding the current user message if already added.
+                        let hist = Array.isArray(history) ? history.slice() : [];
+                        if (hist.length && hist[hist.length - 1].role === 'user') hist.pop(); // drop current turn if already pushed
+                        const recent = hist.slice(-6);
+                        const historyBlock = recent.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+
+                        return [
+                                `SYSTEM:\n${system}`,
+                                historyBlock ? `HISTORY (last ${Math.floor(recent.length / 2)} exchanges):\n${trimChars(historyBlock, 2000)}` : null,
+                                `DATA:\n${trimChars(dataString, 7000)}`,
+                                `USER:\n${userMessage}`,
+                                'ASSISTANT:'
+                        ].filter(Boolean).join('\n\n');
+                }
+
+                async function chatQuery(userText) {
+                        // Ensure we have an ALERT_ID (VA or URL)
+                        if (!ALERT_ID) {
+                                addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
+                                await alertIdReady;
+                        }
+
+                        const cc = chatCache || await (chatMasPromise || (startPrefetch(), chatMasPromise));
+                        const apiKey = cc.key || summaryCache?.key;
+                        if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
+
+                        const prompt = buildChatPrompt(cc.dataString, userText, chatHistory);
+                        const reply = await callOpenAI(prompt, apiKey, OPENAI_CHAT_MODEL);
+                        return reply.trim();
+                }
+
+                async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL) {
+                        const body = {
+                                model: chosen_model,
+                                input: systemPrompt,
+                                reasoning: { effort: "medium" },
+                                text: { verbosity: "low" }
+                        };
+                        const res = await fetch(OPENAI_URL, {
+                                method: 'POST',
+                                headers: {
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${apiKey}`
+                                },
+                                body: JSON.stringify(body)
+                        });
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                        const txt = extractOpenAIText(json);
+                        if (!txt) throw new Error('LLM returned no text payload');
+                        return txt;
+                }
+
+                // ===== Main action =====
+                async function summarize() {
+                        // Wait until VA supplies the alert id (or URL fallback)
+                        if (!ALERT_ID) {
+                                renderWorking('Waiting for Alert ID from Visual Analytics');
+                                await alertIdReady;
+                        }
+                        console.log(`[id] summarize() with ALERT_ID=${ALERT_ID} (source=${ALERT_ID_SOURCE})`);
+
+                        summarizeBtn.disabled = true;
+                        summarizeBtn.classList.add('loading');
+                        summarizeBtn.setAttribute('aria-busy', 'true');
+
+                        const loadingMessages = [
+                                // Serious
+                                "Investigating suspicious activity",
+                                "Connecting the dots between transactions",
+                                "Cross-referencing KYC data",
+                                "Scanning network relationships",
+                                "Following the money trail",
+                                "Reviewing scenario triggers",
+                                "Generating advanced insights",
+                                "Running enhanced due diligence protocols",
+                                "Finding patterns no human could see",
+                                "Hunting for needle-in-a-haystack transfers",
+                                "Checking for unusual velocity spikes",
+                                "Sifting through transaction histories",
+                                "Raising potential red flags",
+                                "Flagging politically exposed persons",
+                                "Analyzing cash structuring patterns",
+                                "Verifying source of funds",
+
+                                // Fun
+                                "Searching mattress stores (politely)",
+                                "Following the breadcrumbs",
+                                "Checking today's horoscope",
+                                "Patrolling the data streets at night",
+                                "With great power comes great compliance responsibility – Uncle Ben",
+                                "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
+                                "May the fraud be with you – Star Wars",
+                                "Looking for the usual suspects",
+                                "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
+                                "The name’s Bond... Transaction Bond – James Bond",
+                                "Houston, we have a suspicious transfer – Apollo 13",
+                                "Winter is coming... for fraudsters – Game of Thrones",
+                                "Binge-watching transaction histories"
+                        ];
+
+                        // shuffle once, then cycle
+                        const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
+                        let msgIndex = 0;
+                        const ROTATE_MS = 4000; // slower pace
+
+                        renderWorking(shuffledMessages[msgIndex]);
+                        const timer = setInterval(() => {
+                                msgIndex = (msgIndex + 1) % shuffledMessages.length;
+                                renderWorking(shuffledMessages[msgIndex]);
+                        }, ROTATE_MS);
+
+                        toggleEl.classList.add('is-summarizing');
+                        toggleEl.setAttribute('aria-busy', 'true');
+
+                        try {
+                                // 2) Call OpenAI with MAS-provided key
+                                const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;
+                                const s = summaryCache || await (summaryMasPromise || (startPrefetch(), summaryMasPromise));
+                                if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
+                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
+
+                                const llmText = await callOpenAI(s.systemPrompt, s.key, chosenModel);
+
+                                // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
+                                summaryEl.innerHTML = `${llmText}${s.cutoff ? `<div class="cutoff">${s.cutoff}</div>` : ''}`;
+                        } catch (e) {
+                                summaryEl.textContent = `Error:\n${e.message}`;
+                                console.error(e);
+                        } finally {
+                                clearInterval(timer);
+                                summarizeBtn.disabled = false;
+                                summarizeBtn.classList.remove('loading');
+                                summarizeBtn.setAttribute('aria-busy', 'false');
+                                toggleEl.classList.remove('is-summarizing');
+                                toggleEl.removeAttribute('aria-busy');
+                        }
+                }
+
+                function saveComment() {
+                        const key = 'aml-summary-comments';
+                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                        const entry = { ts: new Date().toISOString(), alertId: ALERT_ID, comment: commentsEl.value.trim(), summary: summaryEl.textContent.trim() };
+                        if (!entry.comment) { showToast('Nothing to save'); return; }
+                        existing.push(entry); localStorage.setItem(key, JSON.stringify(existing)); showToast('Comment saved locally');
+                }
+                function clearComment() { commentsEl.value = ''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
+
+                document.getElementById('summarizeBtn').addEventListener('click', summarize);
+                saveBtn.addEventListener('click', saveComment);
+                clearBtn.addEventListener('click', clearComment);
+
+                // === CHATBOT ===
+                const chatMessages = document.getElementById('chatMessages');
+                const chatText = document.getElementById('chatText');
+                const chatSendBtn = document.getElementById('chatSendBtn');
+                let chatBusy = false; // true while a request is in flight
+
+                const refreshSend = () => {
+                        const empty = chatText.value.trim().length === 0;
+                        chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
+                };
+
+
+                // initialize + update on typing
+                refreshSend();
+                chatText.addEventListener('input', refreshSend);
+
+
+
+                function addMessage(role, html) {
+                        const wrap = document.createElement('div');
+                        wrap.className = 'msg ' + role;
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        bubble.innerHTML = html;
+                        wrap.appendChild(bubble);
+                        chatMessages.appendChild(wrap);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+
+                function showBotThinking() {
+                        const wrap = document.createElement('div');
+                        wrap.className = 'msg bot';
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
+                        wrap.appendChild(bubble);
+                        chatMessages.appendChild(wrap);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        return () => { wrap.remove(); };
+                }
+
+                async function handleSend() {
+                        const text = chatText.value.trim();
+                        if (!text) return;
+
+                        addMessage('user', escapeHtml(text));
+                        chatHistory.push({ role: 'user', content: text });
+                        chatText.value = '';
+                        chatBusy = true;     // lock while thinking
+                        refreshSend();
+
+                        const stopThinking = showBotThinking();
+                        try {
+                                const reply = await chatQuery(text);
+                                addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
+                                chatHistory.push({ role: 'assistant', content: reply });
+                                if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
+                        } catch (e) {
+                                addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
+                                console.error('[chat] error:', e);
+                                if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
+                        } finally {
+                                stopThinking();
+                                chatBusy = false;  // unlock, then reflect current input content
+                                refreshSend();     // stays disabled if the box is empty
+                                chatText.focus();
+                        }
+                }
+
+
+                // Enter to send (Shift+Enter to add a newline later if you switch to a textarea)
+                chatSendBtn.addEventListener('click', handleSend);
+                chatText.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSend();
+                        }
+                });
+
+                // Seed with a welcome message
+                addMessage('bot',
+                        "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+
+                // === VIEW TOGGLE ===
+                const cardEl = document.querySelector('.card');
+                const titleEl = document.getElementById('title');
+                const subtitleEl = document.querySelector('.subtitle');
+                const toggleEl = document.getElementById('viewToggle');
+
+                function setView(showChat) {
+                        cardEl.classList.toggle('show-chat', showChat);
+                        titleEl.textContent = showChat ? 'Alert Chat' : 'Alert Summarizer';
+                        subtitleEl.textContent = showChat
+                                ? 'Converse with our chatbot for alert insights.'
+                                : 'Generate a concise summary with one click.';
+                        toggleEl.setAttribute('aria-checked', showChat ? 'true' : 'false');
+                }
+
+                // click anywhere on the toggle to switch
+                toggleEl.addEventListener('click', () => setView(!cardEl.classList.contains('show-chat')));
+
+                // default to Summary view
+                setView(false);
+
+        </script>
 </body>
+
 </html>
