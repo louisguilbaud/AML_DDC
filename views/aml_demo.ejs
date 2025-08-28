@@ -807,7 +807,14 @@
                                 credentials: 'include',
                                 body: JSON.stringify(payload)
                         });
+                        
+                        // Add for debugging purpose 
+                        const raw = await res.text();
+                        console.log("MAS raw response text:", raw);
+
                         const out = outputsToMap(JSON.parse(await res.text()).outputs);
+                        
+                        console.log("MAS mapped outputs:", out); 
                         summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
 
                         console.log('[id] summaryCache ', summaryCache);
