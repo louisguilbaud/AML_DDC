@@ -36,13 +36,11 @@
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
                 }
 
-                 .container {
+                .container {
                         width: min(96vw, 1440px);
                         max-width: 1440px;
                         margin: 2vh auto 8vh;
-                        padding: 0 24px
-                    width: 100vw;      
-                    max-width: 2800px;        
+                        padding: 0 24px      
                 }
 
                 .card {
@@ -982,27 +980,57 @@
                         return reply.trim();
                 }
 
-                async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL) {
-                        const body = {
-                                model: chosen_model,
-                                input: systemPrompt,
-                                reasoning: { effort: "medium" },
-                                text: { verbosity: "low" }
-                        };
-                        const res = await fetch(OPENAI_URL, {
-                                method: 'POST',
-                                headers: {
-                                        'Accept': 'application/json',
-                                        'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${apiKey}`
-                                },
-                                body: JSON.stringify(body)
-                        });
-                        const json = await res.json().catch(() => ({}));
-                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = extractOpenAIText(json);
-                        if (!txt) throw new Error('LLM returned no text payload');
-                        return txt;
+                async function callOpenAIStream(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL, onToken) {
+                    const body = {
+                        model: chosen_model,
+                        input: systemPrompt,
+                        reasoning: { effort: "medium" },
+                        text: { verbosity: "low" },
+                        // streaming key
+                        stream: true
+                    };
+
+                    const res = await fetch(OPENAI_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'text/event-stream',
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buffer = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+
+                        // process each SSE line
+                        for (let i = 0; i < lines.length - 1; i++) {
+                            const line = lines[i].trim();
+                            if (line.startsWith('data:')) {
+                                const payload = line.slice(5).trim();
+                                if (payload === '[DONE]') return;
+                                try {
+                                    const parsed = JSON.parse(payload);
+                                    const token = extractOpenAIText(parsed);
+                                    if (token && onToken) onToken(token);
+                                } catch (e) {
+                                    console.warn('Could not parse token', payload, e);
+                                }
+                            }
+                        }
+
+                        // keep leftover for next chunk
+                        buffer = lines[lines.length - 1];
+                    }
                 }
 
                 // ===== Main action =====
@@ -1068,19 +1096,22 @@
                         toggleEl.setAttribute('aria-busy', 'true');
 
                         try {
-                                // 2) Call OpenAI with MAS-provided key
-                                const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;
-                                const s = summaryCache || await (summaryMasPromise || (startPrefetch(), summaryMasPromise));
-                                if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
-                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
+                            const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;
+                            const s = summaryCache || await (summaryMasPromise || (startPrefetch(), summaryMasPromise));
+                            if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
+                            if (!s?.key) throw new Error('OpenAI API key missing from MAS');
 
-                                const llmText = await callOpenAI(s.systemPrompt, s.key, chosenModel);
+                            summaryEl.innerHTML = ''; // clear previous summary
+                            await callOpenAIStream(s.systemPrompt, s.key, chosenModel, (token) => {
+                                summaryEl.innerHTML += token;
+                            });
 
-                                // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
-                                summaryEl.innerHTML = `${llmText}${s.cutoff ? `<div class="cutoff">${s.cutoff}</div>` : ''}`;
+                            if (s.cutoff) {
+                                summaryEl.innerHTML += `<div class="cutoff">${s.cutoff}</div>`;
+                            }
                         } catch (e) {
-                                summaryEl.textContent = `Error:\n${e.message}`;
-                                console.error(e);
+                            summaryEl.textContent = `Error:\n${e.message}`;
+                            console.error(e);
                         } finally {
                                 clearInterval(timer);
                                 summarizeBtn.disabled = false;
