@@ -867,7 +867,7 @@
                 });
                 commentsEl.dispatchEvent(new Event('input'));
 
-                // 1) If an alertId is provided via URL (optional fallback), use it
+                // 1) If an alertId is provided via URL use it
                 const urlAlertId = new URLSearchParams(location.search).get('alertId');
                 if (urlAlertId) {
                         ALERT_ID = urlAlertId;
@@ -884,22 +884,20 @@
                         console.log('[id] VA message received:', vaMsgObj);
 
                         const paramVal = vaMsgObj?.parameters?.[0]?.value;
-                        const dataVal = vaMsgObj?.data?.[0]?.[0];
 
-                        console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
+                        console.log('[id] candidates -> paramVal:', paramVal);
 
-                        const candidate = paramVal || dataVal;
-
-                        //if (candidate && candidate !== ALERT_ID) {
-                        ALERT_ID = String(candidate);
-                        ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
-                        console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                        resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                        summarizeBtn.disabled = false;            // enable the button now that we have it
-                        startPrefetch();
-                        console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
-                        //}
-                });
+                        if (paramVal != null) {  // Only override if VA actually has a value
+                                ALERT_ID = String(paramVal);
+                        
+                                ALERT_ID_SOURCE = 'va-parameter';
+                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
+                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                                summarizeBtn.disabled = false;            // enable the button now that we have it
+                                startPrefetch();
+                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
+                                }
+                        });
 
                 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
                 function renderWorking(message) {
