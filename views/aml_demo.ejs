@@ -761,6 +761,7 @@
                 const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
                 // track the source for diagnostics
                 let ALERT_ID_SOURCE = 'unset';
+                const nextFrame = () => new Promise(requestAnimationFrame);
                 console.log('[id] init: waiting for alert id (from VA or URL)');
 
 
@@ -1111,6 +1112,9 @@
                         const ROTATE_MS = 4000; // slower pace
 
                         renderWorking(shuffledMessages[msgIndex]);
+                        await nextFrame();
+
+
                         const timer = setInterval(() => {
                                 msgIndex = (msgIndex + 1) % shuffledMessages.length;
                                 renderWorking(shuffledMessages[msgIndex]);
@@ -1126,15 +1130,18 @@
                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
                                 if (!s?.key) throw new Error('OpenAI API key missing from MAS');
 
-                                summaryEl.innerHTML = ''; // clear skeleton
+                                let started = false;
                                 let finalText = await callOpenAI(
                                         s.systemPrompt,
                                         s.key,
                                         chosenModel,
-                                        (_delta, full) => { summaryEl.innerHTML = full; } // live update
+                                        (_delta, full) => {
+                                                if (!started) { started = true; /* first chunk replaces skeleton */ }
+                                                summaryEl.innerHTML = full;
+                                        }
                                 );
                                 if (s.cutoff) summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
-                                
+
                         } catch (e) {
                                 summaryEl.textContent = `Error:\n${e.message}`;
                                 console.error(e);
