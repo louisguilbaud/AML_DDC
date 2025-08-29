@@ -36,13 +36,12 @@
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
                 }
 
-                 .container {
+                .container {
                         width: min(96vw, 1440px);
                         max-width: 1440px;
                         margin: 2vh auto 8vh;
-                        padding: 0 24px
-                    width: 100vw;      
-                    max-width: 2800px;        
+                        padding: 0 24px width: 100vw;
+                        max-width: 2800px;
                 }
 
                 .card {
@@ -701,7 +700,7 @@
                                         <label for="modelSelect" class="sr-only">Model</label>
                                         <select id="modelSelect" class="select-model" aria-label="Model">
                                                 <option value="gpt-5-nano" selected>GPT-5 nano</option>
-                                                <option value="gpt-5-mini" >GPT-5 mini</option>
+                                                <option value="gpt-5-mini">GPT-5 mini</option>
                                                 <option value="gpt-5">GPT-5</option>
 
                                         </select>
@@ -807,10 +806,10 @@
                                 credentials: 'include',
                                 body: JSON.stringify(payload)
                         });
-                        
+
                         const out = outputsToMap(JSON.parse(await res.text()).outputs);
-                        
-                        console.log("MAS mapped outputs:", out); 
+
+                        console.log("MAS mapped outputs:", out);
                         summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
 
                         console.log('[id] summaryCache ', summaryCache);
@@ -889,15 +888,15 @@
                         console.log('[id] candidates -> paramVal:', paramVal, 'dataVal:', dataVal);
 
                         const candidate = paramVal || dataVal;
-                        
+
                         //if (candidate && candidate !== ALERT_ID) {
-                                ALERT_ID = String(candidate);
-                                ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
-                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                                summarizeBtn.disabled = false;            // enable the button now that we have it
-                                startPrefetch();
-                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
+                        ALERT_ID = String(candidate);
+                        ALERT_ID_SOURCE = (paramVal != null) ? 'va-parameter' : 'va-data';
+                        console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
+                        resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
+                        summarizeBtn.disabled = false;            // enable the button now that we have it
+                        startPrefetch();
+                        console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
                         //}
                 });
 
@@ -982,28 +981,81 @@
                         return reply.trim();
                 }
 
-                async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL) {
+                async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL, onDelta /* optional */) {
                         const body = {
                                 model: chosen_model,
                                 input: systemPrompt,
                                 reasoning: { effort: "medium" },
-                                text: { verbosity: "low" }
+                                text: { verbosity: "low" },
+                                stream: !!onDelta
                         };
+
                         const res = await fetch(OPENAI_URL, {
                                 method: 'POST',
                                 headers: {
-                                        'Accept': 'application/json',
+                                        'Authorization': `Bearer ${apiKey}`,
                                         'Content-Type': 'application/json',
-                                        'Authorization': `Bearer ${apiKey}`
+                                        'Accept': onDelta ? 'text/event-stream' : 'application/json'
                                 },
                                 body: JSON.stringify(body)
                         });
-                        const json = await res.json().catch(() => ({}));
-                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = extractOpenAIText(json);
-                        if (!txt) throw new Error('LLM returned no text payload');
-                        return txt;
+
+                        if (!onDelta) {
+                                const json = await res.json().catch(() => ({}));
+                                if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                                const txt = extractOpenAIText(json);
+                                if (!txt) throw new Error('LLM returned no text payload');
+                                return txt;
+                        }
+
+                        // --- Streaming path (SSE) ---
+                        if (!res.ok || !res.body) {
+                                const text = await res.text().catch(() => '');
+                                throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
+                        }
+
+                        const reader = res.body.getReader();
+                        const decoder = new TextDecoder();
+                        let carry = '';
+                        let full = '';
+
+                        while (true) {
+                                const { value, done } = await reader.read();
+                                if (done) break;
+                                carry += decoder.decode(value, { stream: true });
+
+                                // Split Server-Sent-Event frames
+                                const frames = carry.split('\n\n');
+                                carry = frames.pop() || '';
+
+                                for (const frame of frames) {
+                                        // concatenate all data: lines in the frame
+                                        const dataLines = frame
+                                                .split('\n')
+                                                .filter(l => l.startsWith('data:'))
+                                                .map(l => l.slice(5).trim())
+                                                .join('\n');
+
+                                        if (!dataLines || dataLines === '[DONE]') continue;
+
+                                        let evt;
+                                        try { evt = JSON.parse(dataLines); } catch { continue; }
+
+                                        if (evt.type === 'response.output_text.delta') {
+                                                const delta = evt.delta || '';
+                                                if (delta) {
+                                                        full += delta;
+                                                        try { onDelta(delta, full, evt); } catch { /* avoid breaking stream */ }
+                                                }
+                                        } else if (evt.type === 'error') {
+                                                throw new Error(evt.error?.message || 'Streaming error');
+                                        }
+                                        // You can react to other events (created/completed) if needed
+                                }
+                        }
+                        return full.trim();
                 }
+
 
                 // ===== Main action =====
                 async function summarize() {
@@ -1074,10 +1126,15 @@
                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
                                 if (!s?.key) throw new Error('OpenAI API key missing from MAS');
 
-                                const llmText = await callOpenAI(s.systemPrompt, s.key, chosenModel);
-
-                                // 3) Render as HTML (LLM returns HTML with <h1>, <h2>, <ul>, etc.)
-                                summaryEl.innerHTML = `${llmText}${s.cutoff ? `<div class="cutoff">${s.cutoff}</div>` : ''}`;
+                                summaryEl.innerHTML = ''; // clear skeleton
+                                let finalText = await callOpenAI(
+                                        s.systemPrompt,
+                                        s.key,
+                                        chosenModel,
+                                        (_delta, full) => { summaryEl.innerHTML = full; } // live update
+                                );
+                                if (s.cutoff) summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
+                                
                         } catch (e) {
                                 summaryEl.textContent = `Error:\n${e.message}`;
                                 console.error(e);
