@@ -966,7 +966,7 @@
                         ].filter(Boolean).join('\n\n');
                 }
 
-                async function chatQuery(userText) {
+                async function chatQuery(userText, onDelta) {
                         // Ensure we have an ALERT_ID (VA or URL)
                         if (!ALERT_ID) {
                                 addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
@@ -978,7 +978,7 @@
                         if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
 
                         const prompt = buildChatPrompt(cc.dataString, userText, chatHistory);
-                        const reply = await callOpenAI(prompt, apiKey, OPENAI_CHAT_MODEL);
+                        const reply = await callOpenAI(prompt, apiKey, OPENAI_CHAT_MODEL, onDelta);
                         return reply.trim();
                 }
 
@@ -1103,7 +1103,8 @@
                                 "The name’s Bond... Transaction Bond – James Bond",
                                 "Houston, we have a suspicious transfer – Apollo 13",
                                 "Winter is coming... for fraudsters – Game of Thrones",
-                                "Binge-watching transaction histories"
+                                "Binge-watching transaction histories",
+                                "Taking a siesta"
                         ];
 
                         // shuffle once, then cycle
@@ -1206,7 +1207,7 @@
                         wrap.appendChild(bubble);
                         chatMessages.appendChild(wrap);
                         chatMessages.scrollTop = chatMessages.scrollHeight;
-                        return () => { wrap.remove(); };
+                        return { bubble, stop: () => { wrap.remove(); } };
                 }
 
                 async function handleSend() {
@@ -1216,23 +1217,31 @@
                         addMessage('user', escapeHtml(text));
                         chatHistory.push({ role: 'user', content: text });
                         chatText.value = '';
-                        chatBusy = true;     // lock while thinking
+                        chatBusy = true;
                         refreshSend();
 
-                        const stopThinking = showBotThinking();
+                        const thinking = showBotThinking();
+                        await nextFrame(); // ensure typing anim paints
+
+                        let stopped = false;
                         try {
-                                const reply = await chatQuery(text);
-                                addMessage('bot', escapeHtml(reply).replace(/\n/g, '<br>'));
-                                chatHistory.push({ role: 'assistant', content: reply });
+                                const final = await chatQuery(text, (_delta, full) => {
+                                        // replace typing with streamed text
+                                        thinking.bubble.innerHTML = escapeHtml(full).replace(/\n/g, '<br>');
+                                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                                        stopped = true; // we've already replaced the typing bubble
+                                });
+                                chatHistory.push({ role: 'assistant', content: final });
                                 if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
                         } catch (e) {
-                                addMessage('bot', `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`);
+                                thinking.bubble.innerHTML = `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`;
                                 console.error('[chat] error:', e);
                                 if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
                         } finally {
-                                stopThinking();
-                                chatBusy = false;  // unlock, then reflect current input content
-                                refreshSend();     // stays disabled if the box is empty
+                                // If no delta ever arrived (error before stream), ensure we don’t leave a ghost bubble
+                                if (!stopped && thinking.stop) thinking.stop();
+                                chatBusy = false;
+                                refreshSend();
                                 chatText.focus();
                         }
                 }
