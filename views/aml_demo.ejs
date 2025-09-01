@@ -5,8 +5,14 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Alert Summarizer</title>
+        <!-- SAS VA messaging utility for receiving data/parameters from Visual Analytics -->
         <script src="./javascripts/sas/util/messagingUtil.js"></script>
         <style>
+                /*==========================================================
+                  GLOBAL THEME TOKENS & BASE ELEMENTS
+                  - CSS variables enable quick theming across the app.
+                  - Avoid hardcoding colors elsewhere; prefer these tokens.
+                ==========================================================*/
                 :root {
                         --bg: #fff;
                         --fg: #1d1d1f;
@@ -36,13 +42,13 @@
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
                 }
 
+
                 .container {
                         width: min(96vw, 1440px);
                         max-width: 1440px;
                         margin: 2vh auto 8vh;
                         padding: 0 24px;
                         width: 100vw;
-                        max-width: 2800px;
                 }
 
                 .card {
@@ -88,6 +94,7 @@
                         font-family: inherit
                 }
 
+                /* Primary CTA button (e.g., Summarize, Send) */
                 .btn-primary {
                         background: var(--primary);
                         color: #fff;
@@ -113,6 +120,7 @@
                         box-shadow: none
                 }
 
+                /* Secondary/neutral button (Clear/Save) */
                 .btn-secondary {
                         background: var(--grey-soft);
                         color: var(--fg);
@@ -130,6 +138,7 @@
                         filter: brightness(.94)
                 }
 
+                /* Inline spinner used inside .btn-primary when loading */
                 .spinner {
                         width: 16px;
                         height: 16px;
@@ -146,6 +155,7 @@
                         }
                 }
 
+                /* Swap label <-> spinner while loading */
                 .loading .spinner {
                         display: inline-block
                 }
@@ -154,6 +164,7 @@
                         display: none
                 }
 
+                /* Section label headers (Summary, Comments, Chat) */
                 .label {
                         font-size: 12px;
                         text-transform: uppercase;
@@ -163,7 +174,7 @@
                         padding-left: var(--content-indent);
                 }
 
-                /* visually hidden label for a11y */
+                /* A11y: Visually hidden but screen-reader accessible text */
                 .sr-only {
                         position: absolute;
                         width: 1px;
@@ -176,7 +187,7 @@
                         border: 0;
                 }
 
-                /* compact select styled like your secondary buttons */
+                /* Compact select styled to match secondary buttons */
                 .select-model {
                         background: var(--grey-soft);
                         color: var(--fg);
@@ -192,6 +203,7 @@
                         cursor: not-allowed;
                 }
 
+                /* LLM summary output container (can contain headings, lists) */
                 .summary {
                         border: 1px solid var(--border);
                         border-radius: 14px;
@@ -225,12 +237,14 @@
                         margin: 3px 0
                 }
 
+                /* Optional cutoff-date footnote appended by JS */
                 .summary .cutoff {
                         margin-top: 10px;
                         font-size: 12px;
                         color: var(--muted)
                 }
 
+                /* Comment textarea (auto-resized via JS) */
                 textarea {
                         width: 100%;
                         min-height: 120px;
@@ -255,6 +269,7 @@
                         color: var(--muted)
                 }
 
+                /* Toast for lightweight notifications (saved/cleared) */
                 .toast {
                         position: fixed;
                         left: 50%;
@@ -275,6 +290,7 @@
                         transform: translateX(-50%) translateY(0)
                 }
 
+                /* "Working..." skeleton/loader composition */
                 .working {
                         display: inline-flex;
                         align-items: center;
@@ -352,7 +368,10 @@
                         padding-left: var(--content-indent);
                 }
 
-                /* === CHATBOT === */
+                /*==========================================================
+                  CHAT UI
+                  - Simple inline messenger: messages area + composer.
+                ==========================================================*/
                 .chat {
                         border: 1px solid var(--border);
                         border-radius: 14px;
@@ -470,7 +489,10 @@
                         font-size: 14px;
                 }
 
-                /* --- view toggle + panes --- */
+                /*==========================================================
+                  VIEW TOGGLE (Summary <-> Chat)
+                  - Rounded segmented control with animated blue pill.
+                ==========================================================*/
                 .viewtoggle {
                         position: relative;
                         display: flex;
@@ -509,13 +531,13 @@
                         /* sit above the pill */
                 }
 
-                /* --- ACTIVE LABEL COLOR (white over the blue pill) --- */
+                /* Active segment text turns white over the blue pill */
                 .card:not(.show-chat) .viewtoggle .label:first-child,
                 .card.show-chat .viewtoggle .label:nth-child(2) {
                         color: #fff !important;
                 }
 
-                /* --- SPACE BELOW THE SUMMARY BOX --- */
+                /* Add spacing below summary block before Comments */
                 #pane-summary .summary {
                         margin-bottom: 20px;
                         /* add some space before the COMMENTS title */
@@ -538,7 +560,7 @@
                         /* decorative only */
                 }
 
-                /* compact bouncing dots next to "Summary" */
+                /* Minimal progress indicator next to "Summary" text */
                 .viewtoggle .mini-dots {
                         display: none;
                         margin-left: 4px;
@@ -566,21 +588,22 @@
                         animation-delay: .4s;
                 }
 
-                /* show dots ONLY during summarizing AND when Chat view is selected */
+                /* Show dots only while summarizing AND when Chat tab is selected */
                 .card.show-chat .viewtoggle.is-summarizing .mini-dots {
                         display: inline-flex;
                 }
 
-                /* slide right when chat is active */
+                /* Slide the blue pill right when Chat is active */
                 .card.show-chat .viewtoggle .pill {
                         transform: translateX(100%);
                 }
 
+                /* Hide Summarize button when in Chat mode */
                 .card.show-chat #summarizeBtn {
                         display: none;
                 }
 
-                /* show only one pane at a time */
+                /* Pane visibility control (one visible at a time) */
                 #pane-chat {
                         display: none;
                 }
@@ -593,6 +616,7 @@
                         display: none;
                 }
 
+                /* Inline disclaimer shown in Chat mode (mirrors footer tone) */
                 .card.show-chat::after {
                         content: "Generative AI can make mistakes. Check important info.";
                         display: block;
@@ -602,6 +626,7 @@
                         text-align: center;
                 }
 
+                /* Centered disclaimer inline with Comments controls */
                 .disclaimer-inline {
                         position: absolute;
                         left: 0;
@@ -612,7 +637,10 @@
                         pointer-events: none;
                 }
 
-                /* ===== font bump (minimal) ===== */
+                /*==========================================================
+                  ACCESSIBILITY / READABILITY SCALE
+                  - Slight global font-size bump via CSS variable.
+                ==========================================================*/
                 :root {
                         --fs: 1.08;
                 }
@@ -681,6 +709,7 @@
                                         <p class="subtitle">Generate a concise summary with one click.</p>
                                 </div>
                                 <div class="row">
+                                        <!-- Segmented control: toggles between "Summary" and "Chat" views -->
                                         <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false">
                                                 <span class="label">Summary<span class="mini-dots"
                                                                 aria-hidden="true"><i></i><i></i><i></i></span></span>
@@ -689,15 +718,20 @@
                                         </div>
                                 </div>
                         </div>
+                        <!--=========================
+                            SUMMARY PANE (default)
+                          =========================-->
                         <div id="pane-summary">
                                 <div>
                                         <div class="label">Summary</div>
+                                        <!-- LLM summary output appears here; aria-live for SR updates -->
                                         <div id="summary" class="summary" role="region" aria-live="polite">Press
                                                 “Summarize” to
                                                 generate a concise alert summary.</div>
                                 </div>
 
                                 <div class="row" style="justify-content:flex-end;margin-top:8px">
+                                        <!-- Model selector lets user choose a Responses model for summary -->
                                         <label for="modelSelect" class="sr-only">Model</label>
                                         <select id="modelSelect" class="select-model" aria-label="Model">
                                                 <option value="gpt-5-nano" selected>GPT-5 nano</option>
@@ -706,12 +740,14 @@
 
                                         </select>
 
+                                        <!-- One-click summarize action; switches to streaming/loading state -->
                                         <button id="summarizeBtn" class="btn-primary" aria-busy="false">
                                                 <span class="spinner" aria-hidden="true"></span>
                                                 <span class="labeltext">Summarize</span>
                                         </button>
                                 </div>
 
+                                <!-- Analyst comments area (saved locally) -->
                                 <div>
                                         <div class="label">Comments</div>
                                         <textarea id="comments"
@@ -730,14 +766,18 @@
                                 </div>
                         </div>
 
-                        <!-- Chatbot -->
+                        <!--=========================
+                            CHAT PANE
+                          =========================-->
                         <div id="pane-chat">
                                 <div>
                                         <div class="label">Chat</div>
                                         <div class="chat" id="chat">
+                                                <!-- Message history container (user & bot bubbles) -->
                                                 <div id="chatMessages" class="chat-messages" role="region"
                                                         aria-live="polite">
                                                 </div>
+                                                <!-- Composer: input + send -->
                                                 <div class="chat-input">
                                                         <input id="chatText" type="text"
                                                                 placeholder="Ask any question about this alert…" />
@@ -751,10 +791,17 @@
                 </div>
         </div>
 
+        <!-- Toast notification used for Save/Clear actions -->
         <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
         <script>
-                // ===== CONFIG =====
+                // ==========================================================
+                // CONFIGURATION & GLOBAL STATE
+                // - MODULE_URI/CSRF_PRIMER_URL: SAS MAS endpoints for scoring & CSRF
+                // - ALERT_ID: set by URL (?alertId=) or SAS VA message
+                // - alertIdReady: Promise used to defer actions until ALERT_ID exists
+                // - OPENAI_*: OpenAI Responses endpoint + default models
+                // ==========================================================
                 const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
                 const CSRF_PRIMER_URL = '/microanalyticScore/modules';
                 let ALERT_ID = null;               // will be filled by VA
@@ -762,10 +809,9 @@
                 const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
                 // track the source for diagnostics
                 let ALERT_ID_SOURCE = 'unset';
+                // next animation frame helper (await to ensure UI paints)
                 const nextFrame = () => new Promise(requestAnimationFrame);
                 console.log('[id] init: waiting for alert id (from VA or URL)');
-
-
 
                 // OpenAI Responses API settings
                 const OPENAI_URL = 'https://api.openai.com/v1/responses';
@@ -773,9 +819,10 @@
                 const OPENAI_CHAT_MODEL = 'gpt-5-mini';
 
                 // === CHAT MEMORY ===
+                // Rolling window of the most recent exchanges to preserve context.
                 const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
 
-                // ===== UI =====
+                // ===== UI ELEMENT REFERENCES =====
                 const summarizeBtn = document.getElementById('summarizeBtn');
                 const summaryEl = document.getElementById('summary');
                 const commentsEl = document.getElementById('comments');
@@ -785,14 +832,18 @@
                 const toast = document.getElementById('toast');
                 const modelSelect = document.getElementById('modelSelect');
 
-
-                // disable until VA sends the ID
+                // Disable summarize until an ALERT_ID exists (prevents premature calls).
                 summarizeBtn.disabled = true;
 
-                // === MAS PREFETCH (NEW) ===
+                // ==========================================================
+                // MAS PREFETCH
+                // - Pre-call SAS MAS to build prompts/keys for Summary and Chat.
+                // - Results cached in summaryCache/chatCache; promises guard duplicate calls.
+                // ==========================================================
                 let summaryCache = null, chatCache = null;
                 let summaryMasPromise = null, chatMasPromise = null;
 
+                // Prefetch summary-specific prompt/key/cutoff from MAS
                 async function prefetchSummary() {
                         await alertIdReady;
                         const csrf = await getCsrfToken();
@@ -809,6 +860,7 @@
                                 body: JSON.stringify(payload)
                         });
 
+                        // MAS returns an outputs array [{name, value}, ...]; normalize to map
                         const out = outputsToMap(JSON.parse(await res.text()).outputs);
 
                         console.log("MAS mapped outputs:", out);
@@ -819,6 +871,7 @@
                         return summaryCache;
                 }
 
+                // Prefetch chat-specific data string + key from MAS
                 async function prefetchChat() {
                         await alertIdReady;
                         const csrf = await getCsrfToken();
@@ -839,6 +892,7 @@
                         return chatCache;
                 }
 
+                // Kick off prefetch (idempotent via promise guards)
                 function startPrefetch() {
                         if (!summaryMasPromise)
                                 summaryMasPromise = prefetchSummary().catch(e => {
@@ -850,8 +904,11 @@
                                         .catch(e => { console.error('[prefetch chat]', e); chatMasPromise = null; throw e; });
                 }
 
-
-
+                // ==========================================================
+                // COMMENTS UX
+                // - Auto-resize textarea
+                // - Enforce character limit
+                // ==========================================================
                 const COMMENT_LIMIT = 2000;
                 // Auto-expand the comment box
                 const autoResize = el => {
@@ -866,8 +923,14 @@
                         }
                         charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
                 });
+                // Initialize count on load
                 commentsEl.dispatchEvent(new Event('input'));
 
+                // ==========================================================
+                // ALERT ID RESOLUTION (URL first, then VA message bus)
+                // - URL ?alertId=... overrides VA only if present at load.
+                // - VA parameter is preferred path in production dashboards.
+                // ==========================================================
                 // 1) If an alertId is provided via URL use it
                 const urlAlertId = new URLSearchParams(location.search).get('alertId');
                 if (urlAlertId) {
@@ -884,6 +947,7 @@
                 va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
                         console.log('[id] VA message received:', vaMsgObj);
 
+                        // Prefer first parameter value if available
                         const paramVal = vaMsgObj?.parameters?.[0]?.value;
 
                         console.log('[id] candidates -> paramVal:', paramVal);
@@ -900,14 +964,25 @@
                                 }
                         });
 
+                // ==========================================================
+                // TOAST & LOADING RENDER HELPERS
+                // ==========================================================
                 function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
                 function renderWorking(message) {
+                        // Shows a status line + shimmering skeleton to indicate progress
                         summaryEl.innerHTML = `<div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
       <div class="skel"><div class="line" style="width:88%"></div><div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
                 }
+                // Escape user-provided text for safe HTML insertion
                 function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])); }
 
-                // ===== Helpers =====
+                // ==========================================================
+                // NETWORK/FORMAT HELPERS
+                // - getCsrfToken: prime CSRF token by hitting MAS index
+                // - outputsToMap: normalize MAS outputs array to a map
+                // - extractOpenAIText: normalize Responses API shapes into text
+                // - trimChars: safeguard prompt/body sizes
+                // ==========================================================
                 async function getCsrfToken() {
                         const res = await fetch(CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
                         return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
@@ -915,6 +990,10 @@
                 function outputsToMap(outputs) { const m = {}; (outputs || []).forEach(o => m[o.name] = o.value); return m; }
 
                 function extractOpenAIText(j) {
+                        // Responses API can return:
+                        // - output_text (string)
+                        // - output: [{content:[{type:'output_text', text:'...'}]}]
+                        // - chat-style: choices[0].message.content
                         if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
                         if (Array.isArray(j?.output)) {
                                 for (const item of j.output) {
@@ -936,6 +1015,11 @@
                         return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
                 }
 
+                // ==========================================================
+                // CHAT PROMPT BUILDER
+                // - Assembles a single string prompt with SYSTEM + HISTORY + DATA + USER
+                // - Restricts customer-specific claims to MAS-provided Data section
+                // ==========================================================
                 // Build the chat system prompt locally using MAS "chat" data string + user message.
                 function buildChatPrompt(dataString, userMessage, history = []) {
                         const system = [
@@ -965,6 +1049,11 @@
                         ].filter(Boolean).join('\n\n');
                 }
 
+                // ==========================================================
+                // OPENAI CALLERS (chat + shared streaming)
+                // - chatQuery: resolves MAS chat data, builds prompt, calls Responses
+                // - callOpenAI: supports non-stream and SSE streaming with delta handler
+                // ==========================================================
                 async function chatQuery(userText, onDelta) {
                         // Ensure we have an ALERT_ID (VA or URL)
                         if (!ALERT_ID) {
@@ -1000,6 +1089,7 @@
                                 body: JSON.stringify(body)
                         });
 
+                        // Non-streaming: expect JSON with output_text/choices
                         if (!onDelta) {
                                 const json = await res.json().catch(() => ({}));
                                 if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
@@ -1050,14 +1140,19 @@
                                         } else if (evt.type === 'error') {
                                                 throw new Error(evt.error?.message || 'Streaming error');
                                         }
-                                        // You can react to other events (created/completed) if needed
+                                        // Other event types (created/completed) are ignored for now
                                 }
                         }
                         return full.trim();
                 }
 
-
-                // ===== Main action =====
+                // ==========================================================
+                // SUMMARY ACTION
+                // - Waits for ALERT_ID
+                // - Shows rotating status messages
+                // - Streams Responses text into #summary
+                // - Appends cutoff note if provided by MAS
+                // ==========================================================
                 async function summarize() {
                         // Wait until VA supplies the alert id (or URL fallback)
                         if (!ALERT_ID) {
@@ -1070,6 +1165,7 @@
                         summarizeBtn.classList.add('loading');
                         summarizeBtn.setAttribute('aria-busy', 'true');
 
+                        // Message pool: mix of serious & lighthearted to humanize waiting
                         const loadingMessages = [
                                 // Serious
                                 "Investigating suspicious activity",
@@ -1105,7 +1201,7 @@
                                 "Taking a siesta"
                         ];
 
-                        // shuffle once, then cycle
+                        // Shuffle once and rotate on interval
                         const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
                         let msgIndex = 0;
                         const ROTATE_MS = 4000; // slower pace
@@ -1113,12 +1209,12 @@
                         renderWorking(shuffledMessages[msgIndex]);
                         await nextFrame();
 
-
                         const timer = setInterval(() => {
                                 msgIndex = (msgIndex + 1) % shuffledMessages.length;
                                 renderWorking(shuffledMessages[msgIndex]);
                         }, ROTATE_MS);
 
+                        // Mark the toggle as "busy" to show mini-dots when on Chat view
                         toggleEl.classList.add('is-summarizing');
                         toggleEl.setAttribute('aria-busy', 'true');
 
@@ -1136,9 +1232,11 @@
                                         chosenModel,
                                         (_delta, full) => {
                                                 if (!started) { started = true; /* first chunk replaces skeleton */ }
+                                                // Stream full text into the summary container
                                                 summaryEl.innerHTML = full;
                                         }
                                 );
+                                // Append cutoff footnote if MAS provided one (e.g., data freshness)
                                 if (s.cutoff) summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
 
                         } catch (e) {
@@ -1154,6 +1252,11 @@
                         }
                 }
 
+                // ==========================================================
+                // COMMENTS: LOCAL STORAGE PERSISTENCE
+                // - saveComment stores a timestamped entry under a fixed key
+                // - clearComment resets the field and counter
+                // ==========================================================
                 function saveComment() {
                         const key = 'aml-summary-comments';
                         const existing = JSON.parse(localStorage.getItem(key) || '[]');
@@ -1163,28 +1266,33 @@
                 }
                 function clearComment() { commentsEl.value = ''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
 
+                // Wire up Summary actions
                 document.getElementById('summarizeBtn').addEventListener('click', summarize);
                 saveBtn.addEventListener('click', saveComment);
                 clearBtn.addEventListener('click', clearComment);
 
-                // === CHATBOT ===
+                // ==========================================================
+                // CHAT FRONTEND: MESSAGE FLOW & INPUT HANDLING
+                // - addMessage: renders a bubble (user/bot)
+                // - showBotThinking: temporary "typing" bubble
+                // - handleSend: orchestrates send -> stream -> finalize
+                // ==========================================================
                 const chatMessages = document.getElementById('chatMessages');
                 const chatText = document.getElementById('chatText');
                 const chatSendBtn = document.getElementById('chatSendBtn');
                 let chatBusy = false; // true while a request is in flight
 
+                // Enable/disable Send based on input emptiness and busy state
                 const refreshSend = () => {
                         const empty = chatText.value.trim().length === 0;
                         chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
                 };
 
-
                 // initialize + update on typing
                 refreshSend();
                 chatText.addEventListener('input', refreshSend);
 
-
-
+                // Render a new message bubble (html content is trusted/escaped by caller)
                 function addMessage(role, html) {
                         const wrap = document.createElement('div');
                         wrap.className = 'msg ' + role;
@@ -1196,6 +1304,7 @@
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
 
+                // Show a temporary "Thinking..." bubble with animated dots
                 function showBotThinking() {
                         const wrap = document.createElement('div');
                         wrap.className = 'msg bot';
@@ -1208,6 +1317,7 @@
                         return { bubble, stop: () => { wrap.remove(); } };
                 }
 
+                // Send handler: push user msg, stream bot reply, maintain chatHistory window
                 async function handleSend() {
                         const text = chatText.value.trim();
                         if (!text) return;
@@ -1230,10 +1340,12 @@
                                         stopped = true; // we've already replaced the typing bubble
                                 });
                                 chatHistory.push({ role: 'assistant', content: final });
+                                // Keep only the latest 3 exchanges (6 messages)
                                 if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
                         } catch (e) {
                                 thinking.bubble.innerHTML = `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`;
                                 console.error('[chat] error:', e);
+                                // Rollback last user entry if request failed early
                                 if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
                         } finally {
                                 // If no delta ever arrived (error before stream), ensure we don’t leave a ghost bubble
@@ -1244,8 +1356,7 @@
                         }
                 }
 
-
-                // Enter to send (Shift+Enter to add a newline later if you switch to a textarea)
+                // Keyboard + click bindings for chat send
                 chatSendBtn.addEventListener('click', handleSend);
                 chatText.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1254,11 +1365,16 @@
                         }
                 });
 
-                // Seed with a welcome message
+                // Seed with a welcome message (helps discoverability)
                 addMessage('bot',
                         "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
 
-                // === VIEW TOGGLE ===
+                // ==========================================================
+                // VIEW TOGGLE BEHAVIOR
+                // - setView(true)  -> Chat mode
+                // - setView(false) -> Summary mode
+                // - Updates ARIA and titles/subtitles accordingly
+                // ==========================================================
                 const cardEl = document.querySelector('.card');
                 const titleEl = document.getElementById('title');
                 const subtitleEl = document.querySelector('.subtitle');
@@ -1283,3 +1399,4 @@
 </body>
 
 </html>
+
