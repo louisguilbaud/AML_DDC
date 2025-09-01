@@ -1183,6 +1183,8 @@
                                         UI.elements.summarizeBtn.classList.add('loading');
                                         UI.elements.summarizeBtn.setAttribute('aria-busy', 'true');
 
+                                        let started = false;
+
                                         // Shuffle once and rotate on interval
                                         const shuffledMessages = [...Config.LOADING_MESSAGES].sort(() => Math.random() - 0.5);
                                         let msgIndex = 0;
@@ -1191,6 +1193,7 @@
                                         await Utils.nextFrame();
 
                                         const timer = setInterval(() => {
+                                                if (started) return;
                                                 msgIndex = (msgIndex + 1) % shuffledMessages.length;
                                                 UI.renderWorking(shuffledMessages[msgIndex]);
                                         }, Config.ROTATE_MS);
@@ -1207,11 +1210,11 @@
                                                 const s = State.summaryCache || await (State.summaryMasPromise || (this.startPrefetch(), State.summaryMasPromise));
                                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
                                                 if (!s?.key) throw new Error('OpenAI API key missing from MAS');
-
-
                                                 let buffer = '';
                                                 const flush = () => {
-                                                        UI.elements.summaryEl.innerHTML = buffer;  // one DOM write per frame
+                                                        if (UI.elements.summaryEl.innerHTML !== buffer) {
+                                                                UI.elements.summaryEl.innerHTML = buffer;
+                                                        }  // one DOM write per frame --> smoother UI 
                                                         rafId = null;
                                                 };
 
@@ -1220,7 +1223,11 @@
                                                         s.key,
                                                         chosenModel,
                                                         (_delta, full) => {
-                                                                buffer = full;                    // keep latest full text
+                                                                if (!started) {
+                                                                        started = true;
+                                                                        clearInterval(timer);         // stop the skeleton/rotator immediately
+                                                                }
+                                                                buffer = full;
                                                                 if (!rafId) rafId = requestAnimationFrame(flush);
                                                         }
                                                 );
@@ -1365,7 +1372,9 @@
 
                                         try {
                                                 const chatFlush = () => {
-                                                        bubbleEl.innerHTML = chatBuf;
+                                                        if (bubbleEl.innerHTML !== chatBuf) {
+                                                                bubbleEl.innerHTML = chatBuf;
+                                                        }
                                                         messagesEl.scrollTop = messagesEl.scrollHeight;
                                                         chatRaf = null;
                                                         stopped = true;
