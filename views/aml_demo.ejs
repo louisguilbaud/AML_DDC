@@ -7,6 +7,9 @@
         <title>Alert Summarizer</title>
         <!-- SAS VA messaging utility for receiving data/parameters from Visual Analytics -->
         <script src="./javascripts/sas/util/messagingUtil.js"></script>
+        <script src="https://unpkg.com/dompurify@3.1.6/dist/purify.min.js"
+                integrity="sha384-9Gm6Xv7o2b5KX9u4uY8tHCDGz3s+0E8c0b5m9mI2pV2Cz1s8i7dM2o5KkA0t3w4F"
+                crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <style>
                 /*==========================================================
                   GLOBAL THEME TOKENS & BASE ELEMENTS
@@ -859,6 +862,16 @@
                                 ]
                         };
 
+                        // Allow exactly these tags; keep only class for styling (.cutoff)
+                        const SANITIZE_CFG = {
+                                ALLOWED_TAGS: ['b', 'i', 'h1', 'h2', 'p', 'ul', 'li'],
+                                ALLOWED_ATTR: ['class'],
+                                FORBID_TAGS: ['style', 'script', 'img', 'video', 'audio', 'iframe', 'object', 'embed', 'link', 'meta']
+                                // DOMPurify already strips event handlers like onclick by default
+                        };
+
+                        if (!window.DOMPurify) { console.error('DOMPurify not loaded'); }
+
                         // State management namespace
                         const State = {
                                 ALERT_ID: null,               // will be filled by VA
@@ -1229,9 +1242,10 @@
                                                 if (!s?.key) throw new Error('OpenAI API key missing from MAS');
                                                 let buffer = '';
                                                 const flush = () => {
-                                                        if (UI.elements.summaryEl.innerHTML !== buffer) {
-                                                                UI.elements.summaryEl.innerHTML = buffer;
-                                                        }  // one DOM write per frame --> smoother UI 
+                                                        const safe = DOMPurify.sanitize(buffer, SANITIZE_CFG);
+                                                        if (UI.elements.summaryEl.innerHTML !== safe) {
+                                                                UI.elements.summaryEl.innerHTML = safe; // one DOM write per frame
+                                                        }
                                                         rafId = null;
                                                 };
 
@@ -1250,13 +1264,14 @@
                                                 );
 
                                                 // Final synchronous write (includes cutoff if present)
-                                                buffer = s.cutoff
-                                                        ? finalText + `<div class="cutoff">${s.cutoff}</div>`
-                                                        : finalText;
+                                                // Build cutoff as an allowed tag and escape its text
+                                                const cutoffHtml = s.cutoff ? `<p class="cutoff">${Utils.escapeHtml(s.cutoff)}</p>` : '';
+
+                                                const finalSafe = DOMPurify.sanitize(finalText + cutoffHtml, SANITIZE_CFG);
 
                                                 // Ensure anything pending is canceled, then do one last write
                                                 if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-                                                UI.elements.summaryEl.innerHTML = buffer;
+                                                UI.elements.summaryEl.innerHTML = finalSafe;
 
                                         } catch (e) {
                                                 UI.elements.summaryEl.textContent = `Error:\n${e.message}`;
