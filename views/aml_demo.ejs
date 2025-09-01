@@ -1112,12 +1112,19 @@
                                         });
 
                                         // MAS returns an outputs array [{name, value}, ...]; normalize to map
-                                        const out = Utils.outputsToMap(JSON.parse(await res.text()).outputs);
+                                        const json = await res.json().catch(() => ({}));
 
-                                        console.log("MAS mapped outputs:", out);
-                                        State.summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
+                                        if (!res.ok) {
+                                                // surface server error payload if present
+                                                throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                                        }
 
-                                        console.log('[id] summaryCache ', State.summaryCache);
+                                        const out = Utils.outputsToMap(json.outputs || []);
+                                        State.summaryCache = {
+                                                systemPrompt: out['systemPrompt'],
+                                                key: out['key'],
+                                                cutoff: out['CUTOFF_DATE']
+                                        };
 
                                         return State.summaryCache;
                                 },
@@ -1138,8 +1145,18 @@
                                                 credentials: 'include',
                                                 body: JSON.stringify(payload)
                                         });
-                                        const out = Utils.outputsToMap(JSON.parse(await res.text()).outputs);
-                                        State.chatCache = { dataString: out['systemPrompt'] || '', key: out['key'] };
+                                        const json = await res.json().catch(() => ({}));
+
+                                        if (!res.ok) {
+                                                throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                                        }
+
+                                        const out = Utils.outputsToMap(json.outputs || []);
+                                        State.chatCache = {
+                                                dataString: out['systemPrompt'] || '',
+                                                key: out['key']
+                                        };
+
                                         return State.chatCache;
                                 },
 
