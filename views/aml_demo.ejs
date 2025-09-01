@@ -792,6 +792,17 @@
         <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
         <script>
+                // Architecture overview:
+                // - Config: constants and tunables (endpoints, models, UI timings)
+                // - State: runtime state shared across modules (IDs, caches, promises)
+                // - UI: DOM caching + view helpers (no business logic)
+                // - Utils: small pure helpers (escapeHtml, autoResize, etc.)
+                // - API: network helpers (CSRF priming, OpenAI Responses call + SSE parsing)
+                // - Summary: MAS prefetch (summary/chat) + summary generation/streaming
+                // - Chat: prompt builder + chat send/stream UI
+                // - Comments: localStorage persistence for analyst notes
+                // - Init: wiring (alert ID resolution, listeners, boot)
+
                 (function () {
                         'use strict';
 
@@ -1125,7 +1136,10 @@
                                         return State.chatCache;
                                 },
 
-                                // Kick off prefetch (idempotent via promise guards)
+                                // Kick off MAS/OpenAI prefetch in an idempotent way.
+                                // - Prefetches Summary first (prompt/key/cutoff), then Chat (data string/key).
+                                // - Caches the in-flight Promises so repeated calls don't duplicate network work.
+                                // - Safe to call as soon as ALERT_ID is set; internals await alertIdReady.
                                 startPrefetch() {
                                         if (!State.summaryMasPromise)
                                                 State.summaryMasPromise = this.prefetchSummary().catch(e => {
@@ -1179,7 +1193,7 @@
                                         UI.elements.toggleEl.setAttribute('aria-busy', 'true');
 
                                         try {
-                                                // 2) Call OpenAI with MAS-provided key
+                                                // Call OpenAI with MAS-provided key
                                                 const chosenModel = UI.elements.modelSelect.value || Config.OPENAI_SUMMARY_MODEL;
                                                 const s = State.summaryCache || await (State.summaryMasPromise || (this.startPrefetch(), State.summaryMasPromise));
                                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
@@ -1383,8 +1397,8 @@
                         const Init = {
                                 // ==========================================================
                                 // ALERT ID RESOLUTION (URL first, then VA message bus)
-                                // - URL ?alertId=... overrides VA only if present at load.
-                                // - VA parameter is preferred path in production dashboards.
+                                // - URL ?alertId=... is used initially; if VA later provides a parameter value, it will replace the URL one.
+                                // NOTE: Assumes `va.messagingUtil` is available (running inside SAS VA).
                                 // ==========================================================
                                 checkAlertId() {
                                         console.log('[id] init: waiting for alert id (from VA or URL)');
@@ -1417,7 +1431,7 @@
                                                         console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
                                                         State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
                                                         UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
-                                                        Summary.startPrefetch();
+                                                        Summary.startPrefetch();                              
                                                         console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
                                                 }
                                         });
@@ -1445,7 +1459,7 @@
                                 bindEvents() {
                                         // Wire up Summary actions
                                         UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
-                                        UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());
+                                        UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());    // Saves to localStorage only (per-browser, per-user). No server persistence.
                                         UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
 
                                         // initialize + update on typing
