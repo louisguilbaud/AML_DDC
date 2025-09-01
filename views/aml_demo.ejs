@@ -48,7 +48,6 @@
                         max-width: 1440px;
                         margin: 2vh auto 8vh;
                         padding: 0 24px;
-                        width: 100vw;
                 }
 
                 .card {
@@ -248,7 +247,6 @@
                 textarea {
                         width: 100%;
                         min-height: 120px;
-                        resize: vertical;
                         padding: 14px 14px;
                         border-radius: 16px;
                         border: 1px solid rgba(0, 0, 0, .12);
@@ -954,15 +952,15 @@
 
                         if (paramVal != null) {  // Only override if VA actually has a value
                                 ALERT_ID = String(paramVal);
-                        
+
                                 ALERT_ID_SOURCE = 'va-parameter';
                                 console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
                                 resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
                                 summarizeBtn.disabled = false;            // enable the button now that we have it
                                 startPrefetch();
                                 console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
-                                }
-                        });
+                        }
+                });
 
                 // ==========================================================
                 // TOAST & LOADING RENDER HELPERS
@@ -1204,7 +1202,7 @@
                         // Shuffle once and rotate on interval
                         const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
                         let msgIndex = 0;
-                        const ROTATE_MS = 4000; // slower pace
+                        const ROTATE_MS = 4000; // rotating pace
 
                         renderWorking(shuffledMessages[msgIndex]);
                         await nextFrame();
@@ -1399,4 +1397,3 @@
 </body>
 
 </html>
-
