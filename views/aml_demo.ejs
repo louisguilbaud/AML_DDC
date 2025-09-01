@@ -723,7 +723,7 @@
                                         <div class="label">Summary</div>
                                         <!-- LLM summary output appears here; aria-live for SR updates -->
                                         <div id="summary" class="summary" role="region" aria-live="polite">Press
-                                                “Summarize” to
+                                                "Summarize" to
                                                 generate a concise alert summary.</div>
                                 </div>
 
@@ -792,606 +792,698 @@
         <div id="toast" class="toast" role="status" aria-live="polite">Saved</div>
 
         <script>
-                // ==========================================================
-                // CONFIGURATION & GLOBAL STATE
-                // - MODULE_URI/CSRF_PRIMER_URL: SAS MAS endpoints for scoring & CSRF
-                // - ALERT_ID: set by URL (?alertId=) or SAS VA message
-                // - alertIdReady: Promise used to defer actions until ALERT_ID exists
-                // - OPENAI_*: OpenAI Responses endpoint + default models
-                // ==========================================================
-                const MODULE_URI = '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute';
-                const CSRF_PRIMER_URL = '/microanalyticScore/modules';
-                let ALERT_ID = null;               // will be filled by VA
-                let resolveAlertIdReady;
-                const alertIdReady = new Promise(r => (resolveAlertIdReady = r));
-                // track the source for diagnostics
-                let ALERT_ID_SOURCE = 'unset';
-                // next animation frame helper (await to ensure UI paints)
-                const nextFrame = () => new Promise(requestAnimationFrame);
-                console.log('[id] init: waiting for alert id (from VA or URL)');
+                (function () {
+                        'use strict';
 
-                // OpenAI Responses API settings
-                const OPENAI_URL = 'https://api.openai.com/v1/responses';
-                const OPENAI_SUMMARY_MODEL = 'gpt-5-mini';
-                const OPENAI_CHAT_MODEL = 'gpt-5-mini';
+                        // ==========================================================
+                        // CONFIGURATION & GLOBAL STATE
+                        // - MODULE_URI/CSRF_PRIMER_URL: SAS MAS endpoints for scoring & CSRF
+                        // - ALERT_ID: set by URL (?alertId=) or SAS VA message
+                        // - alertIdReady: Promise used to defer actions until ALERT_ID exists
+                        // - OPENAI_*: OpenAI Responses endpoint + default models
+                        // ==========================================================
 
-                // === CHAT MEMORY ===
-                // Rolling window of the most recent exchanges to preserve context.
-                const chatHistory = []; // stores { role: 'user' | 'assistant', content: string }
-
-                // ===== UI ELEMENT REFERENCES =====
-                const summarizeBtn = document.getElementById('summarizeBtn');
-                const summaryEl = document.getElementById('summary');
-                const commentsEl = document.getElementById('comments');
-                const charCountEl = document.getElementById('charCount');
-                const saveBtn = document.getElementById('saveBtn');
-                const clearBtn = document.getElementById('clearBtn');
-                const toast = document.getElementById('toast');
-                const modelSelect = document.getElementById('modelSelect');
-
-                // Disable summarize until an ALERT_ID exists (prevents premature calls).
-                summarizeBtn.disabled = true;
-
-                // ==========================================================
-                // MAS PREFETCH
-                // - Pre-call SAS MAS to build prompts/keys for Summary and Chat.
-                // - Results cached in summaryCache/chatCache; promises guard duplicate calls.
-                // ==========================================================
-                let summaryCache = null, chatCache = null;
-                let summaryMasPromise = null, chatMasPromise = null;
-
-                // Prefetch summary-specific prompt/key/cutoff from MAS
-                async function prefetchSummary() {
-                        await alertIdReady;
-                        const csrf = await getCsrfToken();
-                        const payload = {
-                                inputs: [
-                                        { name: "ALERT_ID_", value: ALERT_ID },
-                                        { name: "SUMMARY_OR_CHAT_", value: "summary" }
+                        // Configuration namespace
+                        const Config = {
+                                MODULE_URI: '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute',
+                                CSRF_PRIMER_URL: '/microanalyticScore/modules',
+                                OPENAI_URL: 'https://api.openai.com/v1/responses',
+                                OPENAI_SUMMARY_MODEL: 'gpt-5-mini',
+                                OPENAI_CHAT_MODEL: 'gpt-5-mini',
+                                COMMENT_LIMIT: 2000,
+                                ROTATE_MS: 4000,
+                                // Message pool: mix of serious & lighthearted to humanize waiting
+                                LOADING_MESSAGES: [
+                                        // Serious
+                                        "Investigating suspicious activity",
+                                        "Connecting the dots between transactions",
+                                        "Cross-referencing KYC data",
+                                        "Scanning network relationships",
+                                        "Following the money trail",
+                                        "Reviewing scenario triggers",
+                                        "Generating advanced insights",
+                                        "Running enhanced due diligence protocols",
+                                        "Finding patterns no human could see",
+                                        "Hunting for needle-in-a-haystack transfers",
+                                        "Checking for unusual velocity spikes",
+                                        "Sifting through transaction histories",
+                                        "Raising potential red flags",
+                                        "Flagging politically exposed persons",
+                                        "Analyzing cash structuring patterns",
+                                        "Verifying source of funds",
+                                        // Fun
+                                        "Searching mattress stores (politely)",
+                                        "Following the breadcrumbs",
+                                        "Checking today's horoscope",
+                                        "With great power comes great compliance responsibility – Uncle Ben",
+                                        "I'm gonna make him an offer he can't explain to compliance – The Godfather",
+                                        "May the fraud be with you – Star Wars",
+                                        "Looking for the usual suspects",
+                                        "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
+                                        "The name's Bond... Transaction Bond – James Bond",
+                                        "Houston, we have a suspicious transfer – Apollo 13",
+                                        "Winter is coming... for fraudsters – Game of Thrones",
+                                        "Binge-watching transaction histories",
+                                        "Taking a siesta"
                                 ]
                         };
-                        const res = await fetch(MODULE_URI, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                                credentials: 'include',
-                                body: JSON.stringify(payload)
-                        });
 
-                        // MAS returns an outputs array [{name, value}, ...]; normalize to map
-                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
-
-                        console.log("MAS mapped outputs:", out);
-                        summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
-
-                        console.log('[id] summaryCache ', summaryCache);
-
-                        return summaryCache;
-                }
-
-                // Prefetch chat-specific data string + key from MAS
-                async function prefetchChat() {
-                        await alertIdReady;
-                        const csrf = await getCsrfToken();
-                        const payload = {
-                                inputs: [
-                                        { name: "ALERT_ID_", value: ALERT_ID },
-                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
-                                ]
-                        };
-                        const res = await fetch(MODULE_URI, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                                credentials: 'include',
-                                body: JSON.stringify(payload)
-                        });
-                        const out = outputsToMap(JSON.parse(await res.text()).outputs);
-                        chatCache = { dataString: out['systemPrompt'] || '', key: out['key'] };
-                        return chatCache;
-                }
-
-                // Kick off prefetch (idempotent via promise guards)
-                function startPrefetch() {
-                        if (!summaryMasPromise)
-                                summaryMasPromise = prefetchSummary().catch(e => {
-                                        console.error('[prefetch summary]', e); summaryMasPromise = null; throw e;
-                                });
-                        if (!chatMasPromise)
-                                chatMasPromise = (summaryMasPromise || prefetchSummary())
-                                        .then(() => prefetchChat())
-                                        .catch(e => { console.error('[prefetch chat]', e); chatMasPromise = null; throw e; });
-                }
-
-                // ==========================================================
-                // COMMENTS UX
-                // - Auto-resize textarea
-                // - Enforce character limit
-                // ==========================================================
-                const COMMENT_LIMIT = 2000;
-                // Auto-expand the comment box
-                const autoResize = el => {
-                        el.style.height = 'auto';
-                        el.style.height = el.scrollHeight + 'px';
-                };
-                commentsEl.addEventListener('input', () => autoResize(commentsEl));
-                window.addEventListener('load', () => autoResize(commentsEl));
-                commentsEl.addEventListener('input', () => {
-                        if (commentsEl.value.length > COMMENT_LIMIT) {
-                                commentsEl.value = commentsEl.value.slice(0, COMMENT_LIMIT);
-                        }
-                        charCountEl.textContent = `${commentsEl.value.length} / ${COMMENT_LIMIT}`;
-                });
-                // Initialize count on load
-                commentsEl.dispatchEvent(new Event('input'));
-
-                // ==========================================================
-                // ALERT ID RESOLUTION (URL first, then VA message bus)
-                // - URL ?alertId=... overrides VA only if present at load.
-                // - VA parameter is preferred path in production dashboards.
-                // ==========================================================
-                // 1) If an alertId is provided via URL use it
-                const urlAlertId = new URLSearchParams(location.search).get('alertId');
-                if (urlAlertId) {
-                        ALERT_ID = urlAlertId;
-                        ALERT_ID_SOURCE = 'url';
-                        console.log('[id] Using URL parameter ?alertId=', ALERT_ID);
-                        resolveAlertIdReady?.(ALERT_ID);
-                        summarizeBtn.disabled = false;
-                        startPrefetch();
-                        console.log('[id] summarizeBtn enabled (source=url)');
-                }
-
-                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
-                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                        console.log('[id] VA message received:', vaMsgObj);
-
-                        // Prefer first parameter value if available
-                        const paramVal = vaMsgObj?.parameters?.[0]?.value;
-
-                        console.log('[id] candidates -> paramVal:', paramVal);
-
-                        if (paramVal != null) {  // Only override if VA actually has a value
-                                ALERT_ID = String(paramVal);
-
-                                ALERT_ID_SOURCE = 'va-parameter';
-                                console.log(`[id] Using ${ALERT_ID_SOURCE}: ${ALERT_ID}`);
-                                resolveAlertIdReady?.(ALERT_ID);          // resolve the waiters (first time)
-                                summarizeBtn.disabled = false;            // enable the button now that we have it
-                                startPrefetch();
-                                console.log(`[id] summarizeBtn enabled (source=${ALERT_ID_SOURCE})`);
-                        }
-                });
-
-                // ==========================================================
-                // TOAST & LOADING RENDER HELPERS
-                // ==========================================================
-                function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 1400); }
-                function renderWorking(message) {
-                        // Shows a status line + shimmering skeleton to indicate progress
-                        summaryEl.innerHTML = `<div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
-      <div class="skel"><div class="line" style="width:88%"></div><div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
-                }
-                // Escape user-provided text for safe HTML insertion
-                function escapeHtml(s) { return s.replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m])); }
-
-                // ==========================================================
-                // NETWORK/FORMAT HELPERS
-                // - getCsrfToken: prime CSRF token by hitting MAS index
-                // - outputsToMap: normalize MAS outputs array to a map
-                // - extractOpenAIText: normalize Responses API shapes into text
-                // - trimChars: safeguard prompt/body sizes
-                // ==========================================================
-                async function getCsrfToken() {
-                        const res = await fetch(CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
-                        return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
-                }
-                function outputsToMap(outputs) { const m = {}; (outputs || []).forEach(o => m[o.name] = o.value); return m; }
-
-                function extractOpenAIText(j) {
-                        // Responses API can return:
-                        // - output_text (string)
-                        // - output: [{content:[{type:'output_text', text:'...'}]}]
-                        // - chat-style: choices[0].message.content
-                        if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
-                        if (Array.isArray(j?.output)) {
-                                for (const item of j.output) {
-                                        const content = item?.content;
-                                        if (Array.isArray(content)) {
-                                                for (const c of content) {
-                                                        if (typeof c?.text === 'string' && c.text.trim()) return c.text;
-                                                        if (c?.type === 'output_text' && c?.text) return c.text;
-                                                }
-                                        }
-                                }
-                        }
-                        if (j?.choices?.[0]?.message?.content) return j.choices[0].message.content;
-                        return null;
-                }
-
-                function trimChars(s, max = 8000) {
-                        if (!s) return '';
-                        return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
-                }
-
-                // ==========================================================
-                // CHAT PROMPT BUILDER
-                // - Assembles a single string prompt with SYSTEM + HISTORY + DATA + USER
-                // - Restricts customer-specific claims to MAS-provided Data section
-                // ==========================================================
-                // Build the chat system prompt locally using MAS "chat" data string + user message.
-                function buildChatPrompt(dataString, userMessage, history = []) {
-                        const system = [
-                                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
-                                'Customer/alert-specific facts MUST come only from the Data section.',
-                                'If a requested detail is missing in Data, be very clear that it is missing. Do not invent values.',
-                                'You MAY add general AML knowledge (regulations, definitions, typologies).',
-                                'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
-                                'Start by directly answering the question',
-                                'Only answer questions related to AML',
-                                'Avoid exposing or inferring PII beyond what appears in Data.',
-                                `Alert ID: ${ALERT_ID || 'unknown'}`
-                        ].join(' ');
-
-                        // Use up to the last 3 exchanges (i.e., 6 messages), excluding the current user message if already added.
-                        let hist = Array.isArray(history) ? history.slice() : [];
-                        if (hist.length && hist[hist.length - 1].role === 'user') hist.pop(); // drop current turn if already pushed
-                        const recent = hist.slice(-6);
-                        const historyBlock = recent.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
-
-                        return [
-                                `SYSTEM:\n${system}`,
-                                historyBlock ? `HISTORY (last ${Math.floor(recent.length / 2)} exchanges):\n${trimChars(historyBlock, 2000)}` : null,
-                                `DATA:\n${trimChars(dataString, 7000)}`,
-                                `USER:\n${userMessage}`,
-                                'ASSISTANT:'
-                        ].filter(Boolean).join('\n\n');
-                }
-
-                // ==========================================================
-                // OPENAI CALLERS (chat + shared streaming)
-                // - chatQuery: resolves MAS chat data, builds prompt, calls Responses
-                // - callOpenAI: supports non-stream and SSE streaming with delta handler
-                // ==========================================================
-                async function chatQuery(userText, onDelta) {
-                        // Ensure we have an ALERT_ID (VA or URL)
-                        if (!ALERT_ID) {
-                                addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
-                                await alertIdReady;
-                        }
-
-                        const cc = chatCache || await (chatMasPromise || (startPrefetch(), chatMasPromise));
-                        const apiKey = cc.key || summaryCache?.key;
-                        if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
-
-                        const prompt = buildChatPrompt(cc.dataString, userText, chatHistory);
-                        const reply = await callOpenAI(prompt, apiKey, OPENAI_CHAT_MODEL, onDelta);
-                        return reply.trim();
-                }
-
-                async function callOpenAI(systemPrompt, apiKey, chosen_model = OPENAI_CHAT_MODEL, onDelta /* optional */) {
-                        const body = {
-                                model: chosen_model,
-                                input: systemPrompt,
-                                reasoning: { effort: "medium" },
-                                text: { verbosity: "low" },
-                                stream: !!onDelta
+                        // State management namespace
+                        const State = {
+                                ALERT_ID: null,               // will be filled by VA
+                                ALERT_ID_SOURCE: 'unset',     // track the source for diagnostics
+                                resolveAlertIdReady: null,
+                                alertIdReady: null,
+                                chatHistory: [],              // Rolling window of the most recent exchanges to preserve context
+                                summaryCache: null,
+                                chatCache: null,
+                                summaryMasPromise: null,
+                                chatMasPromise: null,
+                                chatBusy: false              // true while a request is in flight
                         };
 
-                        const res = await fetch(OPENAI_URL, {
-                                method: 'POST',
-                                headers: {
-                                        'Authorization': `Bearer ${apiKey}`,
-                                        'Content-Type': 'application/json',
-                                        'Accept': onDelta ? 'text/event-stream' : 'application/json'
+                        // Initialize the promise
+                        State.alertIdReady = new Promise(r => (State.resolveAlertIdReady = r));
+
+                        // UI namespace - cache DOM elements
+                        const UI = {
+                                elements: {},
+
+                                init() {
+                                        // ===== UI ELEMENT REFERENCES =====
+                                        this.elements = {
+                                                summarizeBtn: document.getElementById('summarizeBtn'),
+                                                summaryEl: document.getElementById('summary'),
+                                                commentsEl: document.getElementById('comments'),
+                                                charCountEl: document.getElementById('charCount'),
+                                                saveBtn: document.getElementById('saveBtn'),
+                                                clearBtn: document.getElementById('clearBtn'),
+                                                toast: document.getElementById('toast'),
+                                                modelSelect: document.getElementById('modelSelect'),
+                                                chatMessages: document.getElementById('chatMessages'),
+                                                chatText: document.getElementById('chatText'),
+                                                chatSendBtn: document.getElementById('chatSendBtn'),
+                                                cardEl: document.querySelector('.card'),
+                                                titleEl: document.getElementById('title'),
+                                                subtitleEl: document.querySelector('.subtitle'),
+                                                toggleEl: document.getElementById('viewToggle')
+                                        };
+
+                                        // Disable summarize until an ALERT_ID exists (prevents premature calls).
+                                        this.elements.summarizeBtn.disabled = true;
                                 },
-                                body: JSON.stringify(body)
-                        });
 
-                        // Non-streaming: expect JSON with output_text/choices
-                        if (!onDelta) {
-                                const json = await res.json().catch(() => ({}));
-                                if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                                const txt = extractOpenAIText(json);
-                                if (!txt) throw new Error('LLM returned no text payload');
-                                return txt;
-                        }
+                                // ==========================================================
+                                // TOAST & LOADING RENDER HELPERS
+                                // ==========================================================
+                                showToast(msg) {
+                                        this.elements.toast.textContent = msg;
+                                        this.elements.toast.classList.add('show');
+                                        setTimeout(() => this.elements.toast.classList.remove('show'), 1400);
+                                },
 
-                        // --- Streaming path (SSE) ---
-                        if (!res.ok || !res.body) {
-                                const text = await res.text().catch(() => '');
-                                throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
-                        }
+                                renderWorking(message) {
+                                        // Shows a status line + shimmering skeleton to indicate progress
+                                        this.elements.summaryEl.innerHTML = `<div class="working">${message}<span class="dots"><i></i><i></i><i></i></span></div>
+      <div class="skel"><div class="line" style="width:88%"></div><div class="line" style="width:96%"></div><div class="line" style="width:72%"></div></div>`;
+                                },
 
-                        const reader = res.body.getReader();
-                        const decoder = new TextDecoder();
-                        let carry = '';
-                        let full = '';
-
-                        while (true) {
-                                const { value, done } = await reader.read();
-                                if (done) break;
-                                carry += decoder.decode(value, { stream: true });
-
-                                // Split Server-Sent-Event frames
-                                const frames = carry.split('\n\n');
-                                carry = frames.pop() || '';
-
-                                for (const frame of frames) {
-                                        // concatenate all data: lines in the frame
-                                        const dataLines = frame
-                                                .split('\n')
-                                                .filter(l => l.startsWith('data:'))
-                                                .map(l => l.slice(5).trim())
-                                                .join('\n');
-
-                                        if (!dataLines || dataLines === '[DONE]') continue;
-
-                                        let evt;
-                                        try { evt = JSON.parse(dataLines); } catch { continue; }
-
-                                        if (evt.type === 'response.output_text.delta') {
-                                                const delta = evt.delta || '';
-                                                if (delta) {
-                                                        full += delta;
-                                                        try { onDelta(delta, full, evt); } catch { /* avoid breaking stream */ }
-                                                }
-                                        } else if (evt.type === 'error') {
-                                                throw new Error(evt.error?.message || 'Streaming error');
-                                        }
-                                        // Other event types (created/completed) are ignored for now
+                                // ==========================================================
+                                // VIEW TOGGLE BEHAVIOR
+                                // - setView(true)  -> Chat mode
+                                // - setView(false) -> Summary mode
+                                // - Updates ARIA and titles/subtitles accordingly
+                                // ==========================================================
+                                setView(showChat) {
+                                        this.elements.cardEl.classList.toggle('show-chat', showChat);
+                                        this.elements.titleEl.textContent = showChat ? 'Alert Chat' : 'Alert Summarizer';
+                                        this.elements.subtitleEl.textContent = showChat
+                                                ? 'Converse with our chatbot for alert insights.'
+                                                : 'Generate a concise summary with one click.';
+                                        this.elements.toggleEl.setAttribute('aria-checked', showChat ? 'true' : 'false');
                                 }
-                        }
-                        return full.trim();
-                }
+                        };
 
-                // ==========================================================
-                // SUMMARY ACTION
-                // - Waits for ALERT_ID
-                // - Shows rotating status messages
-                // - Streams Responses text into #summary
-                // - Appends cutoff note if provided by MAS
-                // ==========================================================
-                async function summarize() {
-                        // Wait until VA supplies the alert id (or URL fallback)
-                        if (!ALERT_ID) {
-                                renderWorking('Waiting for Alert ID from Visual Analytics');
-                                await alertIdReady;
-                        }
-                        console.log(`[id] summarize() with ALERT_ID=${ALERT_ID} (source=${ALERT_ID_SOURCE})`);
+                        // Utility functions namespace
+                        const Utils = {
+                                // next animation frame helper (await to ensure UI paints)
+                                nextFrame: () => new Promise(requestAnimationFrame),
 
-                        summarizeBtn.disabled = true;
-                        summarizeBtn.classList.add('loading');
-                        summarizeBtn.setAttribute('aria-busy', 'true');
+                                // Escape user-provided text for safe HTML insertion
+                                escapeHtml(s) {
+                                        return s.replace(/[&<>"']/g, m => ({
+                                                "&": "&amp;",
+                                                "<": "&lt;",
+                                                ">": "&gt;",
+                                                "\"": "&quot;",
+                                                "'": "&#39;"
+                                        }[m]));
+                                },
 
-                        // Message pool: mix of serious & lighthearted to humanize waiting
-                        const loadingMessages = [
-                                // Serious
-                                "Investigating suspicious activity",
-                                "Connecting the dots between transactions",
-                                "Cross-referencing KYC data",
-                                "Scanning network relationships",
-                                "Following the money trail",
-                                "Reviewing scenario triggers",
-                                "Generating advanced insights",
-                                "Running enhanced due diligence protocols",
-                                "Finding patterns no human could see",
-                                "Hunting for needle-in-a-haystack transfers",
-                                "Checking for unusual velocity spikes",
-                                "Sifting through transaction histories",
-                                "Raising potential red flags",
-                                "Flagging politically exposed persons",
-                                "Analyzing cash structuring patterns",
-                                "Verifying source of funds",
+                                outputsToMap(outputs) {
+                                        const m = {};
+                                        (outputs || []).forEach(o => m[o.name] = o.value);
+                                        return m;
+                                },
 
-                                // Fun
-                                "Searching mattress stores (politely)",
-                                "Following the breadcrumbs",
-                                "Checking today's horoscope",
-                                "With great power comes great compliance responsibility – Uncle Ben",
-                                "I’m gonna make him an offer he can’t explain to compliance – The Godfather",
-                                "May the fraud be with you – Star Wars",
-                                "Looking for the usual suspects",
-                                "Elementary, my dear Watson... the account is offshore – Sherlock Holmes",
-                                "The name’s Bond... Transaction Bond – James Bond",
-                                "Houston, we have a suspicious transfer – Apollo 13",
-                                "Winter is coming... for fraudsters – Game of Thrones",
-                                "Binge-watching transaction histories",
-                                "Taking a siesta"
-                        ];
+                                trimChars(s, max = 8000) {
+                                        if (!s) return '';
+                                        return s.length <= max ? s : (s.slice(0, max) + '\n[...trimmed]');
+                                },
 
-                        // Shuffle once and rotate on interval
-                        const shuffledMessages = [...loadingMessages].sort(() => Math.random() - 0.5);
-                        let msgIndex = 0;
-                        const ROTATE_MS = 4000; // rotating pace
+                                // Auto-expand the comment box
+                                autoResize(el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = el.scrollHeight + 'px';
+                                }
+                        };
 
-                        renderWorking(shuffledMessages[msgIndex]);
-                        await nextFrame();
+                        // API namespace
+                        const API = {
+                                // ==========================================================
+                                // NETWORK/FORMAT HELPERS
+                                // - getCsrfToken: prime CSRF token by hitting MAS index
+                                // - extractOpenAIText: normalize Responses API shapes into text
+                                // ==========================================================
+                                async getCsrfToken() {
+                                        const res = await fetch(Config.CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
+                                        return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
+                                },
 
-                        const timer = setInterval(() => {
-                                msgIndex = (msgIndex + 1) % shuffledMessages.length;
-                                renderWorking(shuffledMessages[msgIndex]);
-                        }, ROTATE_MS);
-
-                        // Mark the toggle as "busy" to show mini-dots when on Chat view
-                        toggleEl.classList.add('is-summarizing');
-                        toggleEl.setAttribute('aria-busy', 'true');
-
-                        try {
-                                // 2) Call OpenAI with MAS-provided key
-                                const chosenModel = modelSelect.value || OPENAI_SUMMARY_MODEL;
-                                const s = summaryCache || await (summaryMasPromise || (startPrefetch(), summaryMasPromise));
-                                if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
-                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
-
-                                let started = false;
-                                let finalText = await callOpenAI(
-                                        s.systemPrompt,
-                                        s.key,
-                                        chosenModel,
-                                        (_delta, full) => {
-                                                if (!started) { started = true; /* first chunk replaces skeleton */ }
-                                                // Stream full text into the summary container
-                                                summaryEl.innerHTML = full;
+                                extractOpenAIText(j) {
+                                        // Responses API can return:
+                                        // - output_text (string)
+                                        // - output: [{content:[{type:'output_text', text:'...'}]}]
+                                        // - chat-style: choices[0].message.content
+                                        if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
+                                        if (Array.isArray(j?.output)) {
+                                                for (const item of j.output) {
+                                                        const content = item?.content;
+                                                        if (Array.isArray(content)) {
+                                                                for (const c of content) {
+                                                                        if (typeof c?.text === 'string' && c.text.trim()) return c.text;
+                                                                        if (c?.type === 'output_text' && c?.text) return c.text;
+                                                                }
+                                                        }
+                                                }
                                         }
-                                );
-                                // Append cutoff footnote if MAS provided one (e.g., data freshness)
-                                if (s.cutoff) summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
+                                        if (j?.choices?.[0]?.message?.content) return j.choices[0].message.content;
+                                        return null;
+                                },
 
-                        } catch (e) {
-                                summaryEl.textContent = `Error:\n${e.message}`;
-                                console.error(e);
-                        } finally {
-                                clearInterval(timer);
-                                summarizeBtn.disabled = false;
-                                summarizeBtn.classList.remove('loading');
-                                summarizeBtn.setAttribute('aria-busy', 'false');
-                                toggleEl.classList.remove('is-summarizing');
-                                toggleEl.removeAttribute('aria-busy');
-                        }
-                }
+                                async callOpenAI(systemPrompt, apiKey, chosen_model = Config.OPENAI_CHAT_MODEL, onDelta /* optional */) {
+                                        const body = {
+                                                model: chosen_model,
+                                                input: systemPrompt,
+                                                reasoning: { effort: "medium" },
+                                                text: { verbosity: "low" },
+                                                stream: !!onDelta
+                                        };
 
-                // ==========================================================
-                // COMMENTS: LOCAL STORAGE PERSISTENCE
-                // - saveComment stores a timestamped entry under a fixed key
-                // - clearComment resets the field and counter
-                // ==========================================================
-                function saveComment() {
-                        const key = 'aml-summary-comments';
-                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                        const entry = { ts: new Date().toISOString(), alertId: ALERT_ID, comment: commentsEl.value.trim(), summary: summaryEl.textContent.trim() };
-                        if (!entry.comment) { showToast('Nothing to save'); return; }
-                        existing.push(entry); localStorage.setItem(key, JSON.stringify(existing)); showToast('Comment saved locally');
-                }
-                function clearComment() { commentsEl.value = ''; commentsEl.dispatchEvent(new Event('input')); showToast('Cleared'); }
+                                        const res = await fetch(Config.OPENAI_URL, {
+                                                method: 'POST',
+                                                headers: {
+                                                        'Authorization': `Bearer ${apiKey}`,
+                                                        'Content-Type': 'application/json',
+                                                        'Accept': onDelta ? 'text/event-stream' : 'application/json'
+                                                },
+                                                body: JSON.stringify(body)
+                                        });
 
-                // Wire up Summary actions
-                document.getElementById('summarizeBtn').addEventListener('click', summarize);
-                saveBtn.addEventListener('click', saveComment);
-                clearBtn.addEventListener('click', clearComment);
+                                        // Non-streaming: expect JSON with output_text/choices
+                                        if (!onDelta) {
+                                                const json = await res.json().catch(() => ({}));
+                                                if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                                                const txt = API.extractOpenAIText(json);
+                                                if (!txt) throw new Error('LLM returned no text payload');
+                                                return txt;
+                                        }
 
-                // ==========================================================
-                // CHAT FRONTEND: MESSAGE FLOW & INPUT HANDLING
-                // - addMessage: renders a bubble (user/bot)
-                // - showBotThinking: temporary "typing" bubble
-                // - handleSend: orchestrates send -> stream -> finalize
-                // ==========================================================
-                const chatMessages = document.getElementById('chatMessages');
-                const chatText = document.getElementById('chatText');
-                const chatSendBtn = document.getElementById('chatSendBtn');
-                let chatBusy = false; // true while a request is in flight
+                                        // --- Streaming path (SSE) ---
+                                        if (!res.ok || !res.body) {
+                                                const text = await res.text().catch(() => '');
+                                                throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
+                                        }
 
-                // Enable/disable Send based on input emptiness and busy state
-                const refreshSend = () => {
-                        const empty = chatText.value.trim().length === 0;
-                        chatSendBtn.disabled = chatBusy || empty; // reuse .btn-primary:disabled styling
-                };
+                                        const reader = res.body.getReader();
+                                        const decoder = new TextDecoder();
+                                        let carry = '';
+                                        let full = '';
 
-                // initialize + update on typing
-                refreshSend();
-                chatText.addEventListener('input', refreshSend);
+                                        while (true) {
+                                                const { value, done } = await reader.read();
+                                                if (done) break;
+                                                carry += decoder.decode(value, { stream: true });
 
-                // Render a new message bubble (html content is trusted/escaped by caller)
-                function addMessage(role, html) {
-                        const wrap = document.createElement('div');
-                        wrap.className = 'msg ' + role;
-                        const bubble = document.createElement('div');
-                        bubble.className = 'bubble';
-                        bubble.innerHTML = html;
-                        wrap.appendChild(bubble);
-                        chatMessages.appendChild(wrap);
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
+                                                // Split Server-Sent-Event frames
+                                                const frames = carry.split('\n\n');
+                                                carry = frames.pop() || '';
 
-                // Show a temporary "Thinking..." bubble with animated dots
-                function showBotThinking() {
-                        const wrap = document.createElement('div');
-                        wrap.className = 'msg bot';
-                        const bubble = document.createElement('div');
-                        bubble.className = 'bubble';
-                        bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
-                        wrap.appendChild(bubble);
-                        chatMessages.appendChild(wrap);
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                        return { bubble, stop: () => { wrap.remove(); } };
-                }
+                                                for (const frame of frames) {
+                                                        // concatenate all data: lines in the frame
+                                                        const dataLines = frame
+                                                                .split('\n')
+                                                                .filter(l => l.startsWith('data:'))
+                                                                .map(l => l.slice(5).trim())
+                                                                .join('\n');
 
-                // Send handler: push user msg, stream bot reply, maintain chatHistory window
-                async function handleSend() {
-                        const text = chatText.value.trim();
-                        if (!text) return;
+                                                        if (!dataLines || dataLines === '[DONE]') continue;
 
-                        addMessage('user', escapeHtml(text));
-                        chatHistory.push({ role: 'user', content: text });
-                        chatText.value = '';
-                        chatBusy = true;
-                        refreshSend();
+                                                        let evt;
+                                                        try { evt = JSON.parse(dataLines); } catch { continue; }
 
-                        const thinking = showBotThinking();
-                        await nextFrame(); // ensure typing anim paints
+                                                        if (evt.type === 'response.output_text.delta') {
+                                                                const delta = evt.delta || '';
+                                                                if (delta) {
+                                                                        full += delta;
+                                                                        try { onDelta(delta, full, evt); } catch { /* avoid breaking stream */ }
+                                                                }
+                                                        } else if (evt.type === 'error') {
+                                                                throw new Error(evt.error?.message || 'Streaming error');
+                                                        }
+                                                        // Other event types (created/completed) are ignored for now
+                                                }
+                                        }
+                                        return full.trim();
+                                }
+                        };
 
-                        let stopped = false;
-                        try {
-                                const final = await chatQuery(text, (_delta, full) => {
-                                        // replace typing with streamed text
-                                        thinking.bubble.innerHTML = escapeHtml(full).replace(/\n/g, '<br>');
-                                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                                        stopped = true; // we've already replaced the typing bubble
-                                });
-                                chatHistory.push({ role: 'assistant', content: final });
-                                // Keep only the latest 3 exchanges (6 messages)
-                                if (chatHistory.length > 6) chatHistory.splice(0, chatHistory.length - 6);
-                        } catch (e) {
-                                thinking.bubble.innerHTML = `<em>Sorry, I couldn’t complete that: ${escapeHtml(e.message)}</em>`;
-                                console.error('[chat] error:', e);
-                                // Rollback last user entry if request failed early
-                                if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
-                        } finally {
-                                // If no delta ever arrived (error before stream), ensure we don’t leave a ghost bubble
-                                if (!stopped && thinking.stop) thinking.stop();
-                                chatBusy = false;
-                                refreshSend();
-                                chatText.focus();
-                        }
-                }
+                        // Summary namespace
+                        const Summary = {
+                                // ==========================================================
+                                // MAS PREFETCH
+                                // - Pre-call SAS MAS to build prompts/keys for Summary and Chat.
+                                // - Results cached in summaryCache/chatCache; promises guard duplicate calls.
+                                // ==========================================================
 
-                // Keyboard + click bindings for chat send
-                chatSendBtn.addEventListener('click', handleSend);
-                chatText.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend();
-                        }
-                });
+                                // Prefetch summary-specific prompt/key/cutoff from MAS
+                                async prefetchSummary() {
+                                        await State.alertIdReady;
+                                        const csrf = await API.getCsrfToken();
+                                        const payload = {
+                                                inputs: [
+                                                        { name: "ALERT_ID_", value: State.ALERT_ID },
+                                                        { name: "SUMMARY_OR_CHAT_", value: "summary" }
+                                                ]
+                                        };
+                                        const res = await fetch(Config.MODULE_URI, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                                credentials: 'include',
+                                                body: JSON.stringify(payload)
+                                        });
 
-                // Seed with a welcome message (helps discoverability)
-                addMessage('bot',
-                        "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+                                        // MAS returns an outputs array [{name, value}, ...]; normalize to map
+                                        const out = Utils.outputsToMap(JSON.parse(await res.text()).outputs);
 
-                // ==========================================================
-                // VIEW TOGGLE BEHAVIOR
-                // - setView(true)  -> Chat mode
-                // - setView(false) -> Summary mode
-                // - Updates ARIA and titles/subtitles accordingly
-                // ==========================================================
-                const cardEl = document.querySelector('.card');
-                const titleEl = document.getElementById('title');
-                const subtitleEl = document.querySelector('.subtitle');
-                const toggleEl = document.getElementById('viewToggle');
+                                        console.log("MAS mapped outputs:", out);
+                                        State.summaryCache = { systemPrompt: out['systemPrompt'], key: out['key'], cutoff: out['CUTOFF_DATE'] };
 
-                function setView(showChat) {
-                        cardEl.classList.toggle('show-chat', showChat);
-                        titleEl.textContent = showChat ? 'Alert Chat' : 'Alert Summarizer';
-                        subtitleEl.textContent = showChat
-                                ? 'Converse with our chatbot for alert insights.'
-                                : 'Generate a concise summary with one click.';
-                        toggleEl.setAttribute('aria-checked', showChat ? 'true' : 'false');
-                }
+                                        console.log('[id] summaryCache ', State.summaryCache);
 
-                // click anywhere on the toggle to switch
-                toggleEl.addEventListener('click', () => setView(!cardEl.classList.contains('show-chat')));
+                                        return State.summaryCache;
+                                },
 
-                // default to Summary view
-                setView(false);
+                                // Prefetch chat-specific data string + key from MAS
+                                async prefetchChat() {
+                                        await State.alertIdReady;
+                                        const csrf = await API.getCsrfToken();
+                                        const payload = {
+                                                inputs: [
+                                                        { name: "ALERT_ID_", value: State.ALERT_ID },
+                                                        { name: "SUMMARY_OR_CHAT_", value: "chat" }
+                                                ]
+                                        };
+                                        const res = await fetch(Config.MODULE_URI, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                                credentials: 'include',
+                                                body: JSON.stringify(payload)
+                                        });
+                                        const out = Utils.outputsToMap(JSON.parse(await res.text()).outputs);
+                                        State.chatCache = { dataString: out['systemPrompt'] || '', key: out['key'] };
+                                        return State.chatCache;
+                                },
 
+                                // Kick off prefetch (idempotent via promise guards)
+                                startPrefetch() {
+                                        if (!State.summaryMasPromise)
+                                                State.summaryMasPromise = this.prefetchSummary().catch(e => {
+                                                        console.error('[prefetch summary]', e);
+                                                        State.summaryMasPromise = null;
+                                                        throw e;
+                                                });
+                                        if (!State.chatMasPromise)
+                                                State.chatMasPromise = (State.summaryMasPromise || this.prefetchSummary())
+                                                        .then(() => this.prefetchChat())
+                                                        .catch(e => {
+                                                                console.error('[prefetch chat]', e);
+                                                                State.chatMasPromise = null;
+                                                                throw e;
+                                                        });
+                                },
+
+                                // ==========================================================
+                                // SUMMARY ACTION
+                                // - Waits for ALERT_ID
+                                // - Shows rotating status messages
+                                // - Streams Responses text into #summary
+                                // - Appends cutoff note if provided by MAS
+                                // ==========================================================
+                                async summarize() {
+                                        // Wait until VA supplies the alert id (or URL fallback)
+                                        if (!State.ALERT_ID) {
+                                                UI.renderWorking('Waiting for Alert ID from Visual Analytics');
+                                                await State.alertIdReady;
+                                        }
+                                        console.log(`[id] summarize() with ALERT_ID=${State.ALERT_ID} (source=${State.ALERT_ID_SOURCE})`);
+
+                                        UI.elements.summarizeBtn.disabled = true;
+                                        UI.elements.summarizeBtn.classList.add('loading');
+                                        UI.elements.summarizeBtn.setAttribute('aria-busy', 'true');
+
+                                        // Shuffle once and rotate on interval
+                                        const shuffledMessages = [...Config.LOADING_MESSAGES].sort(() => Math.random() - 0.5);
+                                        let msgIndex = 0;
+
+                                        UI.renderWorking(shuffledMessages[msgIndex]);
+                                        await Utils.nextFrame();
+
+                                        const timer = setInterval(() => {
+                                                msgIndex = (msgIndex + 1) % shuffledMessages.length;
+                                                UI.renderWorking(shuffledMessages[msgIndex]);
+                                        }, Config.ROTATE_MS);
+
+                                        // Mark the toggle as "busy" to show mini-dots when on Chat view
+                                        UI.elements.toggleEl.classList.add('is-summarizing');
+                                        UI.elements.toggleEl.setAttribute('aria-busy', 'true');
+
+                                        try {
+                                                // 2) Call OpenAI with MAS-provided key
+                                                const chosenModel = UI.elements.modelSelect.value || Config.OPENAI_SUMMARY_MODEL;
+                                                const s = State.summaryCache || await (State.summaryMasPromise || (this.startPrefetch(), State.summaryMasPromise));
+                                                if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
+                                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
+
+                                                let started = false;
+                                                let finalText = await API.callOpenAI(
+                                                        s.systemPrompt,
+                                                        s.key,
+                                                        chosenModel,
+                                                        (_delta, full) => {
+                                                                if (!started) { started = true; /* first chunk replaces skeleton */ }
+                                                                // Stream full text into the summary container
+                                                                UI.elements.summaryEl.innerHTML = full;
+                                                        }
+                                                );
+                                                // Append cutoff footnote if MAS provided one (e.g., data freshness)
+                                                if (s.cutoff) UI.elements.summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
+
+                                        } catch (e) {
+                                                UI.elements.summaryEl.textContent = `Error:\n${e.message}`;
+                                                console.error(e);
+                                        } finally {
+                                                clearInterval(timer);
+                                                UI.elements.summarizeBtn.disabled = false;
+                                                UI.elements.summarizeBtn.classList.remove('loading');
+                                                UI.elements.summarizeBtn.setAttribute('aria-busy', 'false');
+                                                UI.elements.toggleEl.classList.remove('is-summarizing');
+                                                UI.elements.toggleEl.removeAttribute('aria-busy');
+                                        }
+                                }
+                        };
+
+                        // Chat namespace
+                        const Chat = {
+                                // ==========================================================
+                                // CHAT PROMPT BUILDER
+                                // - Assembles a single string prompt with SYSTEM + HISTORY + DATA + USER
+                                // - Restricts customer-specific claims to MAS-provided Data section
+                                // ==========================================================
+                                // Build the chat system prompt locally using MAS "chat" data string + user message.
+                                buildChatPrompt(dataString, userMessage, history = []) {
+                                        const system = [
+                                                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
+                                                'Customer/alert-specific facts MUST come only from the Data section.',
+                                                'If a requested detail is missing in Data, be very clear that it is missing. Do not invent values.',
+                                                'You MAY add general AML knowledge (regulations, definitions, typologies).',
+                                                'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
+                                                'Start by directly answering the question',
+                                                'Only answer questions related to AML',
+                                                'Avoid exposing or inferring PII beyond what appears in Data.',
+                                                `Alert ID: ${State.ALERT_ID || 'unknown'}`
+                                        ].join(' ');
+
+                                        // Use up to the last 3 exchanges (i.e., 6 messages), excluding the current user message if already added.
+                                        let hist = Array.isArray(history) ? history.slice() : [];
+                                        if (hist.length && hist[hist.length - 1].role === 'user') hist.pop(); // drop current turn if already pushed
+                                        const recent = hist.slice(-6);
+                                        const historyBlock = recent.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+
+                                        return [
+                                                `SYSTEM:\n${system}`,
+                                                historyBlock ? `HISTORY (last ${Math.floor(recent.length / 2)} exchanges):\n${Utils.trimChars(historyBlock, 2000)}` : null,
+                                                `DATA:\n${Utils.trimChars(dataString, 7000)}`,
+                                                `USER:\n${userMessage}`,
+                                                'ASSISTANT:'
+                                        ].filter(Boolean).join('\n\n');
+                                },
+
+                                // ==========================================================
+                                // OPENAI CALLERS (chat + shared streaming)
+                                // - chatQuery: resolves MAS chat data, builds prompt, calls Responses
+                                // ==========================================================
+                                async chatQuery(userText, onDelta) {
+                                        // Ensure we have an ALERT_ID (VA or URL)
+                                        if (!State.ALERT_ID) {
+                                                this.addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
+                                                await State.alertIdReady;
+                                        }
+
+                                        const cc = State.chatCache || await (State.chatMasPromise || (Summary.startPrefetch(), State.chatMasPromise));
+                                        const apiKey = cc.key || State.summaryCache?.key;
+                                        if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
+
+                                        const prompt = this.buildChatPrompt(cc.dataString, userText, State.chatHistory);
+                                        const reply = await API.callOpenAI(prompt, apiKey, Config.OPENAI_CHAT_MODEL, onDelta);
+                                        return reply.trim();
+                                },
+
+                                // ==========================================================
+                                // CHAT FRONTEND: MESSAGE FLOW & INPUT HANDLING
+                                // - addMessage: renders a bubble (user/bot)
+                                // - showBotThinking: temporary "typing" bubble
+                                // - handleSend: orchestrates send -> stream -> finalize
+                                // ==========================================================
+
+                                // Enable/disable Send based on input emptiness and busy state
+                                refreshSend() {
+                                        const empty = UI.elements.chatText.value.trim().length === 0;
+                                        UI.elements.chatSendBtn.disabled = State.chatBusy || empty; // reuse .btn-primary:disabled styling
+                                },
+
+                                // Render a new message bubble (html content is trusted/escaped by caller)
+                                addMessage(role, html) {
+                                        const wrap = document.createElement('div');
+                                        wrap.className = 'msg ' + role;
+                                        const bubble = document.createElement('div');
+                                        bubble.className = 'bubble';
+                                        bubble.innerHTML = html;
+                                        wrap.appendChild(bubble);
+                                        UI.elements.chatMessages.appendChild(wrap);
+                                        UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+                                },
+
+                                // Show a temporary "Thinking..." bubble with animated dots
+                                showBotThinking() {
+                                        const wrap = document.createElement('div');
+                                        wrap.className = 'msg bot';
+                                        const bubble = document.createElement('div');
+                                        bubble.className = 'bubble';
+                                        bubble.innerHTML = `<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>`;
+                                        wrap.appendChild(bubble);
+                                        UI.elements.chatMessages.appendChild(wrap);
+                                        UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+                                        return { bubble, stop: () => { wrap.remove(); } };
+                                },
+
+                                // Send handler: push user msg, stream bot reply, maintain chatHistory window
+                                async handleSend() {
+                                        const text = UI.elements.chatText.value.trim();
+                                        if (!text) return;
+
+                                        this.addMessage('user', Utils.escapeHtml(text));
+                                        State.chatHistory.push({ role: 'user', content: text });
+                                        UI.elements.chatText.value = '';
+                                        State.chatBusy = true;
+                                        this.refreshSend();
+
+                                        const thinking = this.showBotThinking();
+                                        await Utils.nextFrame(); // ensure typing anim paints
+
+                                        let stopped = false;
+                                        try {
+                                                const final = await this.chatQuery(text, (_delta, full) => {
+                                                        // replace typing with streamed text
+                                                        thinking.bubble.innerHTML = Utils.escapeHtml(full).replace(/\n/g, '<br>');
+                                                        UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+                                                        stopped = true; // we've already replaced the typing bubble
+                                                });
+                                                State.chatHistory.push({ role: 'assistant', content: final });
+                                                // Keep only the latest 3 exchanges (6 messages)
+                                                if (State.chatHistory.length > 6) State.chatHistory.splice(0, State.chatHistory.length - 6);
+                                        } catch (e) {
+                                                thinking.bubble.innerHTML = `<em>Sorry, I couldn't complete that: ${Utils.escapeHtml(e.message)}</em>`;
+                                                console.error('[chat] error:', e);
+                                                // Rollback last user entry if request failed early
+                                                if (State.chatHistory.length && State.chatHistory[State.chatHistory.length - 1].role === 'user') State.chatHistory.pop();
+                                        } finally {
+                                                // If no delta ever arrived (error before stream), ensure we don't leave a ghost bubble
+                                                if (!stopped && thinking.stop) thinking.stop();
+                                                State.chatBusy = false;
+                                                this.refreshSend();
+                                                UI.elements.chatText.focus();
+                                        }
+                                }
+                        };
+
+                        // Comments namespace
+                        const Comments = {
+                                // ==========================================================
+                                // COMMENTS: LOCAL STORAGE PERSISTENCE
+                                // - saveComment stores a timestamped entry under a fixed key
+                                // - clearComment resets the field and counter
+                                // ==========================================================
+                                saveComment() {
+                                        const key = 'aml-summary-comments';
+                                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                                        const entry = {
+                                                ts: new Date().toISOString(),
+                                                alertId: State.ALERT_ID,
+                                                comment: UI.elements.commentsEl.value.trim(),
+                                                summary: UI.elements.summaryEl.textContent.trim()
+                                        };
+                                        if (!entry.comment) {
+                                                UI.showToast('Nothing to save');
+                                                return;
+                                        }
+                                        existing.push(entry);
+                                        localStorage.setItem(key, JSON.stringify(existing));
+                                        UI.showToast('Comment saved locally');
+                                },
+
+                                clearComment() {
+                                        UI.elements.commentsEl.value = '';
+                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                                        UI.showToast('Cleared');
+                                }
+                        };
+
+                        // Initialization namespace
+                        const Init = {
+                                // ==========================================================
+                                // ALERT ID RESOLUTION (URL first, then VA message bus)
+                                // - URL ?alertId=... overrides VA only if present at load.
+                                // - VA parameter is preferred path in production dashboards.
+                                // ==========================================================
+                                checkAlertId() {
+                                        console.log('[id] init: waiting for alert id (from VA or URL)');
+
+                                        // 1) If an alertId is provided via URL use it
+                                        const urlAlertId = new URLSearchParams(location.search).get('alertId');
+                                        if (urlAlertId) {
+                                                State.ALERT_ID = urlAlertId;
+                                                State.ALERT_ID_SOURCE = 'url';
+                                                console.log('[id] Using URL parameter ?alertId=', State.ALERT_ID);
+                                                State.resolveAlertIdReady?.(State.ALERT_ID);
+                                                UI.elements.summarizeBtn.disabled = false;
+                                                Summary.startPrefetch();
+                                                console.log('[id] summarizeBtn enabled (source=url)');
+                                        }
+
+                                        // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
+                                        va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                                                console.log('[id] VA message received:', vaMsgObj);
+
+                                                // Prefer first parameter value if available
+                                                const paramVal = vaMsgObj?.parameters?.[0]?.value;
+
+                                                console.log('[id] candidates -> paramVal:', paramVal);
+
+                                                if (paramVal != null) {  // Only override if VA actually has a value
+                                                        State.ALERT_ID = String(paramVal);
+
+                                                        State.ALERT_ID_SOURCE = 'va-parameter';
+                                                        console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
+                                                        State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
+                                                        UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
+                                                        Summary.startPrefetch();
+                                                        console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
+                                                }
+                                        });
+                                },
+
+                                setupComments() {
+                                        // ==========================================================
+                                        // COMMENTS UX
+                                        // - Auto-resize textarea
+                                        // - Enforce character limit
+                                        // ==========================================================
+
+                                        UI.elements.commentsEl.addEventListener('input', () => Utils.autoResize(UI.elements.commentsEl));
+                                        window.addEventListener('load', () => Utils.autoResize(UI.elements.commentsEl));
+                                        UI.elements.commentsEl.addEventListener('input', () => {
+                                                if (UI.elements.commentsEl.value.length > Config.COMMENT_LIMIT) {
+                                                        UI.elements.commentsEl.value = UI.elements.commentsEl.value.slice(0, Config.COMMENT_LIMIT);
+                                                }
+                                                UI.elements.charCountEl.textContent = `${UI.elements.commentsEl.value.length} / ${Config.COMMENT_LIMIT}`;
+                                        });
+                                        // Initialize count on load
+                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                                },
+
+                                bindEvents() {
+                                        // Wire up Summary actions
+                                        UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
+                                        UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());
+                                        UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
+
+                                        // initialize + update on typing
+                                        Chat.refreshSend();
+                                        UI.elements.chatText.addEventListener('input', () => Chat.refreshSend());
+
+                                        // Keyboard + click bindings for chat send
+                                        UI.elements.chatSendBtn.addEventListener('click', () => Chat.handleSend());
+                                        UI.elements.chatText.addEventListener('keydown', (e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        Chat.handleSend();
+                                                }
+                                        });
+
+                                        // click anywhere on the toggle to switch
+                                        UI.elements.toggleEl.addEventListener('click', () => UI.setView(!UI.elements.cardEl.classList.contains('show-chat')));
+                                },
+
+                                init() {
+                                        UI.init();
+                                        this.checkAlertId();
+                                        this.setupComments();
+                                        this.bindEvents();
+
+                                        // Seed with a welcome message (helps discoverability)
+                                        Chat.addMessage('bot',
+                                                "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+
+                                        // default to Summary view
+                                        UI.setView(false);
+                                }
+                        };
+
+                        // Initialize the application
+                        Init.init();
+
+                })();
         </script>
 </body>
 
