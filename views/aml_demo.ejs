@@ -870,7 +870,9 @@
                                 chatCache: null,
                                 summaryMasPromise: null,
                                 chatMasPromise: null,
-                                chatBusy: false              // true while a request is in flight
+                                chatBusy: false,              // true while a request is in flight
+                                csrfToken: null
+
                         };
 
                         // Initialize the promise
@@ -977,8 +979,13 @@
                                 // - extractOpenAIText: normalize Responses API shapes into text
                                 // ==========================================================
                                 async getCsrfToken() {
+                                        if (State.csrfToken !== null) return State.csrfToken; // cached ('' if none)
                                         const res = await fetch(Config.CSRF_PRIMER_URL, { method: 'GET', credentials: 'include' });
-                                        return res.headers.get('X-CSRF-TOKEN') || res.headers.get('x-csrf-token') || '';
+                                        State.csrfToken =
+                                                res.headers.get('X-CSRF-TOKEN') ||
+                                                res.headers.get('x-csrf-token') ||
+                                                '';
+                                        return State.csrfToken;
                                 },
 
                                 extractOpenAIText(j) {
@@ -1431,7 +1438,7 @@
                                                         console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
                                                         State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
                                                         UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
-                                                        Summary.startPrefetch();                              
+                                                        Summary.startPrefetch();
                                                         console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
                                                 }
                                         });
