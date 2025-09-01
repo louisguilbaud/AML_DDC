@@ -1406,146 +1406,146 @@
                                                 if (chatRaf) { cancelAnimationFrame(chatRaf); chatRaf = null; }
                                         }
                                 }
-                        }
-                };
 
-                // Comments namespace
-                const Comments = {
-                        // ==========================================================
-                        // COMMENTS: LOCAL STORAGE PERSISTENCE
-                        // - saveComment stores a timestamped entry under a fixed key
-                        // - clearComment resets the field and counter
-                        // ==========================================================
-                        saveComment() {
-                                const key = 'aml-summary-comments';
-                                const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                                const entry = {
-                                        ts: new Date().toISOString(),
-                                        alertId: State.ALERT_ID,
-                                        comment: UI.elements.commentsEl.value.trim(),
-                                        summary: UI.elements.summaryEl.textContent.trim()
-                                };
-                                if (!entry.comment) {
-                                        UI.showToast('Nothing to save');
-                                        return;
+                        };
+
+                        // Comments namespace
+                        const Comments = {
+                                // ==========================================================
+                                // COMMENTS: LOCAL STORAGE PERSISTENCE
+                                // - saveComment stores a timestamped entry under a fixed key
+                                // - clearComment resets the field and counter
+                                // ==========================================================
+                                saveComment() {
+                                        const key = 'aml-summary-comments';
+                                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                                        const entry = {
+                                                ts: new Date().toISOString(),
+                                                alertId: State.ALERT_ID,
+                                                comment: UI.elements.commentsEl.value.trim(),
+                                                summary: UI.elements.summaryEl.textContent.trim()
+                                        };
+                                        if (!entry.comment) {
+                                                UI.showToast('Nothing to save');
+                                                return;
+                                        }
+                                        existing.push(entry);
+                                        localStorage.setItem(key, JSON.stringify(existing));
+                                        UI.showToast('Comment saved locally');
+                                },
+
+                                clearComment() {
+                                        UI.elements.commentsEl.value = '';
+                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                                        UI.showToast('Cleared');
                                 }
-                                existing.push(entry);
-                                localStorage.setItem(key, JSON.stringify(existing));
-                                UI.showToast('Comment saved locally');
-                        },
+                        };
 
-                        clearComment() {
-                                UI.elements.commentsEl.value = '';
-                                UI.elements.commentsEl.dispatchEvent(new Event('input'));
-                                UI.showToast('Cleared');
-                        }
-                };
+                        // Initialization namespace
+                        const Init = {
+                                // ==========================================================
+                                // ALERT ID RESOLUTION (URL first, then VA message bus)
+                                // - URL ?alertId=... is used initially; if VA later provides a parameter value, it will replace the URL one.
+                                // NOTE: Assumes `va.messagingUtil` is available (running inside SAS VA).
+                                // ==========================================================
+                                checkAlertId() {
+                                        console.log('[id] init: waiting for alert id (from VA or URL)');
 
-                // Initialization namespace
-                const Init = {
-                        // ==========================================================
-                        // ALERT ID RESOLUTION (URL first, then VA message bus)
-                        // - URL ?alertId=... is used initially; if VA later provides a parameter value, it will replace the URL one.
-                        // NOTE: Assumes `va.messagingUtil` is available (running inside SAS VA).
-                        // ==========================================================
-                        checkAlertId() {
-                                console.log('[id] init: waiting for alert id (from VA or URL)');
-
-                                // 1) If an alertId is provided via URL use it
-                                const urlAlertId = new URLSearchParams(location.search).get('alertId');
-                                if (urlAlertId) {
-                                        State.ALERT_ID = urlAlertId;
-                                        State.ALERT_ID_SOURCE = 'url';
-                                        console.log('[id] Using URL parameter ?alertId=', State.ALERT_ID);
-                                        State.resolveAlertIdReady?.(State.ALERT_ID);
-                                        UI.elements.summarizeBtn.disabled = false;
-                                        Summary.startPrefetch();
-                                        console.log('[id] summarizeBtn enabled (source=url)');
-                                }
-
-                                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
-                                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                                        console.log('[id] VA message received:', vaMsgObj);
-
-                                        // Prefer first parameter value if available
-                                        const paramVal = vaMsgObj?.parameters?.[0]?.value;
-
-                                        console.log('[id] candidates -> paramVal:', paramVal);
-
-                                        if (paramVal != null) {  // Only override if VA actually has a value
-                                                State.ALERT_ID = String(paramVal);
-
-                                                State.ALERT_ID_SOURCE = 'va-parameter';
-                                                console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
-                                                State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
-                                                UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
+                                        // 1) If an alertId is provided via URL use it
+                                        const urlAlertId = new URLSearchParams(location.search).get('alertId');
+                                        if (urlAlertId) {
+                                                State.ALERT_ID = urlAlertId;
+                                                State.ALERT_ID_SOURCE = 'url';
+                                                console.log('[id] Using URL parameter ?alertId=', State.ALERT_ID);
+                                                State.resolveAlertIdReady?.(State.ALERT_ID);
+                                                UI.elements.summarizeBtn.disabled = false;
                                                 Summary.startPrefetch();
-                                                console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
+                                                console.log('[id] summarizeBtn enabled (source=url)');
                                         }
-                                });
-                        },
 
-                        setupComments() {
-                                // ==========================================================
-                                // COMMENTS UX
-                                // - Auto-resize textarea
-                                // - Enforce character limit
-                                // ==========================================================
+                                        // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
+                                        va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                                                console.log('[id] VA message received:', vaMsgObj);
 
-                                UI.elements.commentsEl.addEventListener('input', () => Utils.autoResize(UI.elements.commentsEl));
-                                window.addEventListener('load', () => Utils.autoResize(UI.elements.commentsEl));
-                                UI.elements.commentsEl.addEventListener('input', () => {
-                                        if (UI.elements.commentsEl.value.length > Config.COMMENT_LIMIT) {
-                                                UI.elements.commentsEl.value = UI.elements.commentsEl.value.slice(0, Config.COMMENT_LIMIT);
-                                        }
-                                        UI.elements.charCountEl.textContent = `${UI.elements.commentsEl.value.length} / ${Config.COMMENT_LIMIT}`;
-                                });
-                                // Initialize count on load
-                                UI.elements.commentsEl.dispatchEvent(new Event('input'));
-                        },
+                                                // Prefer first parameter value if available
+                                                const paramVal = vaMsgObj?.parameters?.[0]?.value;
 
-                        bindEvents() {
-                                // Wire up Summary actions
-                                UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
-                                UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());    // Saves to localStorage only (per-browser, per-user). No server persistence.
-                                UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
+                                                console.log('[id] candidates -> paramVal:', paramVal);
 
-                                // initialize + update on typing
-                                Chat.refreshSend();
-                                UI.elements.chatText.addEventListener('input', () => Chat.refreshSend());
+                                                if (paramVal != null) {  // Only override if VA actually has a value
+                                                        State.ALERT_ID = String(paramVal);
 
-                                // Keyboard + click bindings for chat send
-                                UI.elements.chatSendBtn.addEventListener('click', () => Chat.handleSend());
-                                UI.elements.chatText.addEventListener('keydown', (e) => {
-                                        if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                Chat.handleSend();
-                                        }
-                                });
+                                                        State.ALERT_ID_SOURCE = 'va-parameter';
+                                                        console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
+                                                        State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
+                                                        UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
+                                                        Summary.startPrefetch();
+                                                        console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
+                                                }
+                                        });
+                                },
 
-                                // click anywhere on the toggle to switch
-                                UI.elements.toggleEl.addEventListener('click', () => UI.setView(!UI.elements.cardEl.classList.contains('show-chat')));
-                        },
+                                setupComments() {
+                                        // ==========================================================
+                                        // COMMENTS UX
+                                        // - Auto-resize textarea
+                                        // - Enforce character limit
+                                        // ==========================================================
 
-                        init() {
-                                UI.init();
-                                this.checkAlertId();
-                                this.setupComments();
-                                this.bindEvents();
+                                        UI.elements.commentsEl.addEventListener('input', () => Utils.autoResize(UI.elements.commentsEl));
+                                        window.addEventListener('load', () => Utils.autoResize(UI.elements.commentsEl));
+                                        UI.elements.commentsEl.addEventListener('input', () => {
+                                                if (UI.elements.commentsEl.value.length > Config.COMMENT_LIMIT) {
+                                                        UI.elements.commentsEl.value = UI.elements.commentsEl.value.slice(0, Config.COMMENT_LIMIT);
+                                                }
+                                                UI.elements.charCountEl.textContent = `${UI.elements.commentsEl.value.length} / ${Config.COMMENT_LIMIT}`;
+                                        });
+                                        // Initialize count on load
+                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                                },
 
-                                // Seed with a welcome message (helps discoverability)
-                                Chat.addMessage('bot',
-                                        "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+                                bindEvents() {
+                                        // Wire up Summary actions
+                                        UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
+                                        UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());    // Saves to localStorage only (per-browser, per-user). No server persistence.
+                                        UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
 
-                                // default to Summary view
-                                UI.setView(false);
-                        }
-                };
+                                        // initialize + update on typing
+                                        Chat.refreshSend();
+                                        UI.elements.chatText.addEventListener('input', () => Chat.refreshSend());
 
-                // Initialize the application
-                Init.init();
+                                        // Keyboard + click bindings for chat send
+                                        UI.elements.chatSendBtn.addEventListener('click', () => Chat.handleSend());
+                                        UI.elements.chatText.addEventListener('keydown', (e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                        e.preventDefault();
+                                                        Chat.handleSend();
+                                                }
+                                        });
 
-                }) ();
+                                        // click anywhere on the toggle to switch
+                                        UI.elements.toggleEl.addEventListener('click', () => UI.setView(!UI.elements.cardEl.classList.contains('show-chat')));
+                                },
+
+                                init() {
+                                        UI.init();
+                                        this.checkAlertId();
+                                        this.setupComments();
+                                        this.bindEvents();
+
+                                        // Seed with a welcome message (helps discoverability)
+                                        Chat.addMessage('bot',
+                                                "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
+
+                                        // default to Summary view
+                                        UI.setView(false);
+                                }
+                        };
+
+                        // Initialize the application
+                        Init.init();
+
+                })();
         </script>
 </body>
 
