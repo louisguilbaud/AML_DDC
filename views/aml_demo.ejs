@@ -285,6 +285,18 @@
                         /* iOS long-press menu */
                 }
 
+                /* Don't allow selecting the loading text or skeleton */
+                .summary .working,
+                .summary .working *,
+                .summary .skel,
+                .summary .skel * {
+                        -webkit-user-select: none;
+                        -moz-user-select: none;
+                        -ms-user-select: none;
+                        user-select: none;
+                        -webkit-touch-callout: none;
+                }
+
 
                 /* Toast for lightweight notifications (saved/cleared) */
                 .toast {
