@@ -570,7 +570,7 @@
                         border-radius: 999px;
                         background: var(--primary);
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-                        transition: transform .2s;
+                        transition: transform .0s;
                         z-index: 0;
                         /* behind labels */
                         pointer-events: none;
@@ -652,6 +652,12 @@
                         font-size: 11px;
                         color: var(--muted);
                         pointer-events: none;
+                }
+
+                #pane-summary,
+                #pane-chat {
+                        contain: layout paint;
+                        /* fence off layout & paint work to increase performance*/
                 }
 
                 /*==========================================================
