@@ -285,27 +285,6 @@
                         /* iOS long-press menu */
                 }
 
-                /* Don't allow selecting the loading text or skeleton */
-                .summary .working,
-                .summary .working *,
-                .summary .skel,
-                .summary .skel * {
-                        -webkit-user-select: none;
-                        -moz-user-select: none;
-                        -ms-user-select: none;
-                        user-select: none;
-                        -webkit-touch-callout: none;
-                }
-
-                .summary .placeholder,
-                .summary .placeholder * {
-                        -webkit-user-select: none;
-                        -moz-user-select: none;
-                        -ms-user-select: none;
-                        user-select: none;
-                        -webkit-touch-callout: none;
-                }
-
 
                 /* Toast for lightweight notifications (saved/cleared) */
                 .toast {
@@ -763,9 +742,9 @@
                                 <div>
                                         <div class="label">Summary</div>
                                         <!-- LLM summary output appears here; aria-live for SR updates -->
-                                        <div id="summary" class="summary" role="region" aria-live="polite"><span
-                                                        class="placeholder">Press "Summarize" to generate a concise
-                                                        alert summary.</span></div>
+                                        <div id="summary" class="summary" role="region" aria-live="polite">Press
+                                                "Summarize" to
+                                                generate a concise alert summary.</div>
                                 </div>
 
                                 <div class="row" style="justify-content:flex-end;margin-top:8px">
