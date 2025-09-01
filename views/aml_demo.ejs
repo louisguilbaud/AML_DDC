@@ -1199,6 +1199,8 @@
                                         UI.elements.toggleEl.classList.add('is-summarizing');
                                         UI.elements.toggleEl.setAttribute('aria-busy', 'true');
 
+                                        let rafId = null;
+
                                         try {
                                                 // Call OpenAI with MAS-provided key
                                                 const chosenModel = UI.elements.modelSelect.value || Config.OPENAI_SUMMARY_MODEL;
@@ -1206,19 +1208,31 @@
                                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
                                                 if (!s?.key) throw new Error('OpenAI API key missing from MAS');
 
-                                                let started = false;
+
+                                                let buffer = '';
+                                                const flush = () => {
+                                                        UI.elements.summaryEl.innerHTML = buffer;  // one DOM write per frame
+                                                        rafId = null;
+                                                };
+
                                                 let finalText = await API.callOpenAI(
                                                         s.systemPrompt,
                                                         s.key,
                                                         chosenModel,
                                                         (_delta, full) => {
-                                                                if (!started) { started = true; /* first chunk replaces skeleton */ }
-                                                                // Stream full text into the summary container
-                                                                UI.elements.summaryEl.innerHTML = full;
+                                                                buffer = full;                    // keep latest full text
+                                                                if (!rafId) rafId = requestAnimationFrame(flush);
                                                         }
                                                 );
-                                                // Append cutoff footnote if MAS provided one (e.g., data freshness)
-                                                if (s.cutoff) UI.elements.summaryEl.innerHTML = finalText + `<div class="cutoff">${s.cutoff}</div>`;
+
+                                                // Final synchronous write (includes cutoff if present)
+                                                buffer = s.cutoff
+                                                        ? finalText + `<div class="cutoff">${s.cutoff}</div>`
+                                                        : finalText;
+
+                                                // Ensure anything pending is canceled, then do one last write
+                                                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                                                UI.elements.summaryEl.innerHTML = buffer;
 
                                         } catch (e) {
                                                 UI.elements.summaryEl.textContent = `Error:\n${e.message}`;
@@ -1230,6 +1244,7 @@
                                                 UI.elements.summarizeBtn.setAttribute('aria-busy', 'false');
                                                 UI.elements.toggleEl.classList.remove('is-summarizing');
                                                 UI.elements.toggleEl.removeAttribute('aria-busy');
+                                                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                                         }
                                 }
                         };
@@ -1343,168 +1358,194 @@
                                         await Utils.nextFrame(); // ensure typing anim paints
 
                                         let stopped = false;
+                                        let chatRaf = null;
+                                        let chatBuf = '';
+                                        const messagesEl = UI.elements.chatMessages;            //  cache refs
+                                        const bubbleEl = thinking.bubble;
+
                                         try {
+                                                const chatFlush = () => {
+                                                        bubbleEl.innerHTML = chatBuf;
+                                                        messagesEl.scrollTop = messagesEl.scrollHeight;
+                                                        chatRaf = null;
+                                                        stopped = true;
+                                                };
+
                                                 const final = await this.chatQuery(text, (_delta, full) => {
-                                                        // replace typing with streamed text
-                                                        thinking.bubble.innerHTML = Utils.escapeHtml(full).replace(/\n/g, '<br>');
-                                                        UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
-                                                        stopped = true; // we've already replaced the typing bubble
+                                                        chatBuf = Utils.escapeHtml(full).replace(/\n/g, '<br>');
+                                                        if (!chatRaf) chatRaf = requestAnimationFrame(chatFlush);
                                                 });
+
+                                                // 🔧 guarantee last frame: cancel pending RAF and write final HTML once
+                                                if (chatRaf) { cancelAnimationFrame(chatRaf); chatRaf = null; }
+                                                const finalHtml = Utils.escapeHtml(final).replace(/\n/g, '<br>');
+                                                if (bubbleEl.innerHTML !== finalHtml) {
+                                                        bubbleEl.innerHTML = finalHtml;
+                                                        messagesEl.scrollTop = messagesEl.scrollHeight;
+                                                }
+                                                stopped = true;
+
                                                 State.chatHistory.push({ role: 'assistant', content: final });
                                                 // Keep only the latest 3 exchanges (6 messages)
-                                                if (State.chatHistory.length > 6) State.chatHistory.splice(0, State.chatHistory.length - 6);
+                                                if (State.chatHistory.length > 6) {
+                                                        State.chatHistory.splice(0, State.chatHistory.length - 6);
+                                                }
                                         } catch (e) {
-                                                thinking.bubble.innerHTML = `<em>Sorry, I couldn't complete that: ${Utils.escapeHtml(e.message)}</em>`;
+                                                bubbleEl.innerHTML = `<em>Sorry, I couldn't complete that: ${Utils.escapeHtml(e.message)}</em>`;
                                                 console.error('[chat] error:', e);
-                                                // Rollback last user entry if request failed early
-                                                if (State.chatHistory.length && State.chatHistory[State.chatHistory.length - 1].role === 'user') State.chatHistory.pop();
+                                                // Roll back last user entry if request failed early
+                                                if (State.chatHistory.length && State.chatHistory[State.chatHistory.length - 1].role === 'user') {
+                                                        State.chatHistory.pop();
+                                                }
                                         } finally {
-                                                // If no delta ever arrived (error before stream), ensure we don't leave a ghost bubble
+                                                // If no delta ever arrived (error before stream), remove the typing bubble
                                                 if (!stopped && thinking.stop) thinking.stop();
                                                 State.chatBusy = false;
                                                 this.refreshSend();
                                                 UI.elements.chatText.focus();
+                                                if (chatRaf) { cancelAnimationFrame(chatRaf); chatRaf = null; }
                                         }
                                 }
-                        };
+                        }
+                };
 
-                        // Comments namespace
-                        const Comments = {
-                                // ==========================================================
-                                // COMMENTS: LOCAL STORAGE PERSISTENCE
-                                // - saveComment stores a timestamped entry under a fixed key
-                                // - clearComment resets the field and counter
-                                // ==========================================================
-                                saveComment() {
-                                        const key = 'aml-summary-comments';
-                                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                                        const entry = {
-                                                ts: new Date().toISOString(),
-                                                alertId: State.ALERT_ID,
-                                                comment: UI.elements.commentsEl.value.trim(),
-                                                summary: UI.elements.summaryEl.textContent.trim()
-                                        };
-                                        if (!entry.comment) {
-                                                UI.showToast('Nothing to save');
-                                                return;
-                                        }
-                                        existing.push(entry);
-                                        localStorage.setItem(key, JSON.stringify(existing));
-                                        UI.showToast('Comment saved locally');
-                                },
-
-                                clearComment() {
-                                        UI.elements.commentsEl.value = '';
-                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
-                                        UI.showToast('Cleared');
+                // Comments namespace
+                const Comments = {
+                        // ==========================================================
+                        // COMMENTS: LOCAL STORAGE PERSISTENCE
+                        // - saveComment stores a timestamped entry under a fixed key
+                        // - clearComment resets the field and counter
+                        // ==========================================================
+                        saveComment() {
+                                const key = 'aml-summary-comments';
+                                const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                                const entry = {
+                                        ts: new Date().toISOString(),
+                                        alertId: State.ALERT_ID,
+                                        comment: UI.elements.commentsEl.value.trim(),
+                                        summary: UI.elements.summaryEl.textContent.trim()
+                                };
+                                if (!entry.comment) {
+                                        UI.showToast('Nothing to save');
+                                        return;
                                 }
-                        };
+                                existing.push(entry);
+                                localStorage.setItem(key, JSON.stringify(existing));
+                                UI.showToast('Comment saved locally');
+                        },
 
-                        // Initialization namespace
-                        const Init = {
-                                // ==========================================================
-                                // ALERT ID RESOLUTION (URL first, then VA message bus)
-                                // - URL ?alertId=... is used initially; if VA later provides a parameter value, it will replace the URL one.
-                                // NOTE: Assumes `va.messagingUtil` is available (running inside SAS VA).
-                                // ==========================================================
-                                checkAlertId() {
-                                        console.log('[id] init: waiting for alert id (from VA or URL)');
+                        clearComment() {
+                                UI.elements.commentsEl.value = '';
+                                UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                                UI.showToast('Cleared');
+                        }
+                };
 
-                                        // 1) If an alertId is provided via URL use it
-                                        const urlAlertId = new URLSearchParams(location.search).get('alertId');
-                                        if (urlAlertId) {
-                                                State.ALERT_ID = urlAlertId;
-                                                State.ALERT_ID_SOURCE = 'url';
-                                                console.log('[id] Using URL parameter ?alertId=', State.ALERT_ID);
-                                                State.resolveAlertIdReady?.(State.ALERT_ID);
-                                                UI.elements.summarizeBtn.disabled = false;
+                // Initialization namespace
+                const Init = {
+                        // ==========================================================
+                        // ALERT ID RESOLUTION (URL first, then VA message bus)
+                        // - URL ?alertId=... is used initially; if VA later provides a parameter value, it will replace the URL one.
+                        // NOTE: Assumes `va.messagingUtil` is available (running inside SAS VA).
+                        // ==========================================================
+                        checkAlertId() {
+                                console.log('[id] init: waiting for alert id (from VA or URL)');
+
+                                // 1) If an alertId is provided via URL use it
+                                const urlAlertId = new URLSearchParams(location.search).get('alertId');
+                                if (urlAlertId) {
+                                        State.ALERT_ID = urlAlertId;
+                                        State.ALERT_ID_SOURCE = 'url';
+                                        console.log('[id] Using URL parameter ?alertId=', State.ALERT_ID);
+                                        State.resolveAlertIdReady?.(State.ALERT_ID);
+                                        UI.elements.summarizeBtn.disabled = false;
+                                        Summary.startPrefetch();
+                                        console.log('[id] summarizeBtn enabled (source=url)');
+                                }
+
+                                // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
+                                va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+                                        console.log('[id] VA message received:', vaMsgObj);
+
+                                        // Prefer first parameter value if available
+                                        const paramVal = vaMsgObj?.parameters?.[0]?.value;
+
+                                        console.log('[id] candidates -> paramVal:', paramVal);
+
+                                        if (paramVal != null) {  // Only override if VA actually has a value
+                                                State.ALERT_ID = String(paramVal);
+
+                                                State.ALERT_ID_SOURCE = 'va-parameter';
+                                                console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
+                                                State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
+                                                UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
                                                 Summary.startPrefetch();
-                                                console.log('[id] summarizeBtn enabled (source=url)');
+                                                console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
                                         }
+                                });
+                        },
 
-                                        // 2) Primary path: get alert id from VA (parameter preferred, else data cell)
-                                        va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                                                console.log('[id] VA message received:', vaMsgObj);
+                        setupComments() {
+                                // ==========================================================
+                                // COMMENTS UX
+                                // - Auto-resize textarea
+                                // - Enforce character limit
+                                // ==========================================================
 
-                                                // Prefer first parameter value if available
-                                                const paramVal = vaMsgObj?.parameters?.[0]?.value;
+                                UI.elements.commentsEl.addEventListener('input', () => Utils.autoResize(UI.elements.commentsEl));
+                                window.addEventListener('load', () => Utils.autoResize(UI.elements.commentsEl));
+                                UI.elements.commentsEl.addEventListener('input', () => {
+                                        if (UI.elements.commentsEl.value.length > Config.COMMENT_LIMIT) {
+                                                UI.elements.commentsEl.value = UI.elements.commentsEl.value.slice(0, Config.COMMENT_LIMIT);
+                                        }
+                                        UI.elements.charCountEl.textContent = `${UI.elements.commentsEl.value.length} / ${Config.COMMENT_LIMIT}`;
+                                });
+                                // Initialize count on load
+                                UI.elements.commentsEl.dispatchEvent(new Event('input'));
+                        },
 
-                                                console.log('[id] candidates -> paramVal:', paramVal);
+                        bindEvents() {
+                                // Wire up Summary actions
+                                UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
+                                UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());    // Saves to localStorage only (per-browser, per-user). No server persistence.
+                                UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
 
-                                                if (paramVal != null) {  // Only override if VA actually has a value
-                                                        State.ALERT_ID = String(paramVal);
+                                // initialize + update on typing
+                                Chat.refreshSend();
+                                UI.elements.chatText.addEventListener('input', () => Chat.refreshSend());
 
-                                                        State.ALERT_ID_SOURCE = 'va-parameter';
-                                                        console.log(`[id] Using ${State.ALERT_ID_SOURCE}: ${State.ALERT_ID}`);
-                                                        State.resolveAlertIdReady?.(State.ALERT_ID);          // resolve the waiters (first time)
-                                                        UI.elements.summarizeBtn.disabled = false;            // enable the button now that we have it
-                                                        Summary.startPrefetch();
-                                                        console.log(`[id] summarizeBtn enabled (source=${State.ALERT_ID_SOURCE})`);
-                                                }
-                                        });
-                                },
+                                // Keyboard + click bindings for chat send
+                                UI.elements.chatSendBtn.addEventListener('click', () => Chat.handleSend());
+                                UI.elements.chatText.addEventListener('keydown', (e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                Chat.handleSend();
+                                        }
+                                });
 
-                                setupComments() {
-                                        // ==========================================================
-                                        // COMMENTS UX
-                                        // - Auto-resize textarea
-                                        // - Enforce character limit
-                                        // ==========================================================
+                                // click anywhere on the toggle to switch
+                                UI.elements.toggleEl.addEventListener('click', () => UI.setView(!UI.elements.cardEl.classList.contains('show-chat')));
+                        },
 
-                                        UI.elements.commentsEl.addEventListener('input', () => Utils.autoResize(UI.elements.commentsEl));
-                                        window.addEventListener('load', () => Utils.autoResize(UI.elements.commentsEl));
-                                        UI.elements.commentsEl.addEventListener('input', () => {
-                                                if (UI.elements.commentsEl.value.length > Config.COMMENT_LIMIT) {
-                                                        UI.elements.commentsEl.value = UI.elements.commentsEl.value.slice(0, Config.COMMENT_LIMIT);
-                                                }
-                                                UI.elements.charCountEl.textContent = `${UI.elements.commentsEl.value.length} / ${Config.COMMENT_LIMIT}`;
-                                        });
-                                        // Initialize count on load
-                                        UI.elements.commentsEl.dispatchEvent(new Event('input'));
-                                },
+                        init() {
+                                UI.init();
+                                this.checkAlertId();
+                                this.setupComments();
+                                this.bindEvents();
 
-                                bindEvents() {
-                                        // Wire up Summary actions
-                                        UI.elements.summarizeBtn.addEventListener('click', () => Summary.summarize());
-                                        UI.elements.saveBtn.addEventListener('click', () => Comments.saveComment());    // Saves to localStorage only (per-browser, per-user). No server persistence.
-                                        UI.elements.clearBtn.addEventListener('click', () => Comments.clearComment());
+                                // Seed with a welcome message (helps discoverability)
+                                Chat.addMessage('bot',
+                                        "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
 
-                                        // initialize + update on typing
-                                        Chat.refreshSend();
-                                        UI.elements.chatText.addEventListener('input', () => Chat.refreshSend());
+                                // default to Summary view
+                                UI.setView(false);
+                        }
+                };
 
-                                        // Keyboard + click bindings for chat send
-                                        UI.elements.chatSendBtn.addEventListener('click', () => Chat.handleSend());
-                                        UI.elements.chatText.addEventListener('keydown', (e) => {
-                                                if (e.key === 'Enter' && !e.shiftKey) {
-                                                        e.preventDefault();
-                                                        Chat.handleSend();
-                                                }
-                                        });
+                // Initialize the application
+                Init.init();
 
-                                        // click anywhere on the toggle to switch
-                                        UI.elements.toggleEl.addEventListener('click', () => UI.setView(!UI.elements.cardEl.classList.contains('show-chat')));
-                                },
-
-                                init() {
-                                        UI.init();
-                                        this.checkAlertId();
-                                        this.setupComments();
-                                        this.bindEvents();
-
-                                        // Seed with a welcome message (helps discoverability)
-                                        Chat.addMessage('bot',
-                                                "Hi! I am a friendly chatbot that will use the alert data and my general AML knowledge to help you. What's on your mind?");
-
-                                        // default to Summary view
-                                        UI.setView(false);
-                                }
-                        };
-
-                        // Initialize the application
-                        Init.init();
-
-                })();
+                }) ();
         </script>
 </body>
 
