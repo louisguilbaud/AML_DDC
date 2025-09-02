@@ -254,9 +254,9 @@ const HTML = /* html */ `
         const p = (i) => (params[i]?.value ?? null);
 
         const alertId   = byName('alertId')       ?? p(0) ?? qs.get('alertId');
-        const openaiKey = byName('OPENAI_API_KEY')?? p(1) ?? qs.get('OPENAI_API_KEY');
-        const sasUser   = byName('SAS_USERNAME')  ?? p(2) ?? qs.get('SAS_USERNAME');
-        const sasPass   = byName('SAS_PASSWORD')  ?? p(3) ?? qs.get('SAS_PASSWORD');
+        const openaiKey = byName('openAiKey')?? p(1) ?? qs.get('openAiKey');
+        const sasUser   = byName('SasUsername')  ?? p(2) ?? qs.get('SasUsername');
+        const sasPass   = byName('SasPassword')  ?? p(3) ?? qs.get('SasPassword');
 
         console.log('[CLIENT]', fnName, 'parsed -> alertId:', alertId,
           '| hasOpenAI:', !!openaiKey, '| hasUser:', !!sasUser, '| hasPass:', !!sasPass);
