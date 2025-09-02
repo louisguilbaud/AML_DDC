@@ -59,15 +59,26 @@
                 // Example: call your endpoints with everything as query params
                 if (alertId && openaiKey && sasUser && sasPass) {
                     const query = qs({ openaiKey, sasUser, sasPass });
+                    const apiUrl = `/api/alerts/${encodeURIComponent(alertId)}/files?${query}`;
+                    
+                    console.log('[API] Fetching:', apiUrl);
+                    document.getElementById('out').textContent += `\n\nFetching files from API...`;
 
                     // list files
-                    fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
-                        .then(r => r.json())
+                    fetch(apiUrl)
+                        .then(r => {
+                            console.log('[API] Response status:', r.status);
+                            return r.json();
+                        })
                         .then(j => {
+                            console.log('[API] Full response:', j);
+                            
                             // normalize response
                             const files = Array.isArray(j) ? j : (j.items || j.files || []);
                             const sel = document.getElementById('fileSelect');
                             const countEl = document.getElementById('fileCount');
+
+                            console.log('[FILES] Parsed files array:', files);
 
                             // populate dropdown
                             sel.innerHTML = '<option value="">— select a file —</option>';
@@ -81,10 +92,19 @@
                             });
 
                             // show count
-                            countEl.textContent = files.length ? `(${files.length} files)` : '(no files)';
-                            console.log('[FILES]', { count: files.length, sample: files[0] });
+                            const countText = files.length ? `(${files.length} files)` : '(no files)';
+                            countEl.textContent = countText;
+                            
+                            // Update main display
+                            document.getElementById('out').textContent += `\n\nAPI Response: ${countText}`;
+                            
+                            console.log('[FILES]', { count: files.length, countText, sample: files[0] });
                         })
-                        .catch(err => console.error('[FILES] error', err));
+                        .catch(err => {
+                            console.error('[FILES] error', err);
+                            document.getElementById('fileCount').textContent = '(error loading files)';
+                            document.getElementById('out').textContent += `\n\nError: ${err.message}`;
+                        });
                 }
             }
 
