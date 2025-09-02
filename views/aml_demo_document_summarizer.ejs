@@ -357,11 +357,13 @@
                         const contentType = response.headers.get('Content-Type') || '';
                         Utils.log('API', `File content type: ${contentType}`);
                         
+                        // Read response as arrayBuffer (single read)
+                        const arrayBuffer = await response.arrayBuffer();
+                        
                         // Return both content and content type for processing
                         return {
-                            content: await response.blob(),
                             contentType: contentType,
-                            arrayBuffer: await response.clone().arrayBuffer()
+                            arrayBuffer: arrayBuffer
                         };
                         
                     } catch (error) {
