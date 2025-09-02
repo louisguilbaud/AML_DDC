@@ -53,8 +53,10 @@
 
                 console.log('[DDC] by index:', { alertId, hasOpenAI: !!openaiKey, sasUser, hasPass: !!sasPass });
 
+                // Update the display to show we received parameters
+                document.getElementById('out').textContent = `Received parameters:\nAlert ID: ${alertId || 'missing'}\nOpenAI Key: ${openaiKey ? 'present' : 'missing'}\nSAS User: ${sasUser || 'missing'}\nSAS Pass: ${sasPass ? 'present' : 'missing'}`;
+
                 // Example: call your endpoints with everything as query params
-                // (remove if you only wanted to print)
                 if (alertId && openaiKey && sasUser && sasPass) {
                     const query = qs({ openaiKey, sasUser, sasPass });
 
@@ -83,22 +85,28 @@
                             console.log('[FILES]', { count: files.length, sample: files[0] });
                         })
                         .catch(err => console.error('[FILES] error', err));
-
-                    // later: summarize
-                    // fetch(`/api/summarize?${query}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ text }) })
                 }
             }
 
             // Attach VA callback
-            try {
+            function initVA() {
                 if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
                     va.messagingUtil.setOnDataReceivedCallback(onVA);
-                    console.log('VA listener attached (index-based).');
+                    console.log('VA listener attached');
+                    document.getElementById('out').textContent = 'VA listener attached, waiting for data...';
                 } else {
-                    console.log('va.messagingUtil not available—open inside VA.');
+                    console.log('VA not ready, retrying...');
+                    document.getElementById('out').textContent = 'VA not ready, retrying...';
+                    setTimeout(initVA, 1000); // Try again in 1 second
                 }
+            }
+
+            // Start the initialization
+            try {
+                initVA();
             } catch (e) {
-                console.error('Error attaching VA listener:', e);
+                console.error('Error initializing VA:', e);
+                document.getElementById('out').textContent = `Error: ${e.message}`;
             }
         })();
     </script>
