@@ -1,452 +1,383 @@
 // app.js
 // One-file Express server + embedded HTML UI
-// - Receives alertId and secrets from SAS VA parameters (via messagingUtil)
-// - SAS OAuth -> list files -> fetch content (PDF/DOCX/TXT) -> summarize via OpenAI
-// - Extensive masked logging for debugging
+// - NO bootstrap route. All secrets are sent per request as query params.
+// - UI reads VA parameters (or URL) and appends them to every API call.
 
 import express from "express";
 import dotenv from "dotenv";
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 
-// If you're on Node < 18, uncomment the next two lines: // import fetch from "node-fetch" ; // globalThis.fetch=fetch;
-    dotenv.config(); const app=express(); app.use(express.json({ limit: "4mb" })); // ---------- Utils (logging)
-    ---------- const maskTail=(s, keep=4)=> (s ? `${"*".repeat(Math.max(0, s.length - keep))}${s.slice(-keep)}` :
-    "(none)");
-    const has = (v) => (v ? "(set)" : "(missing)");
+// If you're on Node < 18, uncomment the next two lines:
+// import fetch from "node-fetch";
+// globalThis.fetch = fetch;
 
-    // ---------- Env ----------
-    const {
-    SAS_BASE_URL = "https://sasserver.demo.sas.com",
-    SAS_CLIENT_ID = "sas.cli",
-    SAS_CLIENT_SECRET = "",
-    SAS_USERNAME,
-    SAS_PASSWORD,
-    OPENAI_API_KEY,
-    PORT = 3000,
-    } = process.env;
+dotenv.config();
+const app = express();
+app.use(express.json({ limit: "4mb" }));
 
-    // ---------- Runtime secrets (VA can override at runtime) ----------
-    let RUNTIME = {
-    OPENAI_API_KEY,
-    SAS_USERNAME,
-    SAS_PASSWORD,
-    SAS_CLIENT_SECRET,
-    };
+// ---------- Env (server-side defaults) ----------
+const {
+  SAS_BASE_URL   = "https://sasserver.demo.sas.com",
+  SAS_CLIENT_ID  = "sas.cli",
+  SAS_CLIENT_SECRET = "",        // stays only on server; not taken from VA now
+  PORT = 3000,
+} = process.env;
 
-    console.log("[BOOT] SAS_BASE_URL:", SAS_BASE_URL);
-    console.log(
-    "[BOOT] Env -> OPENAI:", has(OPENAI_API_KEY),
-    " SAS_USER:", has(SAS_USERNAME),
-    " SAS_PASS:", has(SAS_PASSWORD)
+// ---------- Utils ----------
+const maskTail = (s, keep = 4) => (s ? `${"*".repeat(Math.max(0, s.length - keep))}${s.slice(-keep)}` : "(none)");
+
+// ---------- SAS OAuth (cached per-process) ----------
+let cachedToken = null, tokenExpiresAt = 0, cachedUser = null;
+
+/**
+ * Obtain SAS token using username/password provided in the request query.
+ * Cache only while same user and token is still valid.
+ */
+async function getSasToken({ sasUser, sasPass }) {
+  if (!sasUser || !sasPass) {
+    throw new Error("Missing SAS credentials (sasUser, sasPass) in query params.");
+  }
+
+  const now = Date.now();
+  if (cachedToken && cachedUser === sasUser && now < tokenExpiresAt - 30_000) {
+    return cachedToken;
+  }
+
+  const basic = Buffer.from(`${SAS_CLIENT_ID}:${SAS_CLIENT_SECRET}`).toString("base64");
+  console.log("[SAS] requesting token for user:", maskTail(sasUser));
+
+  const res = await fetch(`${SAS_BASE_URL}/SASLogon/oauth/token`, {
+    method: "POST",
+    headers: {
+      Authorization: "Basic " + basic,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "password",
+      username: sasUser,
+      password: sasPass,
+    }),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    console.error("[SAS] token error:", res.status, txt.slice(0, 300));
+    throw new Error(`SAS token error: ${res.status}`);
+  }
+
+  const j = await res.json();
+  cachedToken = j.access_token;
+  cachedUser = sasUser;
+  tokenExpiresAt = Date.now() + (j.expires_in || 3600) * 1000;
+  console.log("[SAS] token ok; expires_in:", j.expires_in);
+  return cachedToken;
+}
+
+// ---------- API: list files ----------
+app.get("/api/alerts/:alertId/files", async (req, res) => {
+  const { sasUser, sasPass } = req.query;
+  console.log("[FILES] alertId =", req.params.alertId, "| user =", maskTail(String(sasUser || "")));
+  try {
+    const token = await getSasToken({ sasUser, sasPass });
+    const r = await fetch(
+      `${SAS_BASE_URL}/svi-datahub/documents/alerts/${encodeURIComponent(req.params.alertId)}/files`,
+      { headers: { Authorization: `Bearer ${token}` } }
     );
-    if (!RUNTIME.SAS_USERNAME || !RUNTIME.SAS_PASSWORD || !RUNTIME.OPENAI_API_KEY) {
-    console.warn("[BOOT] Some secrets missing in env; expecting VA to POST them to /api/bootstrap-secrets");
+    if (!r.ok) throw new Error(`SAS files error: ${r.status} ${await r.text()}`);
+    const data = await r.json();
+    console.log("[FILES] ok; keys =", Object.keys(data || {}));
+    res.json(data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ---------- API: get content + extract text ----------
+app.get("/api/alerts/:alertId/files/:fileId/content", async (req, res) => {
+  const { sasUser, sasPass } = req.query;
+  console.log("[CONTENT] alertId =", req.params.alertId, "fileId =", req.params.fileId);
+  try {
+    const token = await getSasToken({ sasUser, sasPass });
+    const r = await fetch(
+      `${SAS_BASE_URL}/svi-datahub/documents/alerts/${encodeURIComponent(req.params.alertId)}/files/${encodeURIComponent(req.params.fileId)}/content`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r.ok) throw new Error(`SAS content error: ${r.status} ${await r.text()}`);
+
+    const contentType = (r.headers.get("content-type") || "").toLowerCase();
+    const buf = Buffer.from(await r.arrayBuffer());
+    let text = "";
+
+    if (contentType.includes("pdf")) {
+      text = (await pdfParse(buf)).text || "";
+    } else if (
+      contentType.includes("word") ||
+      contentType.endsWith("msword") ||
+      contentType.endsWith("officedocument.wordprocessingml.document")
+    ) {
+      text = (await mammoth.extractRawText({ buffer: buf })).value || "";
+    } else if (contentType.startsWith("text/")) {
+      text = buf.toString("utf-8");
+    } else {
+      text = buf.toString("utf-8");
     }
 
-    // ---------- SAS OAuth (cached) ----------
-    let cachedToken = null, tokenExpiresAt = 0;
-    async function getSasToken() {
-    const now = Date.now();
-    if (cachedToken && now < tokenExpiresAt - 30_000) return cachedToken; if (!RUNTIME.SAS_USERNAME ||
-        !RUNTIME.SAS_PASSWORD) { throw new Error("SAS credentials not set (via env or VA)."); } const
-        authSecret=RUNTIME.SAS_CLIENT_SECRET ?? SAS_CLIENT_SECRET; const
-        basic=Buffer.from(`${SAS_CLIENT_ID}:${authSecret}`).toString("base64"); console.log("[SAS] requesting token for
-        user:", maskTail(RUNTIME.SAS_USERNAME)); const res=await fetch(`${SAS_BASE_URL}/SASLogon/oauth/token`, {
-        method: "POST" , headers: { Authorization: "Basic " + basic, "Content-Type"
-        : "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "password" , username:
-        RUNTIME.SAS_USERNAME, password: RUNTIME.SAS_PASSWORD, }), }); if (!res.ok) { const txt=await
-        res.text().catch(()=> "");
-        console.error("[SAS] token error:", res.status, txt.slice(0, 300));
-        throw new Error(`SAS token error: ${res.status}`);
-        }
+    console.log("[CONTENT] contentType =", contentType, "textLen =", text.length);
+    res.json({ contentType, text });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
 
-        const j = await res.json();
-        cachedToken = j.access_token;
-        tokenExpiresAt = Date.now() + (j.expires_in || 3600) * 1000;
-        console.log("[SAS] token ok; expires_in:", j.expires_in);
-        return cachedToken;
-        }
+// ---------- API: summarize via OpenAI Responses ----------
+app.post("/api/summarize", async (req, res) => {
+  const { openaiKey } = req.query;
+  try {
+    const { text } = req.body || {};
+    if (!text?.trim()) return res.json({ summary: "" });
+    if (!openaiKey) throw new Error("Missing openaiKey in query params.");
 
-        // ---------- Secret bootstrap (from VA) ----------
-        app.post("/api/bootstrap-secrets", (req, res) => {
-        const { openaiKey, sasUser, sasPass } = req.body || {};
+    console.log("[SUMMARIZE] textLen =", (text || "").length, "key =", maskTail(openaiKey));
 
-        if (openaiKey?.trim()) RUNTIME.OPENAI_API_KEY = openaiKey.trim();
-        if (sasUser?.trim()) RUNTIME.SAS_USERNAME = sasUser.trim();
-        if (sasPass?.trim()) RUNTIME.SAS_PASSWORD = sasPass.trim();
+    const systemPrompt =
+      `You are an "AML-Copilot", an assistant for financial-crime investigators. ` +
+      `Summarize concisely in English:\n\n${text}`;
 
-        console.log("[BOOTSTRAP] got ->",
-        "OPENAI", openaiKey ? maskTail(openaiKey) : "(none)",
-        "USER", sasUser ? maskTail(sasUser) : "(none)",
-        "PASS", sasPass ? "(set)" : "(none)"
-        );
-        console.log("[RUNTIME] now ->",
-        "OPENAI", RUNTIME.OPENAI_API_KEY ? maskTail(RUNTIME.OPENAI_API_KEY) : "(none)",
-        "USER", RUNTIME.SAS_USERNAME ? maskTail(RUNTIME.SAS_USERNAME) : "(none)",
-        "PASS", RUNTIME.SAS_PASSWORD ? "(set)" : "(missing)"
-        );
-        return res.json({ ok: true });
-        });
-
-        // ---------- API: list files for an alert ----------
-        app.get("/api/alerts/:alertId/files", async (req, res) => {
-        console.log("[FILES] alertId =", req.params.alertId);
-        try {
-        const token = await getSasToken();
-        const r = await fetch(
-        `${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files`,
-        { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!r.ok) throw new Error(`SAS files error: ${r.status} ${await r.text()}`);
-        const data = await r.json();
-        console.log("[FILES] ok; keys =", Object.keys(data || {}));
-        res.json(data);
-        } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: String(e.message || e) });
-        }
-        });
-
-        // ---------- API: get content + extract text ----------
-        app.get("/api/alerts/:alertId/files/:fileId/content", async (req, res) => {
-        console.log("[CONTENT] alertId =", req.params.alertId, "fileId =", req.params.fileId);
-        try {
-        const token = await getSasToken();
-        const r = await fetch(
-        `${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files/${req.params.fileId}/content`,
-        { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!r.ok) throw new Error(`SAS content error: ${r.status} ${await r.text()}`);
-
-        const contentType = (r.headers.get("content-type") || "").toLowerCase();
-        const buf = Buffer.from(await r.arrayBuffer());
-        let text = "";
-
-        if (contentType.includes("pdf")) {
-        text = (await pdfParse(buf)).text || "";
-        } else if (
-        contentType.includes("word") ||
-        contentType.endsWith("msword") ||
-        contentType.endsWith("officedocument.wordprocessingml.document")
-        ) {
-        text = (await mammoth.extractRawText({ buffer: buf })).value || "";
-        } else if (contentType.startsWith("text/")) {
-        text = buf.toString("utf-8");
-        } else {
-        // Fallback
-        text = buf.toString("utf-8");
-        }
-
-        console.log("[CONTENT] contentType =", contentType, "textLen =", text.length);
-        res.json({ contentType, text });
-        } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: String(e.message || e) });
-        }
-        });
-
-        // ---------- API: summarize via OpenAI Responses ----------
-        app.post("/api/summarize", async (req, res) => {
-        try {
-        const { text } = req.body || {};
-        if (!text?.trim()) return res.json({ summary: "" });
-
-        if (!RUNTIME.OPENAI_API_KEY) {
-        throw new Error("OPENAI_API_KEY not set (via env or VA).");
-        }
-
-        console.log("[SUMMARIZE] textLen =", (text || "").length, "key =", maskTail(RUNTIME.OPENAI_API_KEY));
-
-        const systemPrompt = `You are an "AML-Copilot", an assistant for financial-crime investigators. Summarize
-        concisely in English:\n\n${text}`;
-        const r = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${RUNTIME.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+    const r = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
         model: "gpt-5-nano",
         input: systemPrompt,
         reasoning: { effort: "medium" },
-        text: { verbosity: "low" }
-        }),
-        });
+        text: { verbosity: "low" },
+      }),
+    });
 
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) {
-        console.error("[OPENAI] error", r.status, JSON.stringify(j).slice(0, 500));
-        throw new Error(`OpenAI error: ${r.status}`);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error("[OPENAI] error", r.status, JSON.stringify(j).slice(0, 500));
+      throw new Error(`OpenAI error: ${r.status}`);
+    }
+
+    const summary =
+      j.output_text ||
+      (Array.isArray(j.output) && j.output[1]?.content?.[0]?.text) ||
+      (j?.choices?.[0]?.message?.content) ||
+      "";
+
+    res.json({ summary: (summary || "").trim() });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
+// ---------- UI (tiny page that forwards VA params on each request) ----------
+const HTML = /* html */ `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Alert Summarizer</title>
+  <!-- If this path doesn't exist outside VA, it simply won't load -->
+  <script src="./javascripts/sas/util/messagingUtil.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px }
+    h1 { margin: 0 0 12px }
+    label { display:block; margin: 12px 0 6px; color:#666 }
+    select, button, textarea { font: inherit; padding:10px 12px; border:1px solid #ddd; border-radius:10px }
+    button { background:#0478CE; color:#fff; border:none; cursor:pointer }
+    button:disabled { opacity:.5; cursor:not-allowed }
+    textarea { width:100%; min-height:140px; white-space:pre-wrap }
+    .row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end }
+    .badge { display:inline-block; background:#eef6ff; border:1px solid #cfe6ff; color:#0b63b6; border-radius:999px; padding:4px 8px }
+    .muted { color:#777; font-size:12px }
+    pre { background:#fafafa; border:1px solid #eee; padding:10px; border-radius:10px; white-space:pre-wrap }
+  </style>
+</head>
+<body>
+  <h1>Alert Summarizer</h1>
+  <div class="badge" id="idBadge">Alert ID: <em>waiting…</em></div>
+  <div><pre id="clientLog">Waiting for VA parameters…</pre></div>
+
+  <div class="row" style="margin-top:12px">
+    <div>
+      <label>Document</label>
+      <select id="fileSelect"><option value="">— select a file —</option></select>
+    </div>
+    <button id="loadBtn" disabled>Load files</button>
+  </div>
+
+  <label>Extracted Text (preview)</label>
+  <textarea id="docText" readonly placeholder="Document text will appear here…"></textarea>
+
+  <div style="margin-top:8px">
+    <button id="summarizeBtn" disabled>Summarize</button>
+  </div>
+
+  <label>Summary</label>
+  <textarea id="summary" readonly placeholder="Summary will appear here…"></textarea>
+
+  <p class="muted">Tip: In VA, pass parameters named alertId, OPENAI_API_KEY, SAS_USERNAME, SAS_PASSWORD.
+    Outside VA, you can use URL like: <code>?alertId=...&OPENAI_API_KEY=...&SAS_USERNAME=...&SAS_PASSWORD=...</code></p>
+
+  <script>
+    (function () {
+      const out = document.getElementById('clientLog');
+      const idBadge = document.getElementById('idBadge');
+      const fileSelect = document.getElementById('fileSelect');
+      const loadBtn = document.getElementById('loadBtn');
+      const summarizeBtn = document.getElementById('summarizeBtn');
+      const docText = document.getElementById('docText');
+      const summary = document.getElementById('summary');
+
+      const log = (...a) => { console.log('[CLIENT]', ...a); out.textContent = a.join(' '); };
+
+      const qs = new URLSearchParams(location.search);
+      const State = {
+        ALERT_ID: null,
+        OPENAI_API_KEY: null,
+        SAS_USERNAME: null,
+        SAS_PASSWORD: null,
+        resolveReady: null,
+        ready: null
+      };
+      State.ready = new Promise(r => State.resolveReady = r);
+
+      function setStateFromParams(fnName, params) {
+        const byName = (n) => (params.find(x => (x?.name || '').toLowerCase() === n.toLowerCase())?.value ?? null);
+        const p = (i) => (params[i]?.value ?? null);
+
+        const alertId   = byName('alertId')       ?? p(0) ?? qs.get('alertId');
+        const openaiKey = byName('OPENAI_API_KEY')?? p(1) ?? qs.get('OPENAI_API_KEY');
+        const sasUser   = byName('SAS_USERNAME')  ?? p(2) ?? qs.get('SAS_USERNAME');
+        const sasPass   = byName('SAS_PASSWORD')  ?? p(3) ?? qs.get('SAS_PASSWORD');
+
+        console.log('[CLIENT]', fnName, 'parsed -> alertId:', alertId,
+          '| hasOpenAI:', !!openaiKey, '| hasUser:', !!sasUser, '| hasPass:', !!sasPass);
+
+        if (alertId) {
+          State.ALERT_ID = String(alertId);
+          idBadge.innerHTML = 'Alert ID: ' + State.ALERT_ID + ' <span class="muted">(from ' + fnName + ')</span>';
+          loadBtn.disabled = false;
+          summarizeBtn.disabled = false;
+          if (State.resolveReady) { State.resolveReady(alertId); State.resolveReady = null; }
         }
+        if (openaiKey) State.OPENAI_API_KEY = String(openaiKey);
+        if (sasUser)   State.SAS_USERNAME   = String(sasUser);
+        if (sasPass)   State.SAS_PASSWORD   = String(sasPass);
 
-        const summary =
-        (j.output_text) ||
-        (Array.isArray(j.output) && j.output[1]?.content?.[0]?.text) ||
-        (j?.choices?.[0]?.message?.content) ||
-        "";
+        if (!alertId && !openaiKey && !sasUser && !sasPass) {
+          log('No parameters found. If in VA, map them in the DDC Parameters pane.');
+        }
+      }
 
-        res.json({ summary: (summary || "").trim() });
+      // 1) URL fallback immediately
+      setStateFromParams('url', []);
+
+      // 2) VA parameter hook (if available)
+      try {
+        if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
+          console.log('[CLIENT] registering VA callback');
+          va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+            console.log('[CLIENT] VA message received. keys=', Object.keys(vaMsgObj||{}));
+            const params = vaMsgObj?.parameters || [];
+            console.log('[CLIENT] parameters length =', params.length, params);
+            setStateFromParams('va-parameter', params);
+          });
+        } else {
+          console.warn('[CLIENT] va.messagingUtil not available (outside VA?)');
+        }
+      } catch (e) {
+        console.warn('[CLIENT] VA hook error:', e);
+      }
+
+      // Helper to append creds on every call
+      function credsQS() {
+        const q = new URLSearchParams();
+        if (State.SAS_USERNAME) q.set('sasUser', State.SAS_USERNAME);
+        if (State.SAS_PASSWORD) q.set('sasPass', State.SAS_PASSWORD);
+        return q.toString();
+      }
+      function openaiQS() {
+        const q = new URLSearchParams();
+        if (State.OPENAI_API_KEY) q.set('openaiKey', State.OPENAI_API_KEY);
+        return q.toString();
+      }
+
+      // UI actions
+      loadBtn.addEventListener('click', async () => {
+        await State.ready;
+        if (!State.ALERT_ID) return alert('Missing alertId');
+        fileSelect.innerHTML = '<option>Loading…</option>';
+        docText.value = ''; summary.value = '';
+        try {
+          const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files?' + credsQS());
+          if (!r.ok) throw new Error(await r.text());
+          const data = await r.json();
+          const files = Array.isArray(data) ? data : (data.items || data.files || []);
+          fileSelect.innerHTML = '<option value="">— select a file —</option>';
+          files.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f.id || f.fileId;
+            opt.textContent = (f.name || f.fileName) + ' (' + (f.id || f.fileId) + ')';
+            fileSelect.appendChild(opt);
+          });
+          log('Files loaded: ' + files.length);
         } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: String(e.message || e) });
+          console.error(e);
+          fileSelect.innerHTML = '<option value="">(error loading files)</option>';
+          log('Failed to load files');
         }
-        });
+      });
 
-        // ---------- Debug / health ----------
-        app.get("/api/debug/runtime", (_req, res) => {
-        res.json({
-        SAS_BASE_URL,
-        SAS_CLIENT_ID,
-        RUNTIME: {
-        OPENAI_API_KEY: RUNTIME.OPENAI_API_KEY ? maskTail(RUNTIME.OPENAI_API_KEY) : "(none)",
-        SAS_USERNAME: RUNTIME.SAS_USERNAME ? maskTail(RUNTIME.SAS_USERNAME) : "(none)",
-        SAS_PASSWORD: RUNTIME.SAS_PASSWORD ? "(set)" : "(missing)",
-        SAS_CLIENT_SECRET: RUNTIME.SAS_CLIENT_SECRET ? maskTail(RUNTIME.SAS_CLIENT_SECRET) : "(none)",
-        },
-        tokenCached: !!cachedToken,
-        tokenExpiresAt,
-        });
-        });
-        app.get("/health", (_req, res) => res.json({ ok: true }));
+      fileSelect.addEventListener('change', async () => {
+        if (!fileSelect.value) return;
+        await State.ready;
+        docText.value = 'Extracting text…'; summary.value = '';
+        try {
+          const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files/' + encodeURIComponent(fileSelect.value) + '/content?' + credsQS());
+          if (!r.ok) throw new Error(await r.text());
+          const { text, contentType } = await r.json();
+          docText.value = (text || '').trim().slice(0, 12000) || '(No extractable text; content-type: ' + contentType + ')';
+          log('Content loaded; type=' + contentType + ' len=' + (text ? text.length : 0));
+        } catch (e) {
+          console.error(e); docText.value = '(error extracting text)';
+          log('Failed to extract text');
+        }
+      });
 
-        // ---------- UI (tiny page with VA logs) ----------
-        const HTML = /* html */ `
-        <!DOCTYPE html>
-        <html lang="en">
+      summarizeBtn.addEventListener('click', async () => {
+        const t = docText.value.trim();
+        if (!t) { alert('No text to summarize.'); return; }
+        if (!State.OPENAI_API_KEY) { alert('Missing OPENAI_API_KEY'); return; }
+        summary.value = 'Summarizing…';
+        try {
+          const r = await fetch('/api/summarize?' + openaiQS(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: t })
+          });
+          if (!r.ok) throw new Error(await r.text());
+          const { summary: s } = await r.json();
+          summary.value = (s || '').trim();
+          log('Summary ready; len=' + (summary.value.length));
+        } catch (e) {
+          console.error(e); summary.value = '(error summarizing)';
+          log('Failed to summarize');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
+`;
+app.get("/", (_req, res) => res.type("html").send(HTML));
 
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="width=device-width,initial-scale=1" />
-            <title>Alert Summarizer</title>
-            <script src="./javascripts/sas/util/messagingUtil.js"></script>
-            <style>
-                body {
-                    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-                    margin: 24px
-                }
-
-                h1 {
-                    margin: 0 0 12px
-                }
-
-                label {
-                    display: block;
-                    margin: 12px 0 6px;
-                    color: #666
-                }
-
-                select,
-                button,
-                textarea {
-                    font: inherit;
-                    padding: 10px 12px;
-                    border: 1px solid #ddd;
-                    border-radius: 10px
-                }
-
-                button {
-                    background: #0478CE;
-                    color: #fff;
-                    border: none;
-                    cursor: pointer
-                }
-
-                button:disabled {
-                    opacity: .5;
-                    cursor: not-allowed
-                }
-
-                textarea {
-                    width: 100%;
-                    min-height: 140px;
-                    white-space: pre-wrap
-                }
-
-                .row {
-                    display: grid;
-                    grid-template-columns: 1fr auto;
-                    gap: 8px;
-                    align-items: end
-                }
-
-                .badge {
-                    display: inline-block;
-                    background: #eef6ff;
-                    border: 1px solid #cfe6ff;
-                    color: #0b63b6;
-                    border-radius: 999px;
-                    padding: 4px 8px
-                }
-
-                .muted {
-                    color: #777;
-                    font-size: 12px
-                }
-
-                pre {
-                    background: #fafafa;
-                    border: 1px solid #eee;
-                    padding: 10px;
-                    border-radius: 10px;
-                    white-space: pre-wrap
-                }
-            </style>
-        </head>
-
-        <body>
-            <h1>Alert Summarizer</h1>
-            <div class="badge" id="idBadge">Alert ID: <em>waiting…</em></div>
-            <div>
-                <pre id="clientLog">Waiting for VA parameters…</pre>
-            </div>
-
-            <div class="row" style="margin-top:12px">
-                <div>
-                    <label>Document</label>
-                    <select id="fileSelect">
-                        <option value="">— select a file —</option>
-                    </select>
-                </div>
-                <button id="loadBtn" disabled>Load files</button>
-            </div>
-
-            <label>Extracted Text (preview)</label>
-            <textarea id="docText" readonly placeholder="Document text will appear here…"></textarea>
-
-            <div style="margin-top:8px">
-                <button id="summarizeBtn" disabled>Summarize</button>
-            </div>
-
-            <label>Summary</label>
-            <textarea id="summary" readonly placeholder="Summary will appear here…"></textarea>
-
-            <p class="muted">Tip: In VA, pass alertId and secrets as parameters. Outside VA, use
-                <code>?alertId=...</code>. Check console for logs.</p>
-
-            <script>
-                (function () {
-                    const out = document.getElementById('clientLog');
-                    const idBadge = document.getElementById('idBadge');
-                    const fileSelect = document.getElementById('fileSelect');
-                    const loadBtn = document.getElementById('loadBtn');
-                    const summarizeBtn = document.getElementById('summarizeBtn');
-                    const docText = document.getElementById('docText');
-                    const summary = document.getElementById('summary');
-
-                    const log = (...a) => { console.log('[CLIENT]', ...a); out.textContent = a.join(' '); };
-
-                    const State = { ALERT_ID: null, resolveReady: null, ready: null };
-                    State.ready = new Promise(r => State.resolveReady = r);
-
-                    function setId(id, source) {
-                        if (!id) return;
-                        State.ALERT_ID = String(id);
-                        idBadge.innerHTML = 'Alert ID: ' + State.ALERT_ID + ' <span class="muted">(' + source + ')</span>';
-                        loadBtn.disabled = false;
-                        summarizeBtn.disabled = false;
-                        if (State.resolveReady) { State.resolveReady(id); State.resolveReady = null; }
-                    }
-
-                    // URL fallback
-                    const urlAlertId = new URLSearchParams(location.search).get('alertId');
-                    if (urlAlertId) { log('URL alertId =', urlAlertId); setId(urlAlertId, 'url'); }
-
-                    // VA parameter hook
-                    try {
-                        if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
-                            va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
-                                console.log('[id] VA message received:', vaMsgObj);
-
-                                const params = vaMsgObj?.parameters || [];
-                                const p = (i) => (params[i]?.value ?? null); // positional fallback
-                                const byName = (n) =>
-                                    (params.find(x => (x?.name || '').toLowerCase() === n.toLowerCase())?.value ?? null);
-
-                                // 0) Alert ID: prefer name, else FIRST parameter (params[0])
-                                const alertId = byName('alertId') ?? p(0);
-                                if (alertId != null) setId(String(alertId), 'va-parameter');
-
-                                // 1) Secrets: prefer name, else positional order [1..4]
-                                const openaiKey = byName('OPENAI_API_KEY') ?? p(1);
-                                const sasUser = byName('SAS_USERNAME') ?? p(2);
-                                const sasPass = byName('SAS_PASSWORD') ?? p(3);
-
-                                console.log('[id] parsed -> alertId:', alertId,
-                                    '| hasOpenAI:', !!openaiKey, '| hasUser:', !!sasUser, '| hasPass:', !!sasPass);
-
-                                if (openaiKey || sasUser || sasPass) {
-                                    fetch('/api/bootstrap-secrets', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ openaiKey, sasUser, sasPass })
-                                    }).catch(console.error);
-                                }
-                            });
-                        } else {
-                            log('va.messagingUtil not available (outside VA?)');
-                        }
-                    } catch (e) { log('VA hook error:', e); }
-
-                    // UI actions
-                    loadBtn.addEventListener('click', async () => {
-                        await State.ready;
-                        fileSelect.innerHTML = '<option>Loading…</option>';
-                        docText.value = ''; summary.value = '';
-                        try {
-                            const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files');
-                            if (!r.ok) throw new Error(await r.text());
-                            const data = await r.json();
-                            const files = Array.isArray(data) ? data : (data.items || data.files || []);
-                            fileSelect.innerHTML = '<option value="">— select a file —</option>';
-                            files.forEach(f => {
-                                const opt = document.createElement('option');
-                                opt.value = f.id || f.fileId;
-                                opt.textContent = (f.name || f.fileName) + ' (' + (f.id || f.fileId) + ')';
-                                fileSelect.appendChild(opt);
-                            });
-                            log('Files loaded:', files.length);
-                        } catch (e) {
-                            console.error(e);
-                            fileSelect.innerHTML = '<option value="">(error loading files)</option>';
-                            log('Failed to load files');
-                        }
-                    });
-
-                    fileSelect.addEventListener('change', async () => {
-                        if (!fileSelect.value) return;
-                        await State.ready;
-                        docText.value = 'Extracting text…'; summary.value = '';
-                        try {
-                            const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files/' + encodeURIComponent(fileSelect.value) + '/content');
-                            if (!r.ok) throw new Error(await r.text());
-                            const { text, contentType } = await r.json();
-                            docText.value = (text || '').trim().slice(0, 12000) || '(No extractable text; content-type: ' + contentType + ')';
-                            log('Content loaded; type=' + contentType + ' len=' + (text ? text.length : 0));
-                        } catch (e) {
-                            console.error(e); docText.value = '(error extracting text)';
-                            log('Failed to extract text');
-                        }
-                    });
-
-                    summarizeBtn.addEventListener('click', async () => {
-                        const t = docText.value.trim();
-                        if (!t) { alert('No text to summarize.'); return; }
-                        summary.value = 'Summarizing…';
-                        try {
-                            const r = await fetch('/api/summarize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: t }) });
-                            if (!r.ok) throw new Error(await r.text());
-                            const { summary: s } = await r.json();
-                            summary.value = (s || '').trim();
-                            log('Summary ready; len=' + (summary.value.length));
-                        } catch (e) {
-                            console.error(e); summary.value = '(error summarizing)';
-                            log('Failed to summarize');
-                        }
-                    });
-                })();
-            </script>
-        </body>
-
-        </html>`;
-        app.get("/", (_req, res) => res.type("html").send(HTML));
-
-        // ---------- Start ----------
-        app.listen(PORT, () => console.log(`✅ Server running: http://localhost:${PORT}`));
+// ---------- Start ----------
+app.listen(PORT, () => console.log(`✅ Server running: http://localhost:${PORT}`));
