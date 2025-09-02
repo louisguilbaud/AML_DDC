@@ -5,7 +5,6 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>VA Parameter Echo</title>
-    <!-- Same path you use in your VA environment -->
     <script src="./javascripts/sas/util/messagingUtil.js"></script>
     <style>
         body {
@@ -20,6 +19,15 @@
             border-radius: 10px;
             white-space: pre-wrap
         }
+
+        .file-section {
+            margin-top: 20px;
+        }
+
+        .file-count {
+            color: #777;
+            margin-left: 8px;
+        }
     </style>
 </head>
 
@@ -27,108 +35,304 @@
     <h1>VA Parameter Echo</h1>
     <pre id="out">Waiting for VA parameters…</pre>
 
-    <!-- ADD: dropdown + count -->
-    <label for="fileSelect">Document</label>
-    <select id="fileSelect">
-        <option value="">— select a file —</option>
-    </select>
-    <small id="fileCount" style="color:#777;margin-left:8px"></small>
+    <div class="file-section">
+        <label for="fileSelect">Document</label>
+        <select id="fileSelect">
+            <option value="">— select a file —</option>
+        </select>
+        <small id="fileCount" class="file-count"></small>
+    </div>
 
     <script>
-        (function () {
-            // 0: ALERT_ID, 1: OPENAI_API_KEY, 2: SAS_USERNAME, 3: SAS_PASSWORD
-            const IDX = { alertId: 0, openaiKey: 1, sasUser: 2, sasPass: 3 };
+        /**
+         * VA Document Summarizer Application
+         * Modular architecture for maintainability and future development
+         */
+        const DocumentSummarizerApp = (() => {
+            
+            // =============================================================================
+            // CONFIGURATION
+            // =============================================================================
+            const CONFIG = {
+                SAS_SERVER: 'https://sasserver.demo.sas.com',
+                PARAMETER_INDEXES: {
+                    alertId: 0,
+                    openaiKey: 1,
+                    sasUser: 2,
+                    sasPass: 3
+                },
+                VA_RETRY_INTERVAL: 1000,
+                ELEMENTS: {
+                    output: 'out',
+                    fileSelect: 'fileSelect',
+                    fileCount: 'fileCount'
+                }
+            };
 
-            // Helpers
-            const getByIndex = (params, i) => (Array.isArray(params) && params[i]) ? params[i].value : undefined;
-            const qs = (obj) => new URLSearchParams(obj).toString();
+            // =============================================================================
+            // UTILITIES
+            // =============================================================================
+            const Utils = {
+                /**
+                 * Get parameter value by index from VA parameters array
+                 */
+                getParamByIndex(params, index) {
+                    return (Array.isArray(params) && params[index]) ? params[index].value : undefined;
+                },
 
-            function onVA(vaMsgObj) {
-                const params = vaMsgObj?.parameters || [];
+                /**
+                 * Create query string from object
+                 */
+                createQueryString(obj) {
+                    return new URLSearchParams(obj).toString();
+                },
 
-                const alertId = getByIndex(params, IDX.alertId);
-                const openaiKey = getByIndex(params, IDX.openaiKey);
-                const sasUser = getByIndex(params, IDX.sasUser);
-                const sasPass = getByIndex(params, IDX.sasPass);
+                /**
+                 * Log with consistent formatting
+                 */
+                log(category, message, data = null) {
+                    const logMessage = `[${category}] ${message}`;
+                    if (data) {
+                        console.log(logMessage, data);
+                    } else {
+                        console.log(logMessage);
+                    }
+                }
+            };
 
-                console.log('[DDC] by index:', { alertId, hasOpenAI: !!openaiKey, sasUser, hasPass: !!sasPass });
+            // =============================================================================
+            // UI MANAGER
+            // =============================================================================
+            const UIManager = {
+                /**
+                 * Update the main output display
+                 */
+                updateOutput(message, append = false) {
+                    const element = document.getElementById(CONFIG.ELEMENTS.output);
+                    if (element) {
+                        element.textContent = append ? element.textContent + message : message;
+                    }
+                },
 
-                // Update the display to show we received parameters
-                document.getElementById('out').textContent = `Received parameters:\nAlert ID: ${alertId || 'missing'}\nOpenAI Key: ${openaiKey ? 'present' : 'missing'}\nSAS User: ${sasUser || 'missing'}\nSAS Pass: ${sasPass ? 'present' : 'missing'}`;
+                /**
+                 * Append to the main output display
+                 */
+                appendOutput(message) {
+                    this.updateOutput(`\n${message}`, true);
+                },
 
-                // Example: call your endpoints with everything as query params
-                if (alertId && openaiKey && sasUser && sasPass) {
-                    // Call the SAS API endpoint with just the alert ID - no extra parameters needed
-                    const apiUrl = `https://sasserver.demo.sas.com/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
+                /**
+                 * Populate the file dropdown with files
+                 */
+                populateFileDropdown(files) {
+                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
                     
-                    console.log('[API] Fetching:', apiUrl);
-                    document.getElementById('out').textContent += `\n\nFetching files from SAS API...`;
+                    if (!selectEl || !countEl) return;
 
-                    // list files from SAS
-                    fetch(apiUrl)
-                        .then(r => {
-                            console.log('[API] Response status:', r.status);
-                            return r.json();
-                        })
-                        .then(j => {
-                            console.log('[API] Full response:', j);
-                            
-                            // normalize response
-                            const files = Array.isArray(j) ? j : (j.items || j.files || []);
-                            const sel = document.getElementById('fileSelect');
-                            const countEl = document.getElementById('fileCount');
+                    // Clear and add default option
+                    selectEl.innerHTML = '<option value="">— select a file —</option>';
+                    
+                    // Add file options
+                    files.forEach(file => {
+                        const id = file.id || file.fileId;
+                        const name = file.name || file.fileName || id;
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = name;
+                        selectEl.appendChild(option);
+                    });
 
-                            console.log('[FILES] Parsed files array:', files);
+                    // Update count display
+                    const countText = files.length ? `(${files.length} files)` : '(no files)';
+                    countEl.textContent = countText;
+                    
+                    return countText;
+                },
 
-                            // populate dropdown
-                            sel.innerHTML = '<option value="">— select a file —</option>';
-                            files.forEach(f => {
-                                const id = f.id || f.fileId;
-                                const name = f.name || f.fileName || id;
-                                const opt = document.createElement('option');
-                                opt.value = id;
-                                opt.textContent = name; // Just show the name, not the ID
-                                sel.appendChild(opt);
-                            });
-
-                            // show count
-                            const countText = files.length ? `(${files.length} files)` : '(no files)';
-                            countEl.textContent = countText;
-                            
-                            // Update main display
-                            document.getElementById('out').textContent += `\n\nAPI Response: ${countText}`;
-                            
-                            console.log('[FILES]', { count: files.length, countText, sample: files[0] });
-                        })
-                        .catch(err => {
-                            console.error('[FILES] error', err);
-                            document.getElementById('fileCount').textContent = '(error loading files)';
-                            document.getElementById('out').textContent += `\n\nError: ${err.message}`;
-                        });
+                /**
+                 * Show error state
+                 */
+                showError(message) {
+                    this.appendOutput(`\nError: ${message}`);
+                    const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
+                    if (countEl) {
+                        countEl.textContent = '(error loading files)';
+                    }
                 }
-            }
+            };
 
-            // Attach VA callback
-            function initVA() {
-                if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
-                    va.messagingUtil.setOnDataReceivedCallback(onVA);
-                    console.log('VA listener attached');
-                    document.getElementById('out').textContent = 'VA listener attached, waiting for data...';
-                } else {
-                    console.log('VA not ready, retrying...');
-                    document.getElementById('out').textContent = 'VA not ready, retrying...';
-                    setTimeout(initVA, 1000); // Try again in 1 second
+            // =============================================================================
+            // API SERVICE
+            // =============================================================================
+            const APIService = {
+                /**
+                 * Fetch files for a given alert ID
+                 */
+                async fetchAlertFiles(alertId) {
+                    const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
+                    
+                    Utils.log('API', `Fetching files from: ${url}`);
+                    UIManager.appendOutput('Fetching files from SAS API...');
+
+                    try {
+                        const response = await fetch(url);
+                        Utils.log('API', `Response status: ${response.status}`);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        Utils.log('API', 'Full response received', data);
+                        
+                        // Normalize response - handle different possible structures
+                        const files = Array.isArray(data) ? data : (data.items || data.files || []);
+                        
+                        Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
+                        
+                        return files;
+                    } catch (error) {
+                        Utils.log('API', 'Fetch failed', error);
+                        throw error;
+                    }
+                },
+
+                /**
+                 * Future: Add other API methods here
+                 * e.g., summarizeDocument, getDocumentContent, etc.
+                 */
+            };
+
+            // =============================================================================
+            // VA INTEGRATION
+            // =============================================================================
+            const VAIntegration = {
+                /**
+                 * Extract parameters from VA message object
+                 */
+                extractParameters(vaMsgObj) {
+                    const params = vaMsgObj?.parameters || [];
+                    const indexes = CONFIG.PARAMETER_INDEXES;
+                    
+                    return {
+                        alertId: Utils.getParamByIndex(params, indexes.alertId),
+                        openaiKey: Utils.getParamByIndex(params, indexes.openaiKey),
+                        sasUser: Utils.getParamByIndex(params, indexes.sasUser),
+                        sasPass: Utils.getParamByIndex(params, indexes.sasPass)
+                    };
+                },
+
+                /**
+                 * Handle incoming VA parameters
+                 */
+                async handleVAMessage(vaMsgObj) {
+                    const params = this.extractParameters(vaMsgObj);
+                    
+                    Utils.log('VA', 'Parameters received', {
+                        alertId: params.alertId,
+                        hasOpenAI: !!params.openaiKey,
+                        sasUser: params.sasUser,
+                        hasPass: !!params.sasPass
+                    });
+
+                    // Update UI with parameter status
+                    const paramStatus = [
+                        `Alert ID: ${params.alertId || 'missing'}`,
+                        `OpenAI Key: ${params.openaiKey ? 'present' : 'missing'}`,
+                        `SAS User: ${params.sasUser || 'missing'}`,
+                        `SAS Pass: ${params.sasPass ? 'present' : 'missing'}`
+                    ].join('\n');
+                    
+                    UIManager.updateOutput(`Received parameters:\n${paramStatus}`);
+
+                    // If we have the required parameters, fetch files
+                    if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
+                        try {
+                            const files = await APIService.fetchAlertFiles(params.alertId);
+                            const countText = UIManager.populateFileDropdown(files);
+                            UIManager.appendOutput(`\nAPI Response: ${countText}`);
+                        } catch (error) {
+                            UIManager.showError(error.message);
+                        }
+                    } else {
+                        UIManager.appendOutput('\nMissing required parameters - cannot fetch files');
+                    }
+                },
+
+                /**
+                 * Initialize VA integration with retry logic
+                 */
+                initialize() {
+                    const tryConnect = () => {
+                        if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
+                            va.messagingUtil.setOnDataReceivedCallback(this.handleVAMessage.bind(this));
+                            Utils.log('VA', 'Listener attached successfully');
+                            UIManager.updateOutput('VA listener attached, waiting for data...');
+                        } else {
+                            Utils.log('VA', 'Not ready, retrying...');
+                            UIManager.updateOutput('VA not ready, retrying...');
+                            setTimeout(tryConnect, CONFIG.VA_RETRY_INTERVAL);
+                        }
+                    };
+
+                    tryConnect();
                 }
-            }
+            };
 
-            // Start the initialization
-            try {
-                initVA();
-            } catch (e) {
-                console.error('Error initializing VA:', e);
-                document.getElementById('out').textContent = `Error: ${e.message}`;
-            }
+            // =============================================================================
+            // MAIN APPLICATION
+            // =============================================================================
+            const App = {
+                /**
+                 * Initialize the entire application
+                 */
+                init() {
+                    Utils.log('APP', 'Initializing Document Summarizer App');
+                    
+                    try {
+                        VAIntegration.initialize();
+                    } catch (error) {
+                        Utils.log('APP', 'Initialization error', error);
+                        UIManager.updateOutput(`Error: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Get selected file ID from dropdown
+                 */
+                getSelectedFileId() {
+                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    return selectEl ? selectEl.value : null;
+                },
+
+                /**
+                 * Future: Add main app methods here
+                 * e.g., summarizeSelectedFile(), downloadFile(), etc.
+                 */
+            };
+
+            // =============================================================================
+            // PUBLIC API
+            // =============================================================================
+            return {
+                init: App.init.bind(App),
+                getSelectedFileId: App.getSelectedFileId.bind(App),
+                // Expose modules for testing/debugging
+                _modules: {
+                    Utils,
+                    UIManager,
+                    APIService,
+                    VAIntegration,
+                    CONFIG
+                }
+            };
         })();
+
+        // =============================================================================
+        // APPLICATION STARTUP
+        // =============================================================================
+        DocumentSummarizerApp.init();
     </script>
 
 </body>
