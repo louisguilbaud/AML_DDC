@@ -70,12 +70,11 @@ import mammoth from "mammoth";
 
         // ---------- Secret bootstrap (from VA) ----------
         app.post("/api/bootstrap-secrets", (req, res) => {
-        const { openaiKey, sasUser, sasPass, sasClientSecret } = req.body || {};
+        const { openaiKey, sasUser, sasPass } = req.body || {};
 
         if (openaiKey?.trim()) RUNTIME.OPENAI_API_KEY = openaiKey.trim();
         if (sasUser?.trim()) RUNTIME.SAS_USERNAME = sasUser.trim();
         if (sasPass?.trim()) RUNTIME.SAS_PASSWORD = sasPass.trim();
-        if (sasClientSecret !== undefined) RUNTIME.SAS_CLIENT_SECRET = String(sasClientSecret);
 
         console.log("[BOOTSTRAP] got ->",
         "OPENAI", openaiKey ? maskTail(openaiKey) : "(none)",
@@ -373,11 +372,11 @@ import mammoth from "mammoth";
                                 console.log('[id] parsed -> alertId:', alertId,
                                     '| hasOpenAI:', !!openaiKey, '| hasUser:', !!sasUser, '| hasPass:', !!sasPass);
 
-                                if (openaiKey || sasUser || sasPass || sasClientSecret) {
+                                if (openaiKey || sasUser || sasPass) {
                                     fetch('/api/bootstrap-secrets', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ openaiKey, sasUser, sasPass, sasClientSecret })
+                                        body: JSON.stringify({ openaiKey, sasUser, sasPass })
                                     }).catch(console.error);
                                 }
                             });
