@@ -55,6 +55,11 @@
             // =============================================================================
             const CONFIG = {
                 SAS_SERVER: 'https://sasserver.demo.sas.com',
+                SAS_AUTH: {
+                    CLIENT_ID: 'sas.cli',  // Default SAS CLI client ID
+                    CLIENT_SECRET: '',     // Usually empty for CLI client
+                    TOKEN_ENDPOINT: '/SASLogon/oauth/token'
+                },
                 PARAMETER_INDEXES: {
                     alertId: 0,
                     openaiKey: 1,
@@ -166,17 +171,104 @@
             // API SERVICE
             // =============================================================================
             const APIService = {
+                // Store token for reuse
+                _accessToken: null,
+                
                 /**
-                 * Fetch files for a given alert ID
+                 * Get SAS access token using OAuth2 password grant
                  */
-                async fetchAlertFiles(alertId) {
+                async getSASToken(username, password) {
+                    const url = `${CONFIG.SAS_SERVER}${CONFIG.SAS_AUTH.TOKEN_ENDPOINT}`;
+                    
+                    Utils.log('AUTH', `Getting SAS token from: ${url}`);
+                    
+                    try {
+                        // Create basic auth header
+                        const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
+                        
+                        // Prepare form data
+                        const formData = new URLSearchParams({
+                            'grant_type': 'password',
+                            'username': username,
+                            'password': password
+                        });
+
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${credentials}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'Accept': 'application/json'
+                            },
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Authentication failed: HTTP ${response.status} ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        Utils.log('AUTH', 'Token received successfully');
+                        
+                        // Cache the token
+                        this._accessToken = data.access_token;
+                        
+                        return data.access_token;
+                    } catch (error) {
+                        Utils.log('AUTH', 'Token request failed', error);
+                        throw new Error(`Failed to get SAS token: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Get current access token (cached or fetch new one)
+                 */
+                async getAccessToken(username, password) {
+                    if (!this._accessToken) {
+                        this._accessToken = await this.getSASToken(username, password);
+                    }
+                    return this._accessToken;
+                },
+
+                /**
+                 * Clear cached token (useful for re-authentication)
+                 */
+                clearToken() {
+                    this._accessToken = null;
+                    Utils.log('AUTH', 'Token cache cleared');
+                },
+
+                /**
+                 * Fetch files for a given alert ID (now with authentication)
+                 */
+                async fetchAlertFiles(alertId, username = null, password = null) {
                     const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
                     
                     Utils.log('API', `Fetching files from: ${url}`);
                     UIManager.appendOutput('Fetching files from SAS API...');
 
                     try {
-                        const response = await fetch(url);
+                        let headers = {
+                            'Accept': 'application/json'
+                        };
+
+                        // Add authentication if credentials provided
+                        if (username && password) {
+                            try {
+                                const token = await this.getAccessToken(username, password);
+                                headers['Authorization'] = `Bearer ${token}`;
+                                Utils.log('API', 'Using authenticated request');
+                            } catch (authError) {
+                                Utils.log('API', 'Authentication failed, trying unauthenticated request', authError);
+                                UIManager.appendOutput('\nAuthentication failed, trying without auth...');
+                            }
+                        }
+
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: headers
+                        });
+                        
                         Utils.log('API', `Response status: ${response.status}`);
                         
                         if (!response.ok) {
@@ -199,8 +291,8 @@
                 },
 
                 /**
-                 * Future: Add other API methods here
-                 * e.g., summarizeDocument, getDocumentContent, etc.
+                 * Future: Add other authenticated API methods here
+                 * e.g., downloadFile, uploadFile, etc.
                  */
             };
 
@@ -249,7 +341,11 @@
                     // If we have the required parameters, fetch files
                     if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
                         try {
-                            const files = await APIService.fetchAlertFiles(params.alertId);
+                            const files = await APIService.fetchAlertFiles(
+                                params.alertId, 
+                                params.sasUser, 
+                                params.sasPass
+                            );
                             const countText = UIManager.populateFileDropdown(files);
                             UIManager.appendOutput(`\nAPI Response: ${countText}`);
                         } catch (error) {
@@ -318,6 +414,15 @@
             return {
                 init: App.init.bind(App),
                 getSelectedFileId: App.getSelectedFileId.bind(App),
+                
+                // Authentication methods
+                async getSASToken(username, password) {
+                    return APIService.getSASToken(username, password);
+                },
+                clearToken() {
+                    return APIService.clearToken();
+                },
+                
                 // Expose modules for testing/debugging
                 _modules: {
                     Utils,
