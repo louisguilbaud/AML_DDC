@@ -1,74 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>VA Parameter Echo</title>
-  <!-- Same path you use in your VA environment -->
-  <script src="./javascripts/sas/util/messagingUtil.js"></script>
-  <style>
-    body { font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 16px; }
-    pre  { background:#fafafa; border:1px solid #eee; padding:12px; border-radius:10px; white-space:pre-wrap }
-  </style>
-</head>
-<body>
-  <h1>VA Parameter Echo</h1>
-  <pre id="out">Waiting for VA parameters…</pre>
-
-  <script>
-    (function () {
-      const out = document.getElementById('out');
-
-      const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const print = (obj) => { out.textContent = JSON.stringify(obj, null, 2); };
-
-      function onVA(vaMsgObj) {
-        console.log('[DDC] raw message:', vaMsgObj);
-
-        const params = Array.isArray(vaMsgObj?.parameters) ? vaMsgObj.parameters : [];
-        const list = params.map((p, i) => ({
-          index: i,
-          name: p?.name ?? `(unnamed_${i})`,
-          value: p?.value
-        }));
-
-        // Build a normalized name -> value map (e.g., ALERT_ID and alertId both become "alertid")
-        const normalizedMap = {};
-        for (const p of params) normalizedMap[normalize(p?.name)] = p?.value;
-
-        // Common convenience lookups (purely for display)
-        const get = (...names) => {
-          for (const n of names) {
-            const k = normalize(n);
-            if (k in normalizedMap) return normalizedMap[k];
-          }
-          return undefined;
-        };
-
-        print({
-          receivedCount: list.length,
-          list,                     // every parameter (index, name, value)
-          normalizedKeys: Object.keys(normalizedMap),
-          named: {                  // handy aliases if you’re using these names
-            alertId:       get('ALERT_ID', 'alertId'),
-            openaiApiKey:  get('OPENAI_API_KEY', 'openaiKey', 'OPENAI-API-KEY'),
-            sasUsername:   get('SAS_USERNAME', 'USERNAME'),
-            sasPassword:   get('SAS_PASSWORD', 'PASSWORD')
-          }
-        });
-      }
-
-      try {
-        if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
-          va.messagingUtil.setOnDataReceivedCallback(onVA);
-          out.textContent = 'Listener attached. Waiting for VA parameters…';
-        } else {
-          out.textContent = 'va.messagingUtil not available. Open this inside a SAS Visual Analytics DDC.';
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>VA Parameter Echo</title>
+    <!-- Same path you use in your VA environment -->
+    <script src="./javascripts/sas/util/messagingUtil.js"></script>
+    <style>
+        body {
+            font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            margin: 16px;
         }
-      } catch (e) {
-        out.textContent = 'Error attaching VA callback: ' + (e?.message || e);
-      }
-    })();
-  </script>
+
+        pre {
+            background: #fafafa;
+            border: 1px solid #eee;
+            padding: 12px;
+            border-radius: 10px;
+            white-space: pre-wrap
+        }
+    </style>
+</head>
+
+<body>
+    <h1>VA Parameter Echo</h1>
+    <pre id="out">Waiting for VA parameters…</pre>
+
+    <script>
+        (function () {
+            // Match the order you set in VA › Data-Driven Content › Data roles › Parameters
+            // 0: ALERT_ID, 1: OPENAI_API_KEY, 2: SAS_USERNAME, 3: SAS_PASSWORD
+            const IDX = { alertId: 0, openaiKey: 1, sasUser: 2, sasPass: 3 };
+
+            // Helpers
+            const getByIndex = (params, i) => (Array.isArray(params) && params[i]) ? params[i].value : undefined;
+            const qs = (obj) => new URLSearchParams(obj).toString();
+
+            function onVA(vaMsgObj) {
+                const params = vaMsgObj?.parameters || [];
+
+                const alertId = getByIndex(params, IDX.alertId);
+                const openaiKey = getByIndex(params, IDX.openaiKey);
+                const sasUser = getByIndex(params, IDX.sasUser);
+                const sasPass = getByIndex(params, IDX.sasPass);
+
+                console.log('[DDC] by index:', { alertId, hasOpenAI: !!openaiKey, sasUser, hasPass: !!sasPass });
+
+                // Example: call your endpoints with everything as query params
+                // (remove if you only wanted to print)
+                if (alertId && openaiKey && sasUser && sasPass) {
+                    const query = qs({ openaiKey, sasUser, sasPass });
+
+                    // list files
+                    fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
+                        .then(r => r.json())
+                        .then(j => console.log('[FILES]', j))
+                        .catch(err => console.error('[FILES] error', err));
+
+                    // later: summarize
+                    // fetch(`/api/summarize?${query}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ text }) })
+                }
+            }
+
+            // Attach VA callback
+            try {
+                if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
+                    va.messagingUtil.setOnDataReceivedCallback(onVA);
+                    console.log('VA listener attached (index-based).');
+                } else {
+                    console.log('va.messagingUtil not available—open inside VA.');
+                }
+            } catch (e) {
+                console.error('Error attaching VA listener:', e);
+            }
+        })();
+    </script>
+
 </body>
+
 </html>
