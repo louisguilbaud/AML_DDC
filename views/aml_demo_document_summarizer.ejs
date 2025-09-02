@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>VA Parameter Echo</title>
     <script src="./javascripts/sas/util/messagingUtil.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
     <style>
         body {
             font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -385,14 +386,11 @@
                             contentType.includes('word')) {
                             
                             Utils.log('EXTRACT', 'Processing Word document');
-                            try {
-                                // Import mammoth dynamically
-                                const mammoth = await import('mammoth');
+                            if (typeof mammoth !== 'undefined') {
                                 const result = await mammoth.extractRawText({ arrayBuffer });
                                 return result.value;
-                            } catch (importError) {
-                                Utils.log('EXTRACT', 'Mammoth import failed, trying alternative', importError);
-                                return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nText extraction failed: ${importError.message}`;
+                            } else {
+                                return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nMammoth.js not loaded - cannot extract text`;
                             }
                         }
                         
