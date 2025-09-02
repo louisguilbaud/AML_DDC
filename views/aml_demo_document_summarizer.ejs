@@ -43,6 +43,11 @@
         <small id="fileCount" class="file-count"></small>
     </div>
 
+    <div class="text-section" style="margin-top: 20px;">
+        <h3>File Content</h3>
+        <pre id="fileContent" style="max-height: 400px; overflow-y: auto; background: #f5f5f5;">Select a file to view its content...</pre>
+    </div>
+
     <script>
         /**
          * VA Document Summarizer Application
@@ -70,7 +75,8 @@
                 ELEMENTS: {
                     output: 'out',
                     fileSelect: 'fileSelect',
-                    fileCount: 'fileCount'
+                    fileCount: 'fileCount',
+                    fileContent: 'fileContent'
                 }
             };
 
@@ -163,6 +169,41 @@
                     const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
                     if (countEl) {
                         countEl.textContent = '(error loading files)';
+                    }
+                },
+
+                /**
+                 * Display file content in the content area
+                 */
+                displayFileContent(content, loading = false) {
+                    const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
+                    if (contentEl) {
+                        if (loading) {
+                            contentEl.textContent = 'Loading file content...';
+                        } else {
+                            contentEl.textContent = content;
+                        }
+                    }
+                },
+
+                /**
+                 * Setup event listeners for UI interactions
+                 */
+                setupEventListeners() {
+                    const fileSelect = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    if (fileSelect) {
+                        fileSelect.addEventListener('change', (event) => {
+                            const fileId = event.target.value;
+                            if (fileId) {
+                                Utils.log('UI', `File selected: ${fileId}`);
+                                // Trigger file content loading - will be handled by App
+                                if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
+                                    window.DocumentSummarizerApp._onFileSelected(fileId);
+                                }
+                            } else {
+                                this.displayFileContent('Select a file to view its content...');
+                            }
+                        });
                     }
                 }
             };
@@ -291,6 +332,96 @@
                 },
 
                 /**
+                 * Get raw file content from SAS
+                 */
+                async getFileContent(alertId, fileId, username, password) {
+                    const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files/${encodeURIComponent(fileId)}/content`;
+                    
+                    Utils.log('API', `Fetching file content: ${url}`);
+                    
+                    try {
+                        const token = await this.getAccessToken(username, password);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const contentType = response.headers.get('Content-Type') || '';
+                        Utils.log('API', `File content type: ${contentType}`);
+                        
+                        // Return both content and content type for processing
+                        return {
+                            content: await response.blob(),
+                            contentType: contentType,
+                            arrayBuffer: await response.clone().arrayBuffer()
+                        };
+                        
+                    } catch (error) {
+                        Utils.log('API', 'File content fetch failed', error);
+                        throw error;
+                    }
+                },
+
+                /**
+                 * Extract text from file based on content type
+                 */
+                async extractTextFromFile(fileData) {
+                    const { contentType, arrayBuffer } = fileData;
+                    
+                    try {
+                        // Handle Word documents using mammoth
+                        if (contentType.includes('wordprocessingml.document') || 
+                            contentType.includes('msword') || 
+                            contentType.includes('word')) {
+                            
+                            Utils.log('EXTRACT', 'Processing Word document');
+                            try {
+                                // Import mammoth dynamically
+                                const mammoth = await import('mammoth');
+                                const result = await mammoth.extractRawText({ arrayBuffer });
+                                return result.value;
+                            } catch (importError) {
+                                Utils.log('EXTRACT', 'Mammoth import failed, trying alternative', importError);
+                                return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nText extraction failed: ${importError.message}`;
+                            }
+                        }
+                        
+                        // Handle PDFs - basic attempt (may need additional libraries for full support)
+                        else if (contentType.includes('pdf')) {
+                            Utils.log('EXTRACT', 'PDF detected - limited text extraction available');
+                            // For now, return a message indicating PDF needs special handling
+                            return '[PDF FILE DETECTED]\nPDF text extraction requires additional libraries.\nContent type: ' + contentType + '\nFile size: ' + arrayBuffer.byteLength + ' bytes';
+                        }
+                        
+                        // Handle plain text files
+                        else if (contentType.includes('text/plain') || contentType.includes('text/')) {
+                            Utils.log('EXTRACT', 'Processing text file');
+                            const decoder = new TextDecoder('utf-8');
+                            return decoder.decode(arrayBuffer);
+                        }
+                        
+                        // Default: try to decode as text
+                        else {
+                            Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
+                            const decoder = new TextDecoder('utf-8');
+                            return decoder.decode(arrayBuffer);
+                        }
+                        
+                    } catch (error) {
+                        Utils.log('EXTRACT', 'Text extraction failed', error);
+                        return `[ERROR EXTRACTING TEXT]\nContent type: ${contentType}\nError: ${error.message}\nFile size: ${arrayBuffer.byteLength} bytes`;
+                    }
+                },
+
+                /**
                  * Future: Add other authenticated API methods here
                  * e.g., downloadFile, uploadFile, etc.
                  */
@@ -338,6 +469,9 @@
                     
                     UIManager.updateOutput(`Received parameters:\n${paramStatus}`);
 
+                    // Store parameters for file operations
+                    App.setCurrentParams(params);
+
                     // If we have the required parameters, fetch files
                     if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
                         try {
@@ -380,6 +514,9 @@
             // MAIN APPLICATION
             // =============================================================================
             const App = {
+                // Store current parameters for file operations
+                _currentParams: null,
+                
                 /**
                  * Initialize the entire application
                  */
@@ -387,10 +524,62 @@
                     Utils.log('APP', 'Initializing Document Summarizer App');
                     
                     try {
+                        // Setup UI event listeners
+                        UIManager.setupEventListeners();
+                        
+                        // Initialize VA integration
                         VAIntegration.initialize();
+                        
+                        // Expose file selection handler globally
+                        window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
+                        window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
+                        
                     } catch (error) {
                         Utils.log('APP', 'Initialization error', error);
                         UIManager.updateOutput(`Error: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Store current parameters for later use
+                 */
+                setCurrentParams(params) {
+                    this._currentParams = params;
+                },
+
+                /**
+                 * Handle file selection from dropdown
+                 */
+                async handleFileSelection(fileId) {
+                    if (!this._currentParams) {
+                        UIManager.displayFileContent('Error: No parameters available for file loading');
+                        return;
+                    }
+                    
+                    const { alertId, sasUser, sasPass } = this._currentParams;
+                    
+                    if (!alertId || !sasUser || !sasPass) {
+                        UIManager.displayFileContent('Error: Missing required parameters for file loading');
+                        return;
+                    }
+                    
+                    try {
+                        Utils.log('APP', `Loading content for file: ${fileId}`);
+                        UIManager.displayFileContent('', true); // Show loading state
+                        
+                        // Get file content
+                        const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
+                        
+                        // Extract text from file
+                        const extractedText = await APIService.extractTextFromFile(fileData);
+                        
+                        // Display the extracted text
+                        UIManager.displayFileContent(extractedText);
+                        Utils.log('APP', 'File content loaded successfully');
+                        
+                    } catch (error) {
+                        Utils.log('APP', 'File loading failed', error);
+                        UIManager.displayFileContent(`Error loading file content: ${error.message}`);
                     }
                 },
 
@@ -421,6 +610,14 @@
                 },
                 clearToken() {
                     return APIService.clearToken();
+                },
+                
+                // File content methods
+                async getFileContent(alertId, fileId, username, password) {
+                    return APIService.getFileContent(alertId, fileId, username, password);
+                },
+                async extractTextFromFile(fileData) {
+                    return APIService.extractTextFromFile(fileData);
                 },
                 
                 // Expose modules for testing/debugging
