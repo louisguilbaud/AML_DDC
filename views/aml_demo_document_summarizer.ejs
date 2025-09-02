@@ -87,7 +87,7 @@
                                 const name = f.name || f.fileName || id;
                                 const opt = document.createElement('option');
                                 opt.value = id;
-                                opt.textContent = `${name} (${id})`;
+                                opt.textContent = name; // Just show the name, not the ID
                                 sel.appendChild(opt);
                             });
 
