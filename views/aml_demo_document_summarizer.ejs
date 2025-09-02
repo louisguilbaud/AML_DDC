@@ -7,7 +7,6 @@ dotenv.config();
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
-// ====== CONFIG (set via env when you run) ======
 const {
   SAS_BASE_URL = "https://sasserver.demo.sas.com",
   SAS_CLIENT_ID = "sas.cli",
@@ -18,271 +17,251 @@ const {
   PORT = 3000,
 } = process.env;
 
-// Safety check
 if (!SAS_USERNAME || !SAS_PASSWORD || !OPENAI_API_KEY) {
   console.error("Missing env: SAS_USERNAME, SAS_PASSWORD, OPENAI_API_KEY");
   process.exit(1);
 }
 
-// ====== SAS OAuth (simple cache) ======
-let cachedToken = null;
-let tokenExpiresAt = 0;
-
+// ---- SAS OAuth (simple cache) ----
+let cachedToken = null, tokenExpiresAt = 0;
 async function getSasToken() {
   const now = Date.now();
   if (cachedToken && now < tokenExpiresAt - 30_000) return cachedToken;
-
-  const url = `${SAS_BASE_URL}/SASLogon/oauth/token`;
-  const res = await fetch(url, {
+  const res = await fetch(`${SAS_BASE_URL}/SASLogon/oauth/token`, {
     method: "POST",
     headers: {
       Authorization: "Basic " + Buffer.from(`${SAS_CLIENT_ID}:${SAS_CLIENT_SECRET}`).toString("base64"),
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams({
-      grant_type: "password",
-      username: SAS_USERNAME,
-      password: SAS_PASSWORD,
-    }),
+    body: new URLSearchParams({ grant_type: "password", username: SAS_USERNAME, password: SAS_PASSWORD }),
   });
   if (!res.ok) throw new Error(`SAS token error: ${res.status} ${await res.text()}`);
-  const json = await res.json();
-  cachedToken = json.access_token;
-  tokenExpiresAt = Date.now() + (json.expires_in || 3600) * 1000;
+  const j = await res.json();
+  cachedToken = j.access_token;
+  tokenExpiresAt = Date.now() + (j.expires_in || 3600) * 1000;
   return cachedToken;
 }
 
-// ====== API: list files for alert ======
+// ---- API: list files ----
 app.get("/api/alerts/:alertId/files", async (req, res) => {
   try {
     const token = await getSasToken();
-    const url = `${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!r.ok) throw new Error(`SAS files error: ${r.status} ${await r.text()}`);
-    const data = await r.json();
-    res.json(data);
+    res.json(await r.json());
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: String(e.message || e) });
+    console.error(e); res.status(500).json({ error: String(e.message || e) });
   }
 });
 
-// ====== API: extract raw text of a file ======
+// ---- API: extract text ----
 app.get("/api/alerts/:alertId/files/:fileId/content", async (req, res) => {
   try {
     const token = await getSasToken();
-    const url = `${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files/${req.params.fileId}/content`;
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const r = await fetch(`${SAS_BASE_URL}/svi-datahub/documents/alerts/${req.params.alertId}/files/${req.params.fileId}/content`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     if (!r.ok) throw new Error(`SAS content error: ${r.status} ${await r.text()}`);
-
     const contentType = (r.headers.get("content-type") || "").toLowerCase();
     const buf = Buffer.from(await r.arrayBuffer());
     let text = "";
-
     if (contentType.includes("pdf")) {
-      const parsed = await pdfParse(buf);
-      text = parsed.text || "";
-    } else if (
-      contentType.includes("word") ||
-      contentType.endsWith("msword") ||
-      contentType.endsWith("officedocument.wordprocessingml.document")
-    ) {
-      const out = await mammoth.extractRawText({ buffer: buf });
-      text = out.value || "";
+      text = (await pdfParse(buf)).text || "";
+    } else if (contentType.includes("word") || contentType.endsWith("msword") || contentType.endsWith("officedocument.wordprocessingml.document")) {
+      text = (await mammoth.extractRawText({ buffer: buf })).value || "";
     } else if (contentType.startsWith("text/")) {
       text = buf.toString("utf-8");
     } else {
-      // Fallback (may show gibberish if truly binary)
       text = buf.toString("utf-8");
     }
-
     res.json({ contentType, text });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: String(e.message || e) });
+    console.error(e); res.status(500).json({ error: String(e.message || e) });
   }
 });
 
-// ====== API: summarize with OpenAI Responses ======
+// ---- API: summarize via OpenAI Responses ----
 app.post("/api/summarize", async (req, res) => {
   try {
     const { text } = req.body || {};
-    if (!text || !text.trim()) return res.json({ summary: "" });
-
-    const systemPrompt =
-      `You are an "AML-Copilot", an assistant for financial-crime investigators. ` +
-      `Summarize the following document concisely in English:\n\n${text}`;
-
+    if (!text?.trim()) return res.json({ summary: "" });
+    const systemPrompt = `You are an "AML-Copilot". Summarize concisely:\n\n${text}`;
     const r = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5-nano",
-        input: systemPrompt,
-        reasoning: { effort: "medium" },
-        text: { verbosity: "low" },
-      }),
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-5-nano", input: systemPrompt, reasoning: { effort: "medium" }, text: { verbosity: "low" } }),
     });
-    if (!r.ok) throw new Error(`OpenAI error: ${r.status} ${await r.text()}`);
-    const j = await r.json();
-
-    let summary = "";
-    if (j.output_text) summary = j.output_text;
-    else if (Array.isArray(j.output) && j.output[1]?.content?.[0]?.text) {
-      summary = j.output[1].content[0].text;
-    }
-
-    res.json({ summary: summary || "" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`OpenAI error: ${r.status} ${JSON.stringify(j).slice(0,300)}`);
+    const summary =
+      (j.output_text && j.output_text) ||
+      (Array.isArray(j.output) && j.output[1]?.content?.[0]?.text) ||
+      j?.choices?.[0]?.message?.content ||
+      "";
+    res.json({ summary: summary.trim() });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: String(e.message || e) });
+    console.error(e); res.status(500).json({ error: String(e.message || e) });
   }
 });
 
-// ====== UI (served inline) ======
+// ---- UI (includes SAS VA-style alertId retrieval) ----
 app.get("/", (_req, res) => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.end(`<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Alert Document Summarizer</title>
+<!-- Use same VA messaging util path you use in production; safe if it fails outside VA -->
+<script src="./javascripts/sas/util/messagingUtil.js"></script>
 <style>
 :root{--bg:#fbfbfd;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--border:rgba(0,0,0,.1);--primary:#0478CE;--primary-press:#0366AF}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:880px;margin:40px auto;padding:0 16px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-h1{margin:0 0 12px;font-size:22px}
-label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
-input,select,button,textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff}
+.wrap{max-width:900px;margin:32px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;box-shadow:0 8px 30px rgba(0,0,0,.06);display:grid;gap:12px}
+h1{margin:0 0 6px;font-size:24px}
+label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+select,button,textarea,input{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:14px}
 button{width:auto;background:var(--primary);color:#fff;border:none;cursor:pointer}
 button:hover{background:var(--primary-press)}
 .row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap}
-.muted{color:var(--muted);font-size:12px}
+.caption{color:var(--muted);font-size:12px}
+.badge{display:inline-block;background:#eef6ff;color:#0b63b6;border:1px solid #cfe6ff;border-radius:999px;padding:4px 8px;font-size:12px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Alert Document Summarizer</h1>
-
-      <label>Alert ID</label>
-      <input id="alertId" placeholder="e.g. 0fa7949f-39aa-4a83-974c-d4f2c375dec0" />
-
-      <div class="row" style="margin-top:12px;">
-        <div>
-          <label>Document</label>
-          <select id="fileSelect">
-            <option value="">— select a file —</option>
-          </select>
-        </div>
-        <button id="loadBtn">Load files</button>
-      </div>
-
-      <div style="margin-top:16px;">
-        <label>Extracted Text (preview)</label>
-        <textarea id="docText" rows="10" class="mono" placeholder="Document text will appear here…" readonly></textarea>
-      </div>
-
-      <div style="margin-top:12px;">
-        <button id="summarizeBtn">Summarize</button>
-      </div>
-
-      <div style="margin-top:16px;">
-        <label>Summary</label>
-        <textarea id="summary" rows="8" class="mono" placeholder="Summary will appear here…" readonly></textarea>
-      </div>
-
-      <p class="muted" style="margin-top:8px;">
-        Tip: click “Load files”, pick a document, then “Summarize”.
-      </p>
-    </div>
+<div class="wrap"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><h1>Alert Document Summarizer</h1><div class="caption">SAS VA-style Alert ID detection</div></div>
+    <div id="idBadge" class="badge">Alert ID: <em>waiting…</em></div>
   </div>
 
+  <!-- Files -->
+  <div class="row">
+    <div>
+      <label>Document</label>
+      <select id="fileSelect"><option value="">— select a file —</option></select>
+    </div>
+    <button id="loadBtn" disabled>Load files</button>
+  </div>
+
+  <!-- Extracted text -->
+  <div>
+    <label>Extracted Text (preview)</label>
+    <textarea id="docText" rows="10" class="mono" placeholder="Document text will appear here…" readonly></textarea>
+  </div>
+
+  <div>
+    <button id="summarizeBtn" disabled>Summarize</button>
+  </div>
+
+  <!-- Summary -->
+  <div>
+    <label>Summary</label>
+    <textarea id="summary" rows="8" class="mono" placeholder="Summary will appear here…" readonly></textarea>
+  </div>
+
+  <div class="caption">Tip: in VA, pass alertId as parameter; outside VA, append <code>?alertId=...</code> to the URL.</div>
+</div></div>
+
 <script>
-const alertInput = document.getElementById("alertId");
-const fileSelect = document.getElementById("fileSelect");
-const loadBtn = document.getElementById("loadBtn");
-const docText = document.getElementById("docText");
-const summarizeBtn = document.getElementById("summarizeBtn");
-const summary = document.getElementById("summary");
+(() => {
+  const fileSelect = document.getElementById('fileSelect');
+  const loadBtn = document.getElementById('loadBtn');
+  const summarizeBtn = document.getElementById('summarizeBtn');
+  const docText = document.getElementById('docText');
+  const summary = document.getElementById('summary');
+  const idBadge = document.getElementById('idBadge');
 
-// Prefill demo alert
-alertInput.value = "0fa7949f-39aa-4a83-974c-d4f2c375dec0";
+  const State = { ALERT_ID: null, resolveReady: null, ready: null, source: 'unset' };
+  State.ready = new Promise(r => State.resolveReady = r);
 
-loadBtn.addEventListener("click", async () => {
-  const alertId = alertInput.value.trim();
-  if (!alertId) return alert("Enter an alert ID");
-  fileSelect.innerHTML = "<option>Loading…</option>";
-  docText.value = ""; summary.value = "";
-
-  try {
-    const r = await fetch(\`/api/alerts/\${encodeURIComponent(alertId)}/files\`);
-    if (!r.ok) throw new Error(await r.text());
-    const data = await r.json();
-    const files = Array.isArray(data) ? data : (data.items || data.files || []);
-    fileSelect.innerHTML = '<option value="">— select a file —</option>';
-    files.forEach(f => {
-      const opt = document.createElement("option");
-      opt.value = f.id || f.fileId;
-      opt.textContent = \`\${f.name || f.fileName} (\${f.id || f.fileId})\`;
-      fileSelect.appendChild(opt);
-    });
-  } catch (e) {
-    console.error(e);
-    fileSelect.innerHTML = '<option value="">(error loading files)</option>';
-    alert("Failed to load files.");
+  // --- Alert ID retrieval (match your working pattern) ---
+  function setId(id, source) {
+    if (!id) return;
+    State.ALERT_ID = String(id);
+    State.source = source;
+    idBadge.innerHTML = 'Alert ID: ' + State.ALERT_ID + ' <span class="caption">(' + source + ')</span>';
+    loadBtn.disabled = false;
+    summarizeBtn.disabled = false;
+    if (State.resolveReady) { State.resolveReady(id); State.resolveReady = null; }
   }
-});
 
-fileSelect.addEventListener("change", async () => {
-  const alertId = alertInput.value.trim();
-  const fileId = fileSelect.value;
-  if (!alertId || !fileId) return;
-  docText.value = "Extracting text…";
-  summary.value = "";
-  try {
-    const r = await fetch(\`/api/alerts/\${encodeURIComponent(alertId)}/files/\${encodeURIComponent(fileId)}/content\`);
-    if (!r.ok) throw new Error(await r.text());
-    const { text, contentType } = await r.json();
-    docText.value = (text || "").trim().slice(0, 10000);
-    if (!text) docText.value = \`(No extractable text; content-type: \${contentType})\`;
-  } catch (e) {
-    console.error(e);
-    docText.value = "(error extracting text)";
-  }
-});
+  // 1) URL param first
+  const urlAlertId = new URLSearchParams(location.search).get('alertId');
+  if (urlAlertId) setId(urlAlertId, 'url');
 
-summarizeBtn.addEventListener("click", async () => {
-  const text = docText.value.trim();
-  if (!text) return alert("No text to summarize.");
-  summary.value = "Summarizing…";
+  // 2) Then SAS VA parameter via messagingUtil (if available)
   try {
-    const r = await fetch("/api/summarize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    if (!r.ok) throw new Error(await r.text());
-    const { summary: s } = await r.json();
-    summary.value = (s || "").trim();
-  } catch (e) {
-    console.error(e);
-    summary.value = "(error summarizing)";
+    if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
+      va.messagingUtil.setOnDataReceivedCallback(function (vaMsgObj) {
+        const paramVal = vaMsgObj?.parameters?.[0]?.value;
+        if (paramVal != null) setId(paramVal, 'va-parameter');
+      });
+    }
+  } catch(e) {
+    console.warn('VA messagingUtil not available:', e);
   }
-});
+
+  // --- UI actions ---
+  loadBtn.addEventListener('click', async () => {
+    await State.ready;
+    fileSelect.innerHTML = '<option>Loading…</option>';
+    docText.value = ''; summary.value = '';
+    try {
+      const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files');
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      const files = Array.isArray(data) ? data : (data.items || data.files || []);
+      fileSelect.innerHTML = '<option value="">— select a file —</option>';
+      files.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.id || f.fileId;
+        opt.textContent = (f.name || f.fileName) + ' (' + (f.id || f.fileId) + ')';
+        fileSelect.appendChild(opt);
+      });
+    } catch (e) {
+      console.error(e);
+      fileSelect.innerHTML = '<option value="">(error loading files)</option>';
+      alert('Failed to load files.');
+    }
+  });
+
+  fileSelect.addEventListener('change', async () => {
+    if (!fileSelect.value) return;
+    await State.ready;
+    docText.value = 'Extracting text…'; summary.value = '';
+    try {
+      const r = await fetch('/api/alerts/' + encodeURIComponent(State.ALERT_ID) + '/files/' + encodeURIComponent(fileSelect.value) + '/content');
+      if (!r.ok) throw new Error(await r.text());
+      const { text, contentType } = await r.json();
+      docText.value = (text || '').trim().slice(0, 10000) || '(No extractable text; content-type: ' + contentType + ')';
+    } catch (e) {
+      console.error(e); docText.value = '(error extracting text)';
+    }
+  });
+
+  summarizeBtn.addEventListener('click', async () => {
+    const t = docText.value.trim();
+    if (!t) return alert('No text to summarize.');
+    summary.value = 'Summarizing…';
+    try {
+      const r = await fetch('/api/summarize', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ text: t }) });
+      if (!r.ok) throw new Error(await r.text());
+      const { summary: s } = await r.json();
+      summary.value = (s || '').trim();
+    } catch (e) {
+      console.error(e); summary.value = '(error summarizing)';
+    }
+  });
+})();
 </script>
 </body>
 </html>`);
 });
 
-// ====== start ======
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
-
+// ---- start server ----
+app.listen(PORT, () => console.log(\`✅ http://localhost:\${PORT}\`));
