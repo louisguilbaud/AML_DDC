@@ -60,7 +60,6 @@
 
                     // list files
                     fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
-                    fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
                         .then(r => r.json())
                         .then(j => {
                             // normalize response
