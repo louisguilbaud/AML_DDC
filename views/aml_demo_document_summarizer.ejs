@@ -27,9 +27,15 @@
     <h1>VA Parameter Echo</h1>
     <pre id="out">Waiting for VA parameters…</pre>
 
+    <!-- ADD: dropdown + count -->
+    <label for="fileSelect">Document</label>
+    <select id="fileSelect">
+        <option value="">— select a file —</option>
+    </select>
+    <small id="fileCount" style="color:#777;margin-left:8px"></small>
+
     <script>
         (function () {
-            // Match the order you set in VA › Data-Driven Content › Data roles › Parameters
             // 0: ALERT_ID, 1: OPENAI_API_KEY, 2: SAS_USERNAME, 3: SAS_PASSWORD
             const IDX = { alertId: 0, openaiKey: 1, sasUser: 2, sasPass: 3 };
 
@@ -54,8 +60,29 @@
 
                     // list files
                     fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
+                    fetch(`/api/alerts/${encodeURIComponent(alertId)}/files?${query}`)
                         .then(r => r.json())
-                        .then(j => console.log('[FILES]', j))
+                        .then(j => {
+                            // normalize response
+                            const files = Array.isArray(j) ? j : (j.items || j.files || []);
+                            const sel = document.getElementById('fileSelect');
+                            const countEl = document.getElementById('fileCount');
+
+                            // populate dropdown
+                            sel.innerHTML = '<option value="">— select a file —</option>';
+                            files.forEach(f => {
+                                const id = f.id || f.fileId;
+                                const name = f.name || f.fileName || id;
+                                const opt = document.createElement('option');
+                                opt.value = id;
+                                opt.textContent = `${name} (${id})`;
+                                sel.appendChild(opt);
+                            });
+
+                            // show count
+                            countEl.textContent = files.length ? `(${files.length} files)` : '(no files)';
+                            console.log('[FILES]', { count: files.length, sample: files[0] });
+                        })
                         .catch(err => console.error('[FILES] error', err));
 
                     // later: summarize
