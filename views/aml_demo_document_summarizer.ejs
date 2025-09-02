@@ -59,7 +59,8 @@
                 // Example: call your endpoints with everything as query params
                 if (alertId && openaiKey && sasUser && sasPass) {
                     const query = qs({ openaiKey, sasUser, sasPass });
-                    const apiUrl = `/api/alerts/${encodeURIComponent(alertId)}/files?${query}`;
+                    // Use the correct SAS API endpoint
+                    const apiUrl = `https://sasserver.demo.sas.com/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files?${query}`;
                     
                     console.log('[API] Fetching:', apiUrl);
                     document.getElementById('out').textContent += `\n\nFetching files from API...`;
