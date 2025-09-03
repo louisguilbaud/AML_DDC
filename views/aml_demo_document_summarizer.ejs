@@ -715,6 +715,11 @@
                     return APIService.extractTextFromPDF(arrayBuffer, onProgress);
                 },
                 
+                // Text cleaning methods
+                cleanTextForLLM(text, options = {}) {
+                    return Utils.cleanTextForLLM(text, options);
+                },
+                
                 // Expose modules for testing/debugging
                 _modules: {
                     Utils,
