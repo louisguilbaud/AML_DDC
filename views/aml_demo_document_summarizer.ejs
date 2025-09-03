@@ -53,7 +53,8 @@
 
     <div class="text-section" style="margin-top: 20px;">
         <h3>File Content</h3>
-        <pre id="fileContent" style="max-height: 400px; overflow-y: auto; background: #f5f5f5;">Select a file to view its content...</pre>
+        <pre id="fileContent"
+            style="max-height: 400px; overflow-y: auto; background: #f5f5f5;">Select a file to view its content...</pre>
     </div>
 
     <script>
@@ -62,7 +63,7 @@
          * Modular architecture for maintainability and future development
          */
         const DocumentSummarizerApp = (() => {
-            
+
             // =============================================================================
             // CONFIGURATION
             // =============================================================================
@@ -154,12 +155,12 @@
                 populateFileDropdown(files) {
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
-                    
+
                     if (!selectEl || !countEl) return;
 
                     // Clear and add default option
                     selectEl.innerHTML = '<option value="">— select a file —</option>';
-                    
+
                     // Add file options
                     files.forEach(file => {
                         const id = file.id || file.fileId;
@@ -173,7 +174,7 @@
                     // Update count display
                     const countText = files.length ? `(${files.length} files)` : '(no files)';
                     countEl.textContent = countText;
-                    
+
                     return countText;
                 },
 
@@ -231,19 +232,19 @@
             const APIService = {
                 // Store token for reuse
                 _accessToken: null,
-                
+
                 /**
                  * Get SAS access token using OAuth2 password grant
                  */
                 async getSASToken(username, password) {
                     const url = `${CONFIG.SAS_SERVER}${CONFIG.SAS_AUTH.TOKEN_ENDPOINT}`;
-                    
+
                     Utils.log('AUTH', `Getting SAS token from: ${url}`);
-                    
+
                     try {
                         // Create basic auth header
                         const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
-                        
+
                         // Prepare form data
                         const formData = new URLSearchParams({
                             'grant_type': 'password',
@@ -267,10 +268,10 @@
 
                         const data = await response.json();
                         Utils.log('AUTH', 'Token received successfully');
-                        
+
                         // Cache the token
                         this._accessToken = data.access_token;
-                        
+
                         return data.access_token;
                     } catch (error) {
                         Utils.log('AUTH', 'Token request failed', error);
@@ -301,7 +302,7 @@
                  */
                 async fetchAlertFiles(alertId, username = null, password = null) {
                     const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
-                    
+
                     Utils.log('API', `Fetching files from: ${url}`);
                     UIManager.appendOutput('Fetching files from SAS API...');
 
@@ -326,21 +327,21 @@
                             method: 'GET',
                             headers: headers
                         });
-                        
+
                         Utils.log('API', `Response status: ${response.status}`);
-                        
+
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
 
                         const data = await response.json();
                         Utils.log('API', 'Full response received', data);
-                        
+
                         // Normalize response - handle different possible structures
                         const files = Array.isArray(data) ? data : (data.items || data.files || []);
-                        
+
                         Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
-                        
+
                         return files;
                     } catch (error) {
                         Utils.log('API', 'Fetch failed', error);
@@ -353,12 +354,12 @@
                  */
                 async getFileContent(alertId, fileId, username, password) {
                     const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files/${encodeURIComponent(fileId)}/content`;
-                    
+
                     Utils.log('API', `Fetching file content: ${url}`);
-                    
+
                     try {
                         const token = await this.getAccessToken(username, password);
-                        
+
                         const response = await fetch(url, {
                             method: 'GET',
                             headers: {
@@ -366,23 +367,23 @@
                                 'Authorization': `Bearer ${token}`
                             }
                         });
-                        
+
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
-                        
+
                         const contentType = response.headers.get('Content-Type') || '';
                         Utils.log('API', `File content type: ${contentType}`);
-                        
+
                         // Read response as arrayBuffer (single read)
                         const arrayBuffer = await response.arrayBuffer();
-                        
+
                         // Return both content and content type for processing
                         return {
                             contentType: contentType,
                             arrayBuffer: arrayBuffer
                         };
-                        
+
                     } catch (error) {
                         Utils.log('API', 'File content fetch failed', error);
                         throw error;
@@ -401,47 +402,47 @@
                         Utils.log('PDF', 'Loading PDF document');
                         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                         const numPages = pdf.numPages;
-                        
+
                         Utils.log('PDF', `PDF has ${numPages} pages`);
-                        
+
                         let fullText = '';
-                        
+
                         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
                             if (onProgress) {
                                 onProgress(`Processing page ${pageNum} of ${numPages}`);
                             }
-                            
+
                             Utils.log('PDF', `Processing page ${pageNum}`);
-                            
+
                             try {
                                 const page = await pdf.getPage(pageNum);
                                 const textContent = await page.getTextContent();
-                                
+
                                 const pageText = textContent.items
                                     .map(item => item.str)
                                     .join(' ')
                                     .trim();
-                                
+
                                 if (pageText) {
                                     fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
                                 } else {
                                     fullText += `\n--- Page ${pageNum} ---\n[No text content on this page]\n`;
                                 }
-                                
+
                                 // Clean up page resources
                                 page.cleanup();
-                                
+
                             } catch (pageError) {
                                 Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
                                 fullText += `\n--- Page ${pageNum} ---\n[Error reading page: ${pageError.message}]\n`;
                             }
                         }
-                        
+
                         // Clean up PDF document
                         pdf.destroy();
-                        
+
                         return fullText.trim() || '[No text content could be extracted from this PDF]';
-                        
+
                     } catch (error) {
                         Utils.log('PDF', 'PDF processing failed', error);
                         throw new Error(`PDF text extraction failed: ${error.message}`);
@@ -453,19 +454,19 @@
                  */
                 async extractTextFromFile(fileData, onProgress = null) {
                     const { contentType, arrayBuffer } = fileData;
-                    
+
                     try {
                         // Handle PDF files using PDF.js
                         if (contentType.includes('pdf')) {
                             Utils.log('EXTRACT', 'Processing PDF document');
                             return await this.extractTextFromPDF(arrayBuffer, onProgress);
                         }
-                        
+
                         // Handle Word documents using mammoth
-                        else if (contentType.includes('wordprocessingml.document') || 
-                                contentType.includes('msword') || 
-                                contentType.includes('word')) {
-                            
+                        else if (contentType.includes('wordprocessingml.document') ||
+                            contentType.includes('msword') ||
+                            contentType.includes('word')) {
+
                             Utils.log('EXTRACT', 'Processing Word document');
                             if (typeof mammoth !== 'undefined') {
                                 if (onProgress) {
@@ -477,7 +478,7 @@
                                 return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nMammoth.js not loaded - cannot extract text`;
                             }
                         }
-                        
+
                         // Handle plain text files
                         else if (contentType.includes('text/plain') || contentType.includes('text/')) {
                             Utils.log('EXTRACT', 'Processing text file');
@@ -487,7 +488,7 @@
                             const decoder = new TextDecoder('utf-8');
                             return decoder.decode(arrayBuffer);
                         }
-                        
+
                         // Default: try to decode as text
                         else {
                             Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
@@ -497,7 +498,7 @@
                             const decoder = new TextDecoder('utf-8');
                             return decoder.decode(arrayBuffer);
                         }
-                        
+
                     } catch (error) {
                         Utils.log('EXTRACT', 'Text extraction failed', error);
                         return `[ERROR EXTRACTING TEXT]\nContent type: ${contentType}\nError: ${error.message}\nFile size: ${arrayBuffer.byteLength} bytes`;
@@ -520,7 +521,7 @@
                 extractParameters(vaMsgObj) {
                     const params = vaMsgObj?.parameters || [];
                     const indexes = CONFIG.PARAMETER_INDEXES;
-                    
+
                     return {
                         alertId: Utils.getParamByIndex(params, indexes.alertId),
                         openaiKey: Utils.getParamByIndex(params, indexes.openaiKey),
@@ -534,7 +535,7 @@
                  */
                 async handleVAMessage(vaMsgObj) {
                     const params = this.extractParameters(vaMsgObj);
-                    
+
                     Utils.log('VA', 'Parameters received', {
                         alertId: params.alertId,
                         hasOpenAI: !!params.openaiKey,
@@ -549,7 +550,7 @@
                         `SAS User: ${params.sasUser || 'missing'}`,
                         `SAS Pass: ${params.sasPass ? 'present' : 'missing'}`
                     ].join('\n');
-                    
+
                     UIManager.updateOutput(`Received parameters:\n${paramStatus}`);
 
                     // Store parameters for file operations
@@ -559,8 +560,8 @@
                     if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
                         try {
                             const files = await APIService.fetchAlertFiles(
-                                params.alertId, 
-                                params.sasUser, 
+                                params.alertId,
+                                params.sasUser,
                                 params.sasPass
                             );
                             const countText = UIManager.populateFileDropdown(files);
@@ -599,13 +600,13 @@
             const App = {
                 // Store current parameters for file operations
                 _currentParams: null,
-                
+
                 /**
                  * Initialize the entire application
                  */
                 init() {
                     Utils.log('APP', 'Initializing Document Summarizer App');
-                    
+
                     try {
                         // Check if PDF.js is loaded
                         if (typeof pdfjsLib !== 'undefined') {
@@ -613,17 +614,17 @@
                         } else {
                             Utils.log('APP', 'Warning: PDF.js not loaded - PDF support will be limited');
                         }
-                        
+
                         // Setup UI event listeners
                         UIManager.setupEventListeners();
-                        
+
                         // Initialize VA integration
                         VAIntegration.initialize();
-                        
+
                         // Expose file selection handler globally
                         window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
-                        
+
                     } catch (error) {
                         Utils.log('APP', 'Initialization error', error);
                         UIManager.updateOutput(`Error: ${error.message}`);
@@ -645,30 +646,30 @@
                         UIManager.displayFileContent('Error: No parameters available for file loading');
                         return;
                     }
-                    
+
                     const { alertId, sasUser, sasPass } = this._currentParams;
-                    
+
                     if (!alertId || !sasUser || !sasPass) {
                         UIManager.displayFileContent('Error: Missing required parameters for file loading');
                         return;
                     }
-                    
+
                     try {
                         Utils.log('APP', `Loading content for file: ${fileId}`);
                         UIManager.displayFileContent('', true); // Show loading state
-                        
+
                         // Get file content
                         const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
-                        
+
                         // Extract text from file with progress callback
                         const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
                             UIManager.displayFileContent('', true, status);
                         });
-                        
+
                         // Display the extracted text
                         UIManager.displayFileContent(extractedText);
                         Utils.log('APP', 'File content loaded successfully');
-                        
+
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
                         UIManager.displayFileContent(`Error loading file content: ${error.message}`);
@@ -695,7 +696,7 @@
             return {
                 init: App.init.bind(App),
                 getSelectedFileId: App.getSelectedFileId.bind(App),
-                
+
                 // Authentication methods
                 async getSASToken(username, password) {
                     return APIService.getSASToken(username, password);
@@ -703,7 +704,7 @@
                 clearToken() {
                     return APIService.clearToken();
                 },
-                
+
                 // File content methods
                 async getFileContent(alertId, fileId, username, password) {
                     return APIService.getFileContent(alertId, fileId, username, password);
@@ -714,12 +715,12 @@
                 async extractTextFromPDF(arrayBuffer, onProgress = null) {
                     return APIService.extractTextFromPDF(arrayBuffer, onProgress);
                 },
-                
+
                 // Text cleaning methods
                 cleanTextForLLM(text, options = {}) {
                     return Utils.cleanTextForLLM(text, options);
                 },
-                
+
                 // Expose modules for testing/debugging
                 _modules: {
                     Utils,
