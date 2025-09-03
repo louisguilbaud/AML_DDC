@@ -121,35 +121,6 @@
             font-size: calc(14px*var(--fs))
         }
 
-        #summarizeBtn {
-            appearance: none;
-            border: none;
-            cursor: pointer;
-            background: var(--primary);
-            color: #fff;
-            border-radius: 14px;
-            padding: 12px 18px;
-            font-size: calc(16px*var(--fs));
-            font-weight: 600;
-            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-            transition: transform .06s, box-shadow .2s, filter .2s
-        }
-
-        #summarizeBtn:hover {
-            filter: brightness(1.02)
-        }
-
-        #summarizeBtn:active {
-            transform: scale(.985)
-        }
-
-        #summarizeBtn:disabled {
-            opacity: .65;
-            cursor: not-allowed;
-            box-shadow: none
-        }
-
-
         #fileSelect {
             background: var(--grey-soft);
             color: var(--fg);
@@ -178,31 +149,214 @@
             display: grid;
             gap: 10px
         }
+
+        /* ===== Prototype layout/styling additions ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px
+        }
+
+        .header>div:first-child {
+            padding-left: var(--content-indent)
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .card {
+            padding: 24px 24px 28px
+        }
+
+        /* match prototype spacing */
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 28px;
+            font-weight: 650;
+            letter-spacing: -.02em
+        }
+
+        .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+            margin-bottom: 8px;
+            padding-left: var(--content-indent)
+        }
+
+        .surface {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--grey-soft);
+            padding: 14px;
+            min-height: 120px;
+            overflow: auto;
+            font-size: 14px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            min-height: 540px
+        }
+
+        .left {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            min-height: 0
+        }
+
+        .right {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 12px;
+            min-height: 0
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        .btn-primary {
+            appearance: none;
+            border: none;
+            cursor: pointer;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.02)
+        }
+
+        .btn-primary:active {
+            transform: scale(.985)
+        }
+
+        .btn-primary:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+            box-shadow: none
+        }
+
+        .search {
+            display: flex;
+            gap: 8px
+        }
+
+        .search input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #fff;
+            outline: none;
+        }
+
+        .summary-box {
+            min-height: 520px
+        }
+
+        /* ===== Overrides so <pre> boxes look like prototype surfaces ===== */
+        #fileContent,
+        #summaryContent {
+            border: 0;
+            background: transparent;
+            padding: 0;
+            min-height: 0;
+            max-height: none;
+            overflow: visible;
+            font-size: 14px;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        /* keep button styling consistent with prototype but retain your existing ID */
+        #summarizeBtn {
+            all: unset
+        }
+
+        #summarizeBtn {
+            display: inline-block
+        }
+
+        #summarizeBtn.btn-primary {
+            all: revert;
+            appearance: none
+        }
+
+        @media (max-width:1024px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .left {
+                grid-template-rows: auto auto
+            }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
         <div class="card">
-            <h1>VA Parameter Echo</h1>
-            <p class="subtitle">Inspect VA parameters, preview document text, and stream an AI summary.</p>
-            
-            <div class="file-section">
-                <label for="fileSelect">Document</label>
-                <select id="fileSelect">
-                    <option value="">— select a file —</option>
-                </select>
-                <small id="fileCount"></small>
+            <div class="header">
+                <div>
+                    <h1>VA Parameter Echo</h1>
+                    <p class="subtitle">Inspect VA parameters, preview document text, and stream an AI summary.</p>
+                </div>
+                <div class="row">
+                    <!-- move button to top-right, keep same ID for JS -->
+                    <button id="summarizeBtn" class="btn-primary" type="button" disabled>Summarize</button>
+                </div>
             </div>
 
-            <div class="text-section">
-                <h3>File Content</h3>
-                <pre id="fileContent">Select a file to view its content...</pre>
-                <div class="summary-section">
-                    <h3>AI Summary</h3>
-                    <button id="summarizeBtn" disabled>Summarize Document</button>
-                    <pre id="summaryContent">AI summary will appear here...</pre>
-                </div>
+            <div class="grid">
+                <!-- LEFT: Collection -->
+                <aside class="left" aria-label="Collection">
+                    <div>
+                        <div class="label">Collection</div>
+                        <div class="search"><input placeholder="Search documents…" aria-label="Search documents"></div>
+                    </div>
+                    <div class="surface">
+                        <label for="fileSelect" class="label" style="padding-left:0">Document</label>
+                        <select id="fileSelect">
+                            <option value="">— select a file —</option>
+                        </select>
+                        <small id="fileCount"></small>
+                    </div>
+                </aside>
+
+                <!-- RIGHT: File Content + Summary -->
+                <main class="right">
+                    <section>
+                        <div class="label">File Content</div>
+                        <div class="surface" aria-label="File Content">
+                            <pre id="fileContent">Select a file to view its content...</pre>
+                        </div>
+                    </section>
+
+                    <section>
+                        <div class="label">Summary</div>
+                        <div class="surface summary-box" aria-label="AI Summary">
+                            <pre id="summaryContent">AI summary will appear here...</pre>
+                        </div>
+                    </section>
+                </main>
             </div>
             <script>
                 /**
@@ -1080,7 +1234,7 @@
                                 // Reset button
                                 if (btn) {
                                     btn.disabled = false;
-                                    btn.textContent = 'Summarize Document';
+                                    btn.textContent = 'Summarize';
                                 }
                             }
                         },
