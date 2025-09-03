@@ -55,7 +55,6 @@
             display: grid;
             gap: 18px;
             max-height: calc(100vh - 4vh);
-            overflow: auto;
         }
 
         /* Header */
@@ -103,6 +102,12 @@
             font-size: 14px
         }
 
+        .left .surface {
+            max-height: 40vh;
+        }
+
+        /* uses .surface's overflow:auto */
+
         /* Layout */
         .grid {
             display: grid;
@@ -113,14 +118,14 @@
 
         .left {
             display: grid;
-            grid-template-rows: auto 1fr;
+            grid-template-rows: auto auto;
             gap: 10px;
             min-height: 0
         }
 
         .right {
             display: grid;
-            grid-template-rows: auto 1fr;
+            grid-template-rows: auto auto;
             gap: 12px;
             min-height: 0
         }
@@ -224,7 +229,8 @@
 
         /* Summary box */
         .summary-box {
-            min-height: 520px
+            min-height: 240px;
+            max-height: 40vh;
         }
 
         /* Status message */
