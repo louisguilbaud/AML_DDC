@@ -461,7 +461,8 @@
 
                         Utils.log('PDF', `PDF has ${numPages} pages`);
 
-                        let fullText = '';
+                        // Use array as string builder for better performance
+                        const textBuilder = [];
 
                         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
                             if (onProgress) {
@@ -479,9 +480,9 @@
                                     .join(' ')
                                     .trim();
 
-                                // Add the page text to fullText (without page markers)
+                                // Add page text to array if not empty
                                 if (pageText) {
-                                    fullText += ' ' + pageText;
+                                    textBuilder.push(pageText);
                                 }
 
                                 // Clean up page resources
@@ -495,7 +496,10 @@
                         // Clean up PDF document
                         pdf.destroy();
 
-                        return fullText.trim() || '[No text content could be extracted from this PDF]';
+                        // Join all text with spaces
+                        const fullText = textBuilder.join(' ').trim();
+
+                        return fullText || '[No text content could be extracted from this PDF]';
 
                     } catch (error) {
                         Utils.log('PDF', 'PDF processing failed', error);
