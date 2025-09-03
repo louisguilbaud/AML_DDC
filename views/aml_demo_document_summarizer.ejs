@@ -7,6 +7,8 @@
     <title>VA Parameter Echo</title>
     <script src="./javascripts/sas/util/messagingUtil.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+    <!-- PDF.js library for PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         body {
             font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
@@ -28,6 +30,11 @@
         .file-count {
             color: #777;
             margin-left: 8px;
+        }
+
+        .processing-status {
+            color: #0066cc;
+            font-style: italic;
         }
     </style>
 </head>
@@ -78,8 +85,16 @@
                     fileSelect: 'fileSelect',
                     fileCount: 'fileCount',
                     fileContent: 'fileContent'
+                },
+                PDF: {
+                    WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
                 }
             };
+
+            // Initialize PDF.js worker
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = CONFIG.PDF.WORKER_SRC;
+            }
 
             // =============================================================================
             // UTILITIES
@@ -176,11 +191,12 @@
                 /**
                  * Display file content in the content area
                  */
-                displayFileContent(content, loading = false) {
+                displayFileContent(content, loading = false, status = null) {
                     const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
                     if (contentEl) {
                         if (loading) {
-                            contentEl.textContent = 'Loading file content...';
+                            const statusText = status ? ` - ${status}` : '';
+                            contentEl.innerHTML = `<span class="processing-status">Loading file content${statusText}...</span>`;
                         } else {
                             contentEl.textContent = content;
                         }
@@ -374,19 +390,87 @@
                 },
 
                 /**
+                 * Extract text from PDF using PDF.js
+                 */
+                async extractTextFromPDF(arrayBuffer, onProgress = null) {
+                    if (typeof pdfjsLib === 'undefined') {
+                        throw new Error('PDF.js library not loaded');
+                    }
+
+                    try {
+                        Utils.log('PDF', 'Loading PDF document');
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        const numPages = pdf.numPages;
+                        
+                        Utils.log('PDF', `PDF has ${numPages} pages`);
+                        
+                        let fullText = '';
+                        
+                        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                            if (onProgress) {
+                                onProgress(`Processing page ${pageNum} of ${numPages}`);
+                            }
+                            
+                            Utils.log('PDF', `Processing page ${pageNum}`);
+                            
+                            try {
+                                const page = await pdf.getPage(pageNum);
+                                const textContent = await page.getTextContent();
+                                
+                                const pageText = textContent.items
+                                    .map(item => item.str)
+                                    .join(' ')
+                                    .trim();
+                                
+                                if (pageText) {
+                                    fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+                                } else {
+                                    fullText += `\n--- Page ${pageNum} ---\n[No text content on this page]\n`;
+                                }
+                                
+                                // Clean up page resources
+                                page.cleanup();
+                                
+                            } catch (pageError) {
+                                Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
+                                fullText += `\n--- Page ${pageNum} ---\n[Error reading page: ${pageError.message}]\n`;
+                            }
+                        }
+                        
+                        // Clean up PDF document
+                        pdf.destroy();
+                        
+                        return fullText.trim() || '[No text content could be extracted from this PDF]';
+                        
+                    } catch (error) {
+                        Utils.log('PDF', 'PDF processing failed', error);
+                        throw new Error(`PDF text extraction failed: ${error.message}`);
+                    }
+                },
+
+                /**
                  * Extract text from file based on content type
                  */
-                async extractTextFromFile(fileData) {
+                async extractTextFromFile(fileData, onProgress = null) {
                     const { contentType, arrayBuffer } = fileData;
                     
                     try {
+                        // Handle PDF files using PDF.js
+                        if (contentType.includes('pdf')) {
+                            Utils.log('EXTRACT', 'Processing PDF document');
+                            return await this.extractTextFromPDF(arrayBuffer, onProgress);
+                        }
+                        
                         // Handle Word documents using mammoth
-                        if (contentType.includes('wordprocessingml.document') || 
-                            contentType.includes('msword') || 
-                            contentType.includes('word')) {
+                        else if (contentType.includes('wordprocessingml.document') || 
+                                contentType.includes('msword') || 
+                                contentType.includes('word')) {
                             
                             Utils.log('EXTRACT', 'Processing Word document');
                             if (typeof mammoth !== 'undefined') {
+                                if (onProgress) {
+                                    onProgress('Extracting text from Word document');
+                                }
                                 const result = await mammoth.extractRawText({ arrayBuffer });
                                 return result.value;
                             } else {
@@ -394,16 +478,12 @@
                             }
                         }
                         
-                        // Handle PDFs - basic attempt (may need additional libraries for full support)
-                        else if (contentType.includes('pdf')) {
-                            Utils.log('EXTRACT', 'PDF detected - limited text extraction available');
-                            // For now, return a message indicating PDF needs special handling
-                            return '[PDF FILE DETECTED]\nPDF text extraction requires additional libraries.\nContent type: ' + contentType + '\nFile size: ' + arrayBuffer.byteLength + ' bytes';
-                        }
-                        
                         // Handle plain text files
                         else if (contentType.includes('text/plain') || contentType.includes('text/')) {
                             Utils.log('EXTRACT', 'Processing text file');
+                            if (onProgress) {
+                                onProgress('Reading text file');
+                            }
                             const decoder = new TextDecoder('utf-8');
                             return decoder.decode(arrayBuffer);
                         }
@@ -411,6 +491,9 @@
                         // Default: try to decode as text
                         else {
                             Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
+                            if (onProgress) {
+                                onProgress('Attempting to read as text file');
+                            }
                             const decoder = new TextDecoder('utf-8');
                             return decoder.decode(arrayBuffer);
                         }
@@ -524,6 +607,13 @@
                     Utils.log('APP', 'Initializing Document Summarizer App');
                     
                     try {
+                        // Check if PDF.js is loaded
+                        if (typeof pdfjsLib !== 'undefined') {
+                            Utils.log('APP', 'PDF.js loaded successfully');
+                        } else {
+                            Utils.log('APP', 'Warning: PDF.js not loaded - PDF support will be limited');
+                        }
+                        
                         // Setup UI event listeners
                         UIManager.setupEventListeners();
                         
@@ -570,8 +660,10 @@
                         // Get file content
                         const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
                         
-                        // Extract text from file
-                        const extractedText = await APIService.extractTextFromFile(fileData);
+                        // Extract text from file with progress callback
+                        const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
+                            UIManager.displayFileContent('', true, status);
+                        });
                         
                         // Display the extracted text
                         UIManager.displayFileContent(extractedText);
@@ -618,6 +710,9 @@
                 },
                 async extractTextFromFile(fileData) {
                     return APIService.extractTextFromFile(fileData);
+                },
+                async extractTextFromPDF(arrayBuffer, onProgress = null) {
+                    return APIService.extractTextFromPDF(arrayBuffer, onProgress);
                 },
                 
                 // Expose modules for testing/debugging
