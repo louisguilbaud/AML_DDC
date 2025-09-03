@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -10,112 +11,260 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         /* ===== Theme + base (from prototype) ===== */
-        :root{
-            --bg:#fff;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--border:rgba(0,0,0,.08);
-            --primary:#0478CE;--primary-press:#0366AF;--grey-soft:#fafafa;--primary-soft:#E8F3FF;
-            --content-indent:14px;
+        :root {
+            --bg: #fff;
+            --fg: #1d1d1f;
+            --muted: #6e6e73;
+            --card: #fff;
+            --border: rgba(0, 0, 0, .08);
+            --primary: #0478CE;
+            --primary-press: #0366AF;
+            --grey-soft: #fafafa;
+            --primary-soft: #E8F3FF;
+            --content-indent: 14px;
         }
-        *{box-sizing:border-box}
-        html,body{height:100%}
-        body{margin:0;background:var(--bg);color:var(--fg);
-            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
-        
-        .container{width:min(96vw,1600px);margin:2vh auto 8vh;padding:0 24px}
-        .card{
-            background:var(--card);
-            border:1px solid var(--border);
-            border-radius:24px;
-            box-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 30px rgba(0,0,0,.06);
-            padding:24px 24px 28px;
-            display:grid;gap:18px;
+
+        * {
+            box-sizing: border-box
         }
-        
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
+        }
+
+        .container {
+            width: min(96vw, 1600px);
+            margin: 2vh auto 8vh;
+            padding: 0 24px
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
+            padding: 24px 24px 28px;
+            display: grid;
+            gap: 18px;
+        }
+
         /* Header */
-        .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-        h1{margin:0 0 6px 0;font-size:28px;font-weight:650;letter-spacing:-.02em}
-        .subtitle{margin:0;color:var(--muted);font-size:14px}
-        .header > div:first-child{padding-left:var(--content-indent)}
-        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px
+        }
+
+        h1 {
+            margin: 0 0 6px 0;
+            font-size: 28px;
+            font-weight: 650;
+            letter-spacing: -.02em
+        }
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .header>div:first-child {
+            padding-left: var(--content-indent)
+        }
+
         /* Labels + surfaces */
-        .label{
-            font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
-            margin-bottom:8px;padding-left:var(--content-indent)
+        .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+            margin-bottom: 8px;
+            padding-left: var(--content-indent)
         }
-        .surface{
-            border:1px solid var(--border);border-radius:14px;background:var(--grey-soft);
-            padding:14px;min-height:120px;overflow:auto;font-size:14px
+
+        .surface {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--grey-soft);
+            padding: 14px;
+            min-height: 120px;
+            overflow: auto;
+            font-size: 14px
         }
-        
+
         /* Layout */
-        .grid{
-            display:grid;grid-template-columns:320px 1fr;gap:18px;min-height:540px
+        .grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 18px;
+            min-height: 540px
         }
-        .left{display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0}
-        .right{display:grid;grid-template-rows:auto 1fr;gap:12px;min-height:0}
-        
+
+        .left {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 10px;
+            min-height: 0
+        }
+
+        .right {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 12px;
+            min-height: 0
+        }
+
         /* File list */
-        .search{display:flex;gap:8px;margin-bottom:10px}
-        .search input{
-            width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:#fff;outline:none;
+        .search {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px
         }
-        .filelist{display:grid;gap:8px}
-        .file{
-            border:1px solid transparent;border-radius:12px;padding:10px;background:#fff;
-            cursor:pointer;display:grid;gap:2px
+
+        .search input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: #fff;
+            outline: none;
         }
-        .file:hover{background:var(--grey-soft);border-color:var(--border)}
-        .file.is-active{background:var(--primary-soft);border-color:#CFE7FF}
-        .file .name{font-weight:600}
-        .file .meta{font-size:12px;color:var(--muted)}
-        
+
+        .filelist {
+            display: grid;
+            gap: 8px
+        }
+
+        .file {
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 10px;
+            background: #fff;
+            cursor: pointer;
+            display: grid;
+            gap: 2px
+        }
+
+        .file:hover {
+            background: var(--grey-soft);
+            border-color: var(--border)
+        }
+
+        .file.is-active {
+            background: var(--primary-soft);
+            border-color: #CFE7FF
+        }
+
+        .file .name {
+            font-weight: 600
+        }
+
+        .file .meta {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
         /* Button */
-        .row{display:flex;gap:10px;align-items:center}
-        .btn-primary{
-            appearance:none;border:none;cursor:pointer;background:var(--primary);color:#fff;
-            border-radius:14px;padding:12px 18px;font-size:16px;font-weight:600;
-            box-shadow:0 6px 18px rgba(0,122,255,.25);
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center
         }
-        .btn-primary:hover{filter:brightness(1.02)}
-        .btn-primary:active{transform:scale(.985)}
-        .btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
-        .btn-primary:focus{outline:none;box-shadow:0 0 0 4px rgba(4,120,206,.12)}
-        
+
+        .btn-primary {
+            appearance: none;
+            border: none;
+            cursor: pointer;
+            background: var(--primary);
+            color: #fff;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.02)
+        }
+
+        .btn-primary:active {
+            transform: scale(.985)
+        }
+
+        .btn-primary:disabled {
+            opacity: .65;
+            cursor: not-allowed;
+            box-shadow: none
+        }
+
+        .btn-primary:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(4, 120, 206, .12)
+        }
+
         /* Content areas */
-        #fileContent, #summaryContent{
-            white-space:pre-wrap;
-            word-wrap:break-word;
-            font-family:inherit;
+        #fileContent,
+        #summaryContent {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
         }
-        
+
         /* Summary box */
-        .summary-box{min-height:520px}
-        
+        .summary-box {
+            min-height: 520px
+        }
+
         /* Status message */
-        #out{
-            display:none; /* Hide the debug output */
+        #out {
+            display: none;
+            /* Hide the debug output */
         }
-        
-        .processing-status{
-            color:var(--primary);
-            font-style:italic
+
+        .processing-status {
+            color: var(--primary);
+            font-style: italic
         }
-        
-        .muted{color:var(--muted)}
-        
+
+        .muted {
+            color: var(--muted)
+        }
+
         /* Loading state */
-        .loading-message{
-            color:var(--muted);
-            font-style:italic;
-            padding:8px;
+        .loading-message {
+            color: var(--muted);
+            font-style: italic;
+            padding: 8px;
         }
-        
+
         /* Responsive */
-        @media (max-width:1024px){
-            .grid{grid-template-columns:1fr}
-            .left{grid-template-rows:auto auto}
+        @media (max-width:1024px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .left {
+                grid-template-rows: auto auto
+            }
+        }
+
+        /* Prevent File Content from expanding; allow scrolling */
+        .file-content-box {
+            overflow: auto;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="card" role="region" aria-labelledby="title">
@@ -155,7 +304,7 @@
                             <pre id="fileContent">Select a file to view its content...</pre>
                         </div>
                     </section>
-                    
+
                     <section>
                         <div class="label">Summary</div>
                         <div class="surface summary-box" aria-label="AI Summary">
@@ -359,7 +508,7 @@
                 populateFileList(files) {
                     this._allFiles = files;
                     const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
-                    
+
                     if (!listEl) return;
 
                     if (!files || files.length === 0) {
@@ -369,26 +518,26 @@
 
                     // Clear and populate
                     listEl.innerHTML = '';
-                    
+
                     files.forEach(file => {
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
                         const size = file.size || file.fileSize || 0;
-                        
+
                         const fileEl = document.createElement('div');
                         fileEl.className = 'file';
                         fileEl.dataset.fileId = id;
                         fileEl.dataset.fileName = name.toLowerCase();
-                        
+
                         fileEl.innerHTML = `
                             <div class="name">${name}</div>
                             <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
                         `;
-                        
+
                         fileEl.addEventListener('click', () => {
                             this.selectFile(id);
                         });
-                        
+
                         listEl.appendChild(fileEl);
                     });
 
@@ -401,7 +550,7 @@
                  */
                 selectFile(fileId) {
                     this._selectedFileId = fileId;
-                    
+
                     // Update active state
                     document.querySelectorAll('.file').forEach(el => {
                         if (el.dataset.fileId === fileId) {
@@ -444,11 +593,11 @@
                 populateFileDropdown(files) {
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
-                    
+
                     if (!selectEl || !countEl) return;
 
                     selectEl.innerHTML = '<option value="">— select a file —</option>';
-                    
+
                     files.forEach(file => {
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
@@ -547,7 +696,7 @@
 
                     try {
                         const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
-                        
+
                         const formData = new URLSearchParams({
                             'grant_type': 'password',
                             'username': username,
@@ -570,7 +719,7 @@
 
                         const data = await response.json();
                         Utils.log('AUTH', 'Token received successfully');
-                        
+
                         this._accessToken = data.access_token;
                         return data.access_token;
                     } catch (error) {
@@ -636,7 +785,7 @@
                         Utils.log('API', 'Full response received', data);
 
                         const files = Array.isArray(data) ? data : (data.items || data.files || []);
-                        
+
                         Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
                         return files;
                     } catch (error) {
@@ -654,7 +803,7 @@
 
                     try {
                         const token = await this.getAccessToken(username, password);
-                        
+
                         const response = await fetch(url, {
                             method: 'GET',
                             headers: {
@@ -743,9 +892,9 @@
                             Utils.log('EXTRACT', 'Processing PDF document');
                             return await this.extractTextFromPDF(arrayBuffer, onProgress);
                         }
-                        else if (contentType.includes('wordprocessingml.document') || 
-                                 contentType.includes('msword') || 
-                                 contentType.includes('word')) {
+                        else if (contentType.includes('wordprocessingml.document') ||
+                            contentType.includes('msword') ||
+                            contentType.includes('word')) {
                             Utils.log('EXTRACT', 'Processing Word document');
                             if (typeof mammoth !== 'undefined') {
                                 if (onProgress) {
@@ -784,7 +933,7 @@
                  */
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
                     const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English.\n\n` +
-                                       `Summarize this document concisely, highlighting the key points:\n\n${text}`;
+                        `Summarize this document concisely, highlighting the key points:\n\n${text}`;
 
                     const body = {
                         model,
@@ -808,8 +957,8 @@
                     if (!onDelta) {
                         const json = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) : 
-                                   (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) :
+                            (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
                         if (!txt) throw new Error('LLM returned no text payload');
                         return txt;
                     }
@@ -830,7 +979,7 @@
                         if (done) break;
 
                         carry += decoder.decode(value, { stream: true });
-                        
+
                         const frames = carry.split('\n\n');
                         carry = frames.pop() || '';
 
@@ -894,7 +1043,7 @@
                  */
                 async handleVAMessage(vaMsgObj) {
                     const params = this.extractParameters(vaMsgObj);
-                    
+
                     Utils.log('VA', 'Parameters received', {
                         alertId: params.alertId,
                         hasOpenAI: !!params.openaiKey,
@@ -920,7 +1069,7 @@
                                 params.sasUser,
                                 params.sasPass
                             );
-                            
+
                             UIManager.populateFileList(files);
                             UIManager.appendOutput(`\nAPI Response: (${files.length} files)`);
                         } catch (error) {
@@ -1017,7 +1166,7 @@
                             Utils.log('APP', 'Using cached file content');
                             UIManager.displayFileContent(this._fileCache.get(cacheKey));
                             this._currentCleanedText = this._fileCache.get(cacheKey);
-                            
+
                             if (this._currentParams.openaiKey) {
                                 const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
                                 if (btn) btn.disabled = false;
@@ -1028,7 +1177,7 @@
                         UIManager.displayFileContent('', true);
 
                         const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
-                        
+
                         const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
                             UIManager.displayFileContent('', true, status);
                         });
@@ -1133,7 +1282,7 @@
             return {
                 init: App.init.bind(App),
                 getSelectedFileId: App.getSelectedFileId.bind(App),
-                
+
                 async getSASToken(username, password) {
                     return APIService.getSASToken(username, password);
                 },
@@ -1166,6 +1315,16 @@
         // APPLICATION STARTUP
         // =============================================================================
         DocumentSummarizerApp.init();
-    </script>
+        function lockFileContentHeight() {
+            const box = document.querySelector('.file-content-box');
+            if (!box) return;
+            const h = Math.round(box.getBoundingClientRect().height);
+            box.style.maxHeight = h + 'px';
+            box.style.overflow = 'auto';
+        }
+        window.addEventListener('load', () => {
+            requestAnimationFrame(lockFileContentHeight);
+        });    </script>
 </body>
+
 </html>
