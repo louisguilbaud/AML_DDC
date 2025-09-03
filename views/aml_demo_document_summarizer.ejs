@@ -658,6 +658,7 @@
             const App = {
                 // Store current parameters for file operations
                 _currentParams: null,
+                _fileCache: new Map(),
 
                 /**
                  * Initialize the entire application
@@ -714,6 +715,15 @@
 
                     try {
                         Utils.log('APP', `Loading content for file: ${fileId}`);
+
+                        // Check cache first
+                        const cacheKey = `${alertId}:${fileId}`;
+                        if (this._fileCache && this._fileCache.has(cacheKey)) {
+                            Utils.log('APP', 'Using cached file content');
+                            UIManager.displayFileContent(this._fileCache.get(cacheKey));
+                            return;
+                        }
+
                         UIManager.displayFileContent('', true); // Show loading state
 
                         // Get file content
@@ -733,6 +743,15 @@
                             trimLines: true,
                             maxConsecutiveNewlines: 2
                         });
+
+                        // Cache the cleaned text BEFORE displaying
+                        this._fileCache.set(cacheKey, cleanedText);
+
+                        // Limit cache size
+                        if (this._fileCache.size > 10) {
+                            const firstKey = this._fileCache.keys().next().value;
+                            this._fileCache.delete(firstKey);
+                        }
 
                         // Display the cleaned text
                         UIManager.displayFileContent(cleanedText);
