@@ -479,10 +479,11 @@
                                     .join(' ')
                                     .trim();
 
+                                // Add the page text to fullText (without page markers)
                                 if (pageText) {
-                                    fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
-                                } else {
-                                    fullText += `\n--- Page ${pageNum} ---\n[No text content on this page]\n`;
+                                    if (fullText) {
+                                    fullText += pageText;
+                                    }
                                 }
 
                                 // Clean up page resources
@@ -490,7 +491,6 @@
 
                             } catch (pageError) {
                                 Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
-                                fullText += `\n--- Page ${pageNum} ---\n[Error reading page: ${pageError.message}]\n`;
                             }
                         }
 
