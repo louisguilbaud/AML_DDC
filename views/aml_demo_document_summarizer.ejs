@@ -125,7 +125,63 @@
                     } else {
                         console.log(logMessage);
                     }
-                }
+                },
+                /**
+                 * Clean text for LLM processing
+                 * Removes excess whitespace, special characters, and formats text for better processing
+                 */
+                cleanTextForLLM(text, options = {}) {
+                    const defaults = {
+                        removeExtraSpaces: true,
+                        removeSpecialChars: true,
+                        normalizeWhitespace: true,
+                        removeEmptyLines: true,
+                        trimLines: true,
+                        maxConsecutiveNewlines: 2
+                    };
+
+                    const settings = { ...defaults, ...options };
+                    let cleaned = text || '';
+
+                    if (settings.removeSpecialChars) {
+                        // Remove zero-width characters, control characters (except newlines and tabs)
+                        cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+                        // Remove zero-width spaces, joiners, etc.
+                        cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '');
+                    }
+
+                    if (settings.normalizeWhitespace) {
+                        // Replace various types of spaces with regular spaces
+                        cleaned = cleaned.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+                        // Replace tabs with single space
+                        cleaned = cleaned.replace(/\t/g, ' ');
+                    }
+
+                    if (settings.removeExtraSpaces) {
+                        // Replace multiple spaces with single space
+                        cleaned = cleaned.replace(/[^\S\r\n]+/g, ' ');
+                    }
+
+                    if (settings.trimLines) {
+                        // Trim whitespace from beginning and end of each line
+                        cleaned = cleaned.split('\n').map(line => line.trim()).join('\n');
+                    }
+
+                    if (settings.removeEmptyLines) {
+                        // Remove completely empty lines
+                        cleaned = cleaned.split('\n').filter(line => line.length > 0).join('\n');
+                    }
+
+                    if (settings.maxConsecutiveNewlines > 0) {
+                        // Limit consecutive newlines
+                        const regex = new RegExp(`\\n{${settings.maxConsecutiveNewlines + 1},}`, 'g');
+                        const replacement = '\n'.repeat(settings.maxConsecutiveNewlines);
+                        cleaned = cleaned.replace(regex, replacement);
+                    }
+
+                    // Final trim
+                    return cleaned.trim();
+                },
             };
 
             // =============================================================================
@@ -666,9 +722,25 @@
                             UIManager.displayFileContent('', true, status);
                         });
 
-                        // Display the extracted text
-                        UIManager.displayFileContent(extractedText);
-                        Utils.log('APP', 'File content loaded successfully');
+                        // Clean the extracted text
+                        const cleanedText = Utils.cleanTextForLLM(extractedText, {
+                            removeExtraSpaces: true,
+                            removeSpecialChars: true,
+                            normalizeWhitespace: true,
+                            removeEmptyLines: true,
+                            trimLines: true,
+                            maxConsecutiveNewlines: 2
+                        });
+
+                        // Display the cleaned text
+                        UIManager.displayFileContent(cleanedText);
+                        Utils.log('APP', 'File content loaded and cleaned successfully');
+
+                        // Log cleaning stats for debugging
+                        const originalLength = extractedText.length;
+                        const cleanedLength = cleanedText.length;
+                        const reduction = ((originalLength - cleanedLength) / originalLength * 100).toFixed(1);
+                        Utils.log('APP', `Text cleaning: ${originalLength} → ${cleanedLength} chars (${reduction}% reduction)`);
 
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
