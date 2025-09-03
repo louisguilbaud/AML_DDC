@@ -1,347 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>VA Parameter Echo</title>
+    <title>Document Summarizer</title>
     <script src="./javascripts/sas/util/messagingUtil.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
     <!-- PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* === THEME TOKENS & BASE === */
-        :root {
-            --bg: #fff;
-            --fg: #1d1d1f;
-            --muted: #6e6e73;
-            --card: #fff;
-            --border: rgba(0, 0, 0, .08);
-            --primary: #0478CE;
-            --primary-press: #0366AF;
-            --primary-soft: #E8F3FF;
-            --grey-soft: #fafafa;
-            --content-indent: 14px;
-            --fs: 1.08;
+        /* ===== Theme + base (from prototype) ===== */
+        :root{
+            --bg:#fff;--fg:#1d1d1f;--muted:#6e6e73;--card:#fff;--border:rgba(0,0,0,.08);
+            --primary:#0478CE;--primary-press:#0366AF;--grey-soft:#fafafa;--primary-soft:#E8F3FF;
+            --content-indent:14px;
         }
-
-        * {
-            box-sizing: border-box
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{margin:0;background:var(--bg);color:var(--fg);
+            font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,system-ui}
+        
+        .container{width:min(96vw,1600px);margin:2vh auto 8vh;padding:0 24px}
+        .card{
+            background:var(--card);
+            border:1px solid var(--border);
+            border-radius:24px;
+            box-shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 30px rgba(0,0,0,.06);
+            padding:24px 24px 28px;
+            display:grid;gap:18px;
         }
-
-        html,
-        body {
-            height: 100%
+        
+        /* Header */
+        .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        h1{margin:0 0 6px 0;font-size:28px;font-weight:650;letter-spacing:-.02em}
+        .subtitle{margin:0;color:var(--muted);font-size:14px}
+        .header > div:first-child{padding-left:var(--content-indent)}
+        
+        /* Labels + surfaces */
+        .label{
+            font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+            margin-bottom:8px;padding-left:var(--content-indent)
         }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
-            font: calc(16px*var(--fs))/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
+        .surface{
+            border:1px solid var(--border);border-radius:14px;background:var(--grey-soft);
+            padding:14px;min-height:120px;overflow:auto;font-size:14px
         }
-
-        pre {
-            font-family: inherit;
+        
+        /* Layout */
+        .grid{
+            display:grid;grid-template-columns:320px 1fr;gap:18px;min-height:540px
         }
-
-        #fileSelect:focus,
-        #summarizeBtn:focus {
-            outline: none;
-            box-shadow: 0 0 0 4px rgba(4, 120, 206, .12);
+        .left{display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0}
+        .right{display:grid;grid-template-rows:auto 1fr;gap:12px;min-height:0}
+        
+        /* File list */
+        .search{display:flex;gap:8px;margin-bottom:10px}
+        .search input{
+            width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:#fff;outline:none;
         }
-
-        label[for="fileSelect"] {
-            padding-left: var(--content-indent);
-            color: var(--muted);
-            font-weight: 600;
-            font-size: calc(12px * var(--fs));
-            text-transform: uppercase;
-            letter-spacing: .08em;
+        .filelist{display:grid;gap:8px}
+        .file{
+            border:1px solid transparent;border-radius:12px;padding:10px;background:#fff;
+            cursor:pointer;display:grid;gap:2px
         }
-
-        h1 {
-            margin: 0 0 8px;
-            font-size: calc(28px*var(--fs));
-            font-weight: 650;
-            letter-spacing: -.02em
+        .file:hover{background:var(--grey-soft);border-color:var(--border)}
+        .file.is-active{background:var(--primary-soft);border-color:#CFE7FF}
+        .file .name{font-weight:600}
+        .file .meta{font-size:12px;color:var(--muted)}
+        
+        /* Button */
+        .row{display:flex;gap:10px;align-items:center}
+        .btn-primary{
+            appearance:none;border:none;cursor:pointer;background:var(--primary);color:#fff;
+            border-radius:14px;padding:12px 18px;font-size:16px;font-weight:600;
+            box-shadow:0 6px 18px rgba(0,122,255,.25);
         }
-
-        .container {
-            width: min(96vw, 1600px);
-            margin: 2vh auto 8vh;
-            padding: 0 24px
+        .btn-primary:hover{filter:brightness(1.02)}
+        .btn-primary:active{transform:scale(.985)}
+        .btn-primary:disabled{opacity:.65;cursor:not-allowed;box-shadow:none}
+        .btn-primary:focus{outline:none;box-shadow:0 0 0 4px rgba(4,120,206,.12)}
+        
+        /* Content areas */
+        #fileContent, #summaryContent{
+            white-space:pre-wrap;
+            word-wrap:break-word;
+            font-family:inherit;
         }
-
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
-            padding: 32px;
-            display: grid;
-            gap: 18px
+        
+        /* Summary box */
+        .summary-box{min-height:520px}
+        
+        /* Status message */
+        #out{
+            display:none; /* Hide the debug output */
         }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: calc(14px*var(--fs))
+        
+        .processing-status{
+            color:var(--primary);
+            font-style:italic
         }
-
-        .label,
-        h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-            margin: 0 0 8px;
-            padding-left: var(--content-indent)
+        
+        .muted{color:var(--muted)}
+        
+        /* Loading state */
+        .loading-message{
+            color:var(--muted);
+            font-style:italic;
+            padding:8px;
         }
-
-        /* === ELEMENT MAPPING TO MATCH OTHER APP === */
-        #out {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            white-space: pre-wrap
-        }
-
-        #fileContent,
-        #summaryContent {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            white-space: pre-wrap;
-            min-height: 140px;
-            max-height: 400px;
-            overflow: auto;
-            font-size: calc(14px*var(--fs))
-        }
-
-        #fileSelect {
-            background: var(--grey-soft);
-            color: var(--fg);
-            border: none;
-            border-radius: 14px;
-            padding: 10px 12px;
-            font-size: calc(14px*var(--fs));
-            font-weight: 600;
-            outline: none
-        }
-
-        #fileCount {
-            color: var(--muted);
-            margin-left: 8px
-        }
-
-        .processing-status {
-            color: var(--primary);
-            font-style: italic
-        }
-
-        /* tidy section spacing inside the card */
-        .file-section,
-        .text-section,
-        .summary-section {
-            display: grid;
-            gap: 10px
-        }
-
-        /* ===== Prototype layout/styling additions ===== */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px
-        }
-
-        .header>div:first-child {
-            padding-left: var(--content-indent)
-        }
-
-        .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: 14px
-        }
-
-        .card {
-            padding: 24px 24px 28px
-        }
-
-        /* match prototype spacing */
-        h1 {
-            margin: 0 0 6px 0;
-            font-size: 28px;
-            font-weight: 650;
-            letter-spacing: -.02em
-        }
-
-        .label {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-            margin-bottom: 8px;
-            padding-left: var(--content-indent)
-        }
-
-        .surface {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            min-height: 120px;
-            overflow: auto;
-            font-size: 14px
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 18px;
-            min-height: 540px
-        }
-
-        .left {
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 10px;
-            min-height: 0
-        }
-
-        .right {
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 12px;
-            min-height: 0
-        }
-
-        .row {
-            display: flex;
-            gap: 10px;
-            align-items: center
-        }
-
-        .btn-primary {
-            appearance: none;
-            border: none;
-            cursor: pointer;
-            background: var(--primary);
-            color: #fff;
-            border-radius: 14px;
-            padding: 12px 18px;
-            font-size: 16px;
-            font-weight: 600;
-            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-        }
-
-        .btn-primary:hover {
-            filter: brightness(1.02)
-        }
-
-        .btn-primary:active {
-            transform: scale(.985)
-        }
-
-        .btn-primary:disabled {
-            opacity: .65;
-            cursor: not-allowed;
-            box-shadow: none
-        }
-
-        .search {
-            display: flex;
-            gap: 8px
-        }
-
-        .search input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: #fff;
-            outline: none;
-        }
-
-        .summary-box {
-            min-height: 520px
-        }
-
-        /* ===== Overrides so <pre> boxes look like prototype surfaces ===== */
-        #fileContent,
-        #summaryContent {
-            border: 0;
-            background: transparent;
-            padding: 0;
-            min-height: 0;
-            max-height: none;
-            overflow: visible;
-            font-size: 14px;
-            margin: 0;
-            white-space: pre-wrap;
-        }
-
-        /* keep button styling consistent with prototype but retain your existing ID */
-        #summarizeBtn {
-            all: unset
-        }
-
-        #summarizeBtn {
-            display: inline-block
-        }
-
-        #summarizeBtn.btn-primary {
-            all: revert;
-            appearance: none
-        }
-
-        @media (max-width:1024px) {
-            .grid {
-                grid-template-columns: 1fr
-            }
-
-            .left {
-                grid-template-rows: auto auto
-            }
+        
+        /* Responsive */
+        @media (max-width:1024px){
+            .grid{grid-template-columns:1fr}
+            .left{grid-template-rows:auto auto}
         }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <div class="card">
+        <div class="card" role="region" aria-labelledby="title">
+            <!-- Header with title and summarize button -->
             <div class="header">
                 <div>
-                    <h1>VA Parameter Echo</h1>
-                    <p class="subtitle">Inspect VA parameters, preview document text, and stream an AI summary.</p>
+                    <h1 id="title">Document Summarizer</h1>
+                    <p class="subtitle">Generate a concise summary with one click.</p>
                 </div>
                 <div class="row">
-                    <!-- move button to top-right, keep same ID for JS -->
                     <button id="summarizeBtn" class="btn-primary" type="button" disabled>Summarize</button>
                 </div>
             </div>
 
+            <!-- Main grid layout -->
             <div class="grid">
-                <!-- LEFT: Collection -->
+                <!-- Left: Collection -->
                 <aside class="left" aria-label="Collection">
                     <div>
                         <div class="label">Collection</div>
-                        <div class="search"><input placeholder="Search documents…" aria-label="Search documents"></div>
+                        <div class="search">
+                            <input id="searchInput" placeholder="Search documents…" />
+                        </div>
                     </div>
                     <div class="surface">
-                        <label for="fileSelect" class="label" style="padding-left:0">Document</label>
-                        <select id="fileSelect">
-                            <option value="">— select a file —</option>
-                        </select>
-                        <small id="fileCount"></small>
+                        <div id="filelist" class="filelist">
+                            <div class="loading-message">Waiting for VA parameters...</div>
+                        </div>
                     </div>
                 </aside>
 
-                <!-- RIGHT: File Content + Summary -->
+                <!-- Right: File Content + Summary -->
                 <main class="right">
                     <section>
                         <div class="label">File Content</div>
@@ -349,7 +155,7 @@
                             <pre id="fileContent">Select a file to view its content...</pre>
                         </div>
                     </section>
-
+                    
                     <section>
                         <div class="label">Summary</div>
                         <div class="surface summary-box" aria-label="AI Summary">
@@ -358,942 +164,1008 @@
                     </section>
                 </main>
             </div>
-            <script>
-                /**
-                 * VA Document Summarizer Application
-                 * Modular architecture for maintainability and future development
-                 */
-                const DocumentSummarizerApp = (() => {
 
-                    // =============================================================================
-                    // CONFIGURATION
-                    // =============================================================================
-                    const CONFIG = {
-                        SAS_SERVER: 'https://sasserver.demo.sas.com',
-                        SAS_AUTH: {
-                            CLIENT_ID: 'sas.cli',  // Default SAS CLI client ID
-                            CLIENT_SECRET: '',     // Usually empty for CLI client
-                            TOKEN_ENDPOINT: '/SASLogon/oauth/token'
-                        },
-                        PARAMETER_INDEXES: {
-                            alertId: 0,
-                            openaiKey: 1,
-                            sasUser: 2,
-                            sasPass: 3
-                        },
-                        VA_RETRY_INTERVAL: 1000,
-                        ELEMENTS: {
-                            output: 'out',
-                            fileSelect: 'fileSelect',
-                            fileCount: 'fileCount',
-                            fileContent: 'fileContent',
-                            summarizeBtn: 'summarizeBtn',
-                            summaryContent: 'summaryContent'
-                        },
-
-                        // ADD THIS NEW SECTION
-                        OPENAI: {
-                            URL: 'https://api.openai.com/v1/responses',
-                            MODEL: 'gpt-5-nano'
-                        },
-
-                        PDF: {
-                            WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-                        }
-                    };
-
-                    // Initialize PDF.js worker
-                    if (typeof pdfjsLib !== 'undefined') {
-                        pdfjsLib.GlobalWorkerOptions.workerSrc = CONFIG.PDF.WORKER_SRC;
-                    }
-
-                    // =============================================================================
-                    // UTILITIES
-                    // =============================================================================
-                    const Utils = {
-                        /**
-                         * Get parameter value by index from VA parameters array
-                         */
-                        getParamByIndex(params, index) {
-                            return (Array.isArray(params) && params[index]) ? params[index].value : undefined;
-                        },
-
-                        /**
-                         * Create query string from object
-                         */
-                        createQueryString(obj) {
-                            return new URLSearchParams(obj).toString();
-                        },
-
-                        /**
-                         * Log with consistent formatting
-                         */
-                        log(category, message, data = null) {
-                            const logMessage = `[${category}] ${message}`;
-                            if (data) {
-                                console.log(logMessage, data);
-                            } else {
-                                console.log(logMessage);
-                            }
-                        },
-                        /**
-                         * Clean text for LLM processing
-                         * Removes excess whitespace, special characters, and formats text for better processing
-                         */
-                        cleanTextForLLM(text, options = {}) {
-                            const defaults = {
-                                removeExtraSpaces: true,
-                                removeSpecialChars: true,
-                                normalizeWhitespace: true,
-                                removeEmptyLines: true,
-                                trimLines: true,
-                                maxConsecutiveNewlines: 2
-                            };
-
-                            const settings = { ...defaults, ...options };
-                            let cleaned = text || '';
-
-                            if (settings.removeSpecialChars) {
-                                // Remove zero-width characters, control characters (except newlines and tabs)
-                                cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
-                                // Remove zero-width spaces, joiners, etc.
-                                cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '');
-                            }
-
-                            if (settings.normalizeWhitespace) {
-                                // Replace various types of spaces with regular spaces
-                                cleaned = cleaned.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
-                                // Replace tabs with single space
-                                cleaned = cleaned.replace(/\t/g, ' ');
-                            }
-
-                            if (settings.removeExtraSpaces) {
-                                // Replace multiple spaces with single space
-                                cleaned = cleaned.replace(/[^\S\r\n]+/g, ' ');
-                            }
-
-                            if (settings.trimLines) {
-                                // Trim whitespace from beginning and end of each line
-                                cleaned = cleaned.split('\n').map(line => line.trim()).join('\n');
-                            }
-
-                            if (settings.removeEmptyLines) {
-                                // Remove completely empty lines
-                                cleaned = cleaned.split('\n').filter(line => line.length > 0).join('\n');
-                            }
-
-                            if (settings.maxConsecutiveNewlines > 0) {
-                                // Limit consecutive newlines
-                                const regex = new RegExp(`\\n{${settings.maxConsecutiveNewlines + 1},}`, 'g');
-                                const replacement = '\n'.repeat(settings.maxConsecutiveNewlines);
-                                cleaned = cleaned.replace(regex, replacement);
-                            }
-
-                            // Final trim
-                            return cleaned.trim();
-                        },
-                    };
-
-                    // =============================================================================
-                    // UI MANAGER
-                    // =============================================================================
-                    const UIManager = {
-                        /**
-                         * Update the main output display
-                         */
-                        updateOutput(message, append = false) {
-                            const element = document.getElementById(CONFIG.ELEMENTS.output);
-                            if (element) {
-                                element.textContent = append ? element.textContent + message : message;
-                            }
-                        },
-
-                        /**
-                         * Append to the main output display
-                         */
-                        appendOutput(message) {
-                            this.updateOutput(`\n${message}`, true);
-                        },
-
-                        /**
-                         * Populate the file dropdown with files
-                         */
-                        populateFileDropdown(files) {
-                            const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
-                            const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
-
-                            if (!selectEl || !countEl) return;
-
-                            // Clear and add default option
-                            selectEl.innerHTML = '<option value="">— select a file —</option>';
-
-                            // Add file options
-                            files.forEach(file => {
-                                const id = file.id || file.fileId;
-                                const name = file.name || file.fileName || id;
-                                const option = document.createElement('option');
-                                option.value = id;
-                                option.textContent = name;
-                                selectEl.appendChild(option);
-                            });
-
-                            // Update count display
-                            const countText = files.length ? `(${files.length} files)` : '(no files)';
-                            countEl.textContent = countText;
-
-                            return countText;
-                        },
-
-                        /**
-                         * Show error state
-                         */
-                        showError(message) {
-                            this.appendOutput(`\nError: ${message}`);
-                            const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
-                            if (countEl) {
-                                countEl.textContent = '(error loading files)';
-                            }
-                        },
-
-                        /**
-                         * Display file content in the content area
-                         */
-                        displayFileContent(content, loading = false, status = null) {
-                            const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
-                            if (contentEl) {
-                                if (loading) {
-                                    const statusText = status ? ` - ${status}` : '';
-                                    contentEl.innerHTML = `<span class="processing-status">Loading file content${statusText}...</span>`;
-                                } else {
-                                    contentEl.textContent = content;
-                                }
-                            }
-                        },
-
-                        /**
-                         * Setup event listeners for UI interactions
-                         */
-                        setupEventListeners() {
-                            const fileSelect = document.getElementById(CONFIG.ELEMENTS.fileSelect);
-                            if (fileSelect) {
-                                fileSelect.addEventListener('change', (event) => {
-                                    const fileId = event.target.value;
-                                    if (fileId) {
-                                        Utils.log('UI', `File selected: ${fileId}`);
-                                        // Trigger file content loading - will be handled by App
-                                        if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
-                                            window.DocumentSummarizerApp._onFileSelected(fileId);
-                                        }
-                                    } else {
-                                        this.displayFileContent('Select a file to view its content...');
-                                        // Disable summarize button when no file selected
-                                        const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                                        if (btn) btn.disabled = true;
-                                    }
-                                });
-                            }
-
-                            // ADD THIS NEW EVENT LISTENER
-                            const summarizeBtn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                            if (summarizeBtn) {
-                                summarizeBtn.addEventListener('click', () => {
-                                    if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onSummarizeClick) {
-                                        window.DocumentSummarizerApp._onSummarizeClick();
-                                    }
-                                });
-                            }
-                        }
-                    };
-
-                    // =============================================================================
-                    // API SERVICE
-                    // =============================================================================
-                    const APIService = {
-                        // Store token for reuse
-                        _accessToken: null,
-
-                        /**
-                         * Get SAS access token using OAuth2 password grant
-                         */
-                        async getSASToken(username, password) {
-                            const url = `${CONFIG.SAS_SERVER}${CONFIG.SAS_AUTH.TOKEN_ENDPOINT}`;
-
-                            Utils.log('AUTH', `Getting SAS token from: ${url}`);
-
-                            try {
-                                // Create basic auth header
-                                const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
-
-                                // Prepare form data
-                                const formData = new URLSearchParams({
-                                    'grant_type': 'password',
-                                    'username': username,
-                                    'password': password
-                                });
-
-                                const response = await fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Authorization': `Basic ${credentials}`,
-                                        'Content-Type': 'application/x-www-form-urlencoded',
-                                        'Accept': 'application/json'
-                                    },
-                                    body: formData
-                                });
-
-                                if (!response.ok) {
-                                    throw new Error(`Authentication failed: HTTP ${response.status} ${response.statusText}`);
-                                }
-
-                                const data = await response.json();
-                                Utils.log('AUTH', 'Token received successfully');
-
-                                // Cache the token
-                                this._accessToken = data.access_token;
-
-                                return data.access_token;
-                            } catch (error) {
-                                Utils.log('AUTH', 'Token request failed', error);
-                                throw new Error(`Failed to get SAS token: ${error.message}`);
-                            }
-                        },
-
-                        /**
-                         * Get current access token (cached or fetch new one)
-                         */
-                        async getAccessToken(username, password) {
-                            if (!this._accessToken) {
-                                this._accessToken = await this.getSASToken(username, password);
-                            }
-                            return this._accessToken;
-                        },
-
-                        /**
-                         * Clear cached token (useful for re-authentication)
-                         */
-                        clearToken() {
-                            this._accessToken = null;
-                            Utils.log('AUTH', 'Token cache cleared');
-                        },
-
-                        /**
-                         * Fetch files for a given alert ID (now with authentication)
-                         */
-                        async fetchAlertFiles(alertId, username = null, password = null) {
-                            const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
-
-                            Utils.log('API', `Fetching files from: ${url}`);
-                            UIManager.appendOutput('Fetching files from SAS API...');
-
-                            try {
-                                let headers = {
-                                    'Accept': 'application/json'
-                                };
-
-                                // Add authentication if credentials provided
-                                if (username && password) {
-                                    try {
-                                        const token = await this.getAccessToken(username, password);
-                                        headers['Authorization'] = `Bearer ${token}`;
-                                        Utils.log('API', 'Using authenticated request');
-                                    } catch (authError) {
-                                        Utils.log('API', 'Authentication failed, trying unauthenticated request', authError);
-                                        UIManager.appendOutput('\nAuthentication failed, trying without auth...');
-                                    }
-                                }
-
-                                const response = await fetch(url, {
-                                    method: 'GET',
-                                    headers: headers
-                                });
-
-                                Utils.log('API', `Response status: ${response.status}`);
-
-                                if (!response.ok) {
-                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                }
-
-                                const data = await response.json();
-                                Utils.log('API', 'Full response received', data);
-
-                                // Normalize response - handle different possible structures
-                                const files = Array.isArray(data) ? data : (data.items || data.files || []);
-
-                                Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
-
-                                return files;
-                            } catch (error) {
-                                Utils.log('API', 'Fetch failed', error);
-                                throw error;
-                            }
-                        },
-
-                        /**
-                         * Get raw file content from SAS
-                         */
-                        async getFileContent(alertId, fileId, username, password) {
-                            const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files/${encodeURIComponent(fileId)}/content`;
-
-                            Utils.log('API', `Fetching file content: ${url}`);
-
-                            try {
-                                const token = await this.getAccessToken(username, password);
-
-                                const response = await fetch(url, {
-                                    method: 'GET',
-                                    headers: {
-                                        'Accept': 'application/json',
-                                        'Authorization': `Bearer ${token}`
-                                    }
-                                });
-
-                                if (!response.ok) {
-                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                }
-
-                                const contentType = response.headers.get('Content-Type') || '';
-                                Utils.log('API', `File content type: ${contentType}`);
-
-                                // Read response as arrayBuffer (single read)
-                                const arrayBuffer = await response.arrayBuffer();
-
-                                // Return both content and content type for processing
-                                return {
-                                    contentType: contentType,
-                                    arrayBuffer: arrayBuffer
-                                };
-
-                            } catch (error) {
-                                Utils.log('API', 'File content fetch failed', error);
-                                throw error;
-                            }
-                        },
-
-                        /**
-                         * Extract text from PDF using PDF.js
-                         */
-                        async extractTextFromPDF(arrayBuffer, onProgress = null) {
-                            if (typeof pdfjsLib === 'undefined') {
-                                throw new Error('PDF.js library not loaded');
-                            }
-
-                            try {
-                                Utils.log('PDF', 'Loading PDF document');
-                                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                                const numPages = pdf.numPages;
-
-                                Utils.log('PDF', `PDF has ${numPages} pages`);
-
-                                // Use array as string builder for better performance
-                                const textBuilder = [];
-
-                                for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-                                    if (onProgress) {
-                                        onProgress(`Processing page ${pageNum} of ${numPages}`);
-                                    }
-
-                                    Utils.log('PDF', `Processing page ${pageNum}`);
-
-                                    try {
-                                        const page = await pdf.getPage(pageNum);
-                                        const textContent = await page.getTextContent();
-
-                                        const pageText = textContent.items
-                                            .map(item => item.str)
-                                            .join(' ')
-                                            .trim();
-
-                                        // Add page text to array if not empty
-                                        if (pageText) {
-                                            textBuilder.push(pageText);
-                                        }
-
-                                        // Clean up page resources
-                                        page.cleanup();
-
-                                    } catch (pageError) {
-                                        Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
-                                    }
-                                }
-
-                                // Clean up PDF document
-                                pdf.destroy();
-
-                                // Join all text with spaces
-                                const fullText = textBuilder.join(' ').trim();
-
-                                return fullText || '[No text content could be extracted from this PDF]';
-
-                            } catch (error) {
-                                Utils.log('PDF', 'PDF processing failed', error);
-                                throw new Error(`PDF text extraction failed: ${error.message}`);
-                            }
-                        },
-
-                        /**
-                         * Extract text from file based on content type
-                         */
-                        async extractTextFromFile(fileData, onProgress = null) {
-                            const { contentType, arrayBuffer } = fileData;
-
-                            try {
-                                // Handle PDF files using PDF.js
-                                if (contentType.includes('pdf')) {
-                                    Utils.log('EXTRACT', 'Processing PDF document');
-                                    return await this.extractTextFromPDF(arrayBuffer, onProgress);
-                                }
-
-                                // Handle Word documents using mammoth
-                                else if (contentType.includes('wordprocessingml.document') ||
-                                    contentType.includes('msword') ||
-                                    contentType.includes('word')) {
-
-                                    Utils.log('EXTRACT', 'Processing Word document');
-                                    if (typeof mammoth !== 'undefined') {
-                                        if (onProgress) {
-                                            onProgress('Extracting text from Word document');
-                                        }
-                                        const result = await mammoth.extractRawText({ arrayBuffer });
-                                        return result.value;
-                                    } else {
-                                        return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nMammoth.js not loaded - cannot extract text`;
-                                    }
-                                }
-
-                                // Handle plain text files
-                                else if (contentType.includes('text/plain') || contentType.includes('text/')) {
-                                    Utils.log('EXTRACT', 'Processing text file');
-                                    if (onProgress) {
-                                        onProgress('Reading text file');
-                                    }
-                                    const decoder = new TextDecoder('utf-8');
-                                    return decoder.decode(arrayBuffer);
-                                }
-
-                                // Default: try to decode as text
-                                else {
-                                    Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
-                                    if (onProgress) {
-                                        onProgress('Attempting to read as text file');
-                                    }
-                                    const decoder = new TextDecoder('utf-8');
-                                    return decoder.decode(arrayBuffer);
-                                }
-
-                            } catch (error) {
-                                Utils.log('EXTRACT', 'Text extraction failed', error);
-                                return `[ERROR EXTRACTING TEXT]\nContent type: ${contentType}\nError: ${error.message}\nFile size: ${arrayBuffer.byteLength} bytes`;
-                            }
-                        },
-                        /**
-                         * Call OpenAI API for summarization
-                         */
-                        async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
-                            const systemPrompt =
-                                `You are a helpful assistant that creates concise, clear summaries, always in English.\n\n` +
-                                `Summarize this document concisely, highlighting the key points:\n\n${text}`;
-
-                            const body = {
-                                model,
-                                input: systemPrompt,
-                                reasoning: { effort: "medium" },
-                                text: { verbosity: "low" },
-                                stream: !!onDelta
-                            };
-
-                            const res = await fetch(CONFIG.OPENAI.URL, {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${apiKey}`,
-                                    'Content-Type': 'application/json',
-                                    'Accept': onDelta ? 'text/event-stream' : 'application/json'
-                                },
-                                body: JSON.stringify(body)
-                            });
-
-                            // Non-streaming path
-                            if (!onDelta) {
-                                const json = await res.json().catch(() => ({}));
-                                if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                                const txt = (API?.extractOpenAIText
-                                    ? API.extractOpenAIText(json)
-                                    : (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
-                                if (!txt) throw new Error('LLM returned no text payload');
-                                return txt;
-                            }
-
-                            // Streaming path (SSE)
-                            if (!res.ok || !res.body) {
-                                const text = await res.text().catch(() => '');
-                                throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
-                            }
-
-                            const reader = res.body.getReader();
-                            const decoder = new TextDecoder();
-                            let carry = '';
-                            let full = '';
-
-                            while (true) {
-                                const { value, done } = await reader.read();
-                                if (done) break;
-                                carry += decoder.decode(value, { stream: true });
-
-                                // Split Server-Sent-Event frames
-                                const frames = carry.split('\n\n');
-                                carry = frames.pop() || '';
-
-                                for (const frame of frames) {
-                                    const dataLines = frame
-                                        .split('\n')
-                                        .filter(l => l.startsWith('data:'))
-                                        .map(l => l.slice(5).trim())
-                                        .join('\n');
-
-                                    if (!dataLines || dataLines === '[DONE]') continue;
-
-                                    let evt;
-                                    try { evt = JSON.parse(dataLines); } catch { continue; }
-
-                                    if (evt.type === 'response.output_text.delta') {
-                                        const delta = evt.delta || '';
-                                        if (delta) {
-                                            full += delta;
-                                            try { onDelta(delta, full, evt); } catch { /* ignore handler errors */ }
-                                        }
-                                    } else if (evt.type === 'error') {
-                                        throw new Error(evt.error?.message || 'Streaming error');
-                                    }
-                                    // other event types ignored
-                                }
-                            }
-                            return full.trim();
-                        }
-                    };
-
-                    // =============================================================================
-                    // VA INTEGRATION
-                    // =============================================================================
-                    const VAIntegration = {
-                        /**
-                         * Extract parameters from VA message object
-                         */
-                        extractParameters(vaMsgObj) {
-                            const params = vaMsgObj?.parameters || [];
-                            const indexes = CONFIG.PARAMETER_INDEXES;
-
-                            return {
-                                alertId: Utils.getParamByIndex(params, indexes.alertId),
-                                openaiKey: Utils.getParamByIndex(params, indexes.openaiKey),
-                                sasUser: Utils.getParamByIndex(params, indexes.sasUser),
-                                sasPass: Utils.getParamByIndex(params, indexes.sasPass)
-                            };
-                        },
-
-                        /**
-                         * Handle incoming VA parameters
-                         */
-                        async handleVAMessage(vaMsgObj) {
-                            const params = this.extractParameters(vaMsgObj);
-
-                            Utils.log('VA', 'Parameters received', {
-                                alertId: params.alertId,
-                                hasOpenAI: !!params.openaiKey,
-                                sasUser: params.sasUser,
-                                hasPass: !!params.sasPass
-                            });
-
-                            // Update UI with parameter status
-                            const paramStatus = [
-                                `Alert ID: ${params.alertId || 'missing'}`,
-                                `OpenAI Key: ${params.openaiKey ? 'present' : 'missing'}`,
-                                `SAS User: ${params.sasUser || 'missing'}`,
-                                `SAS Pass: ${params.sasPass ? 'present' : 'missing'}`
-                            ].join('\n');
-
-                            UIManager.updateOutput(`Received parameters:\n${paramStatus}`);
-
-                            // Store parameters for file operations
-                            App.setCurrentParams(params);
-
-                            // If we have the required parameters, fetch files
-                            if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
-                                try {
-                                    const files = await APIService.fetchAlertFiles(
-                                        params.alertId,
-                                        params.sasUser,
-                                        params.sasPass
-                                    );
-                                    const countText = UIManager.populateFileDropdown(files);
-                                    UIManager.appendOutput(`\nAPI Response: ${countText}`);
-                                } catch (error) {
-                                    UIManager.showError(error.message);
-                                }
-                            } else {
-                                UIManager.appendOutput('\nMissing required parameters - cannot fetch files');
-                            }
-                        },
-
-                        /**
-                         * Initialize VA integration with retry logic
-                         */
-                        initialize() {
-                            const tryConnect = () => {
-                                if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
-                                    va.messagingUtil.setOnDataReceivedCallback(this.handleVAMessage.bind(this));
-                                    Utils.log('VA', 'Listener attached successfully');
-                                    UIManager.updateOutput('VA listener attached, waiting for data...');
-                                } else {
-                                    Utils.log('VA', 'Not ready, retrying...');
-                                    UIManager.updateOutput('VA not ready, retrying...');
-                                    setTimeout(tryConnect, CONFIG.VA_RETRY_INTERVAL);
-                                }
-                            };
-
-                            tryConnect();
-                        }
-                    };
-
-                    // =============================================================================
-                    // MAIN APPLICATION
-                    // =============================================================================
-                    const App = {
-                        // Store current parameters for file operations
-                        _currentParams: null,
-                        _fileCache: new Map(),
-                        _currentCleanedText: null,
-
-                        /**
-                         * Initialize the entire application
-                         */
-                        init() {
-                            Utils.log('APP', 'Initializing Document Summarizer App');
-
-                            try {
-                                // Check if PDF.js is loaded
-                                if (typeof pdfjsLib !== 'undefined') {
-                                    Utils.log('APP', 'PDF.js loaded successfully');
-                                } else {
-                                    Utils.log('APP', 'Warning: PDF.js not loaded - PDF support will be limited');
-                                }
-
-                                // Setup UI event listeners
-                                UIManager.setupEventListeners();
-
-                                // Initialize VA integration
-                                VAIntegration.initialize();
-
-                                // Expose file selection handler globally
-                                window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
-                                window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
-                                window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);  // ADD THIS
-
-
-                            } catch (error) {
-                                Utils.log('APP', 'Initialization error', error);
-                                UIManager.updateOutput(`Error: ${error.message}`);
-                            }
-                        },
-
-                        /**
-                         * Store current parameters for later use
-                         */
-                        setCurrentParams(params) {
-                            this._currentParams = params;
-                        },
-
-                        /**
-                         * Handle file selection from dropdown
-                         */
-                        async handleFileSelection(fileId) {
-                            if (!this._currentParams) {
-                                UIManager.displayFileContent('Error: No parameters available for file loading');
-                                return;
-                            }
-
-                            const { alertId, sasUser, sasPass } = this._currentParams;
-
-                            if (!alertId || !sasUser || !sasPass) {
-                                UIManager.displayFileContent('Error: Missing required parameters for file loading');
-                                return;
-                            }
-
-                            try {
-                                Utils.log('APP', `Loading content for file: ${fileId}`);
-
-                                // Check cache first
-                                const cacheKey = `${alertId}:${fileId}`;
-                                if (this._fileCache && this._fileCache.has(cacheKey)) {
-                                    Utils.log('APP', 'Using cached file content');
-                                    UIManager.displayFileContent(this._fileCache.get(cacheKey));
-                                    return;
-                                }
-
-                                UIManager.displayFileContent('', true); // Show loading state
-
-                                // Get file content
-                                const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
-
-                                // Extract text from file with progress callback
-                                const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
-                                    UIManager.displayFileContent('', true, status);
-                                });
-
-                                // Clean the extracted text
-                                const cleanedText = Utils.cleanTextForLLM(extractedText, {
-                                    removeExtraSpaces: true,
-                                    removeSpecialChars: true,
-                                    normalizeWhitespace: true,
-                                    removeEmptyLines: true,
-                                    trimLines: true,
-                                    maxConsecutiveNewlines: 2
-                                });
-
-                                // Cache the cleaned text BEFORE displaying
-                                this._fileCache.set(cacheKey, cleanedText);
-
-                                // Limit cache size
-                                if (this._fileCache.size > 10) {
-                                    const firstKey = this._fileCache.keys().next().value;
-                                    this._fileCache.delete(firstKey);
-                                }
-
-                                // Display the cleaned text
-                                UIManager.displayFileContent(cleanedText);
-                                this._currentCleanedText = cleanedText;
-                                // Enable summarize button if we have an OpenAI key
-                                if (this._currentParams.openaiKey) {  // ADD THIS
-                                    const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                                    if (btn) btn.disabled = false;
-                                }
-                                Utils.log('APP', 'File content loaded and cleaned successfully');
-
-                                // Log cleaning stats for debugging
-                                const originalLength = extractedText.length;
-                                const cleanedLength = cleanedText.length;
-                                const reduction = ((originalLength - cleanedLength) / originalLength * 100).toFixed(1);
-                                Utils.log('APP', `Text cleaning: ${originalLength} → ${cleanedLength} chars (${reduction}% reduction)`);
-
-                            } catch (error) {
-                                Utils.log('APP', 'File loading failed', error);
-                                UIManager.displayFileContent(`Error loading file content: ${error.message}`);
-                            }
-                        },
-
-                        /**
-                         * Get selected file ID from dropdown
-                         */
-                        getSelectedFileId() {
-                            const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
-                            return selectEl ? selectEl.value : null;
-                        },
-
-                        /**
-                         * Handle summarize button click
-                         */
-                        async handleSummarize() {
-                            if (!this._currentCleanedText) {
-                                alert('No document content to summarize');
-                                return;
-                            }
-
-                            if (!this._currentParams || !this._currentParams.openaiKey) {
-                                alert('OpenAI API key is required for summarization');
-                                return;
-                            }
-
-                            const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-                            const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-
-                            try {
-                                // Update UI to show loading
-                                if (summaryEl) summaryEl.textContent = 'Generating summary...';
-                                if (btn) {
-                                    btn.disabled = true;
-                                    btn.textContent = 'Summarizing...';
-                                }
-
-                                // Call OpenAI with streaming
-                                const summary = await APIService.callOpenAI(
-                                    this._currentCleanedText,
-                                    this._currentParams.openaiKey,
-                                    CONFIG.OPENAI.MODEL,
-                                    (delta, full) => {
-                                        if (summaryEl) summaryEl.textContent = full; // live updates
-                                    }
-                                );
-
-                                // Final text (already shown live, but keep for safety)
-                                if (summaryEl) summaryEl.textContent = summary;
-
-                            } catch (error) {
-                                Utils.log('APP', 'Summarization failed', error);
-                                if (summaryEl) {
-                                    summaryEl.textContent = `Error generating summary: ${error.message}`;
-                                }
-                            } finally {
-                                // Reset button
-                                if (btn) {
-                                    btn.disabled = false;
-                                    btn.textContent = 'Summarize';
-                                }
-                            }
-                        },
-
-                        /**
-                         * Future: Add main app methods here
-                         * e.g., summarizeSelectedFile(), downloadFile(), etc.
-                         */
-                    };
-
-                    // =============================================================================
-                    // PUBLIC API
-                    // =============================================================================
-                    return {
-                        init: App.init.bind(App),
-                        getSelectedFileId: App.getSelectedFileId.bind(App),
-
-                        // Authentication methods
-                        async getSASToken(username, password) {
-                            return APIService.getSASToken(username, password);
-                        },
-                        clearToken() {
-                            return APIService.clearToken();
-                        },
-
-                        // File content methods
-                        async getFileContent(alertId, fileId, username, password) {
-                            return APIService.getFileContent(alertId, fileId, username, password);
-                        },
-                        async extractTextFromFile(fileData) {
-                            return APIService.extractTextFromFile(fileData);
-                        },
-                        async extractTextFromPDF(arrayBuffer, onProgress = null) {
-                            return APIService.extractTextFromPDF(arrayBuffer, onProgress);
-                        },
-
-                        // Text cleaning methods
-                        cleanTextForLLM(text, options = {}) {
-                            return Utils.cleanTextForLLM(text, options);
-                        },
-
-                        // Expose modules for testing/debugging
-                        _modules: {
-                            Utils,
-                            UIManager,
-                            APIService,
-                            VAIntegration,
-                            CONFIG
-                        }
-                    };
-                })();
-
-                // =============================================================================
-                // APPLICATION STARTUP
-                // =============================================================================
-                DocumentSummarizerApp.init();
-            </script>
+            <!-- Hidden elements for compatibility -->
+            <div id="out" style="display:none"></div>
+            <select id="fileSelect" style="display:none">
+                <option value="">— select a file —</option>
+            </select>
+            <small id="fileCount" style="display:none"></small>
         </div>
     </div>
-</body>
 
+    <script>
+        /**
+         * VA Document Summarizer Application
+         * Modular architecture for maintainability and future development
+         */
+        const DocumentSummarizerApp = (() => {
+            // =============================================================================
+            // CONFIGURATION
+            // =============================================================================
+            const CONFIG = {
+                SAS_SERVER: 'https://sasserver.demo.sas.com',
+                SAS_AUTH: {
+                    CLIENT_ID: 'sas.cli', // Default SAS CLI client ID
+                    CLIENT_SECRET: '', // Usually empty for CLI client
+                    TOKEN_ENDPOINT: '/SASLogon/oauth/token'
+                },
+                PARAMETER_INDEXES: {
+                    alertId: 0,
+                    openaiKey: 1,
+                    sasUser: 2,
+                    sasPass: 3
+                },
+                VA_RETRY_INTERVAL: 1000,
+                ELEMENTS: {
+                    output: 'out',
+                    fileSelect: 'fileSelect',
+                    fileCount: 'fileCount',
+                    fileContent: 'fileContent',
+                    summarizeBtn: 'summarizeBtn',
+                    summaryContent: 'summaryContent',
+                    filelist: 'filelist',
+                    searchInput: 'searchInput'
+                },
+                OPENAI: {
+                    URL: 'https://api.openai.com/v1/responses',
+                    MODEL: 'gpt-5-nano'
+                },
+                PDF: {
+                    WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+                }
+            };
+
+            // Initialize PDF.js worker
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = CONFIG.PDF.WORKER_SRC;
+            }
+
+            // =============================================================================
+            // UTILITIES
+            // =============================================================================
+            const Utils = {
+                /**
+                 * Get parameter value by index from VA parameters array
+                 */
+                getParamByIndex(params, index) {
+                    return (Array.isArray(params) && params[index]) ? params[index].value : undefined;
+                },
+
+                /**
+                 * Create query string from object
+                 */
+                createQueryString(obj) {
+                    return new URLSearchParams(obj).toString();
+                },
+
+                /**
+                 * Log with consistent formatting
+                 */
+                log(category, message, data = null) {
+                    const logMessage = `[${category}] ${message}`;
+                    if (data) {
+                        console.log(logMessage, data);
+                    } else {
+                        console.log(logMessage);
+                    }
+                },
+
+                /**
+                 * Clean text for LLM processing
+                 */
+                cleanTextForLLM(text, options = {}) {
+                    const defaults = {
+                        removeExtraSpaces: true,
+                        removeSpecialChars: true,
+                        normalizeWhitespace: true,
+                        removeEmptyLines: true,
+                        trimLines: true,
+                        maxConsecutiveNewlines: 2
+                    };
+
+                    const settings = { ...defaults, ...options };
+
+                    let cleaned = text || '';
+
+                    if (settings.removeSpecialChars) {
+                        cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+                        cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '');
+                    }
+
+                    if (settings.normalizeWhitespace) {
+                        cleaned = cleaned.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+                        cleaned = cleaned.replace(/\t/g, ' ');
+                    }
+
+                    if (settings.removeExtraSpaces) {
+                        cleaned = cleaned.replace(/[^\S\r\n]+/g, ' ');
+                    }
+
+                    if (settings.trimLines) {
+                        cleaned = cleaned.split('\n').map(line => line.trim()).join('\n');
+                    }
+
+                    if (settings.removeEmptyLines) {
+                        cleaned = cleaned.split('\n').filter(line => line.length > 0).join('\n');
+                    }
+
+                    if (settings.maxConsecutiveNewlines > 0) {
+                        const regex = new RegExp(`\\n{${settings.maxConsecutiveNewlines + 1},}`, 'g');
+                        const replacement = '\n'.repeat(settings.maxConsecutiveNewlines);
+                        cleaned = cleaned.replace(regex, replacement);
+                    }
+
+                    return cleaned.trim();
+                },
+
+                /**
+                 * Format file size for display
+                 */
+                formatFileSize(bytes) {
+                    if (!bytes) return 'Unknown size';
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+                },
+
+                /**
+                 * Get file type display name
+                 */
+                getFileTypeDisplay(filename) {
+                    if (!filename) return 'File';
+                    const ext = filename.split('.').pop().toLowerCase();
+                    const types = {
+                        'pdf': 'PDF',
+                        'docx': 'DOCX',
+                        'doc': 'DOC',
+                        'txt': 'TXT',
+                        'text': 'TXT',
+                        'csv': 'CSV',
+                        'xlsx': 'XLSX',
+                        'xls': 'XLS'
+                    };
+                    return types[ext] || ext.toUpperCase();
+                }
+            };
+
+            // =============================================================================
+            // UI MANAGER
+            // =============================================================================
+            const UIManager = {
+                _allFiles: [],
+                _selectedFileId: null,
+
+                /**
+                 * Update the main output display
+                 */
+                updateOutput(message, append = false) {
+                    const element = document.getElementById(CONFIG.ELEMENTS.output);
+                    if (element) {
+                        element.textContent = append ? element.textContent + message : message;
+                    }
+                },
+
+                /**
+                 * Append to the main output display
+                 */
+                appendOutput(message) {
+                    this.updateOutput(`\n${message}`, true);
+                },
+
+                /**
+                 * Populate the file list with clickable items
+                 */
+                populateFileList(files) {
+                    this._allFiles = files;
+                    const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
+                    
+                    if (!listEl) return;
+
+                    if (!files || files.length === 0) {
+                        listEl.innerHTML = '<div class="loading-message">No files available</div>';
+                        return;
+                    }
+
+                    // Clear and populate
+                    listEl.innerHTML = '';
+                    
+                    files.forEach(file => {
+                        const id = file.id || file.fileId;
+                        const name = file.name || file.fileName || id;
+                        const size = file.size || file.fileSize || 0;
+                        
+                        const fileEl = document.createElement('div');
+                        fileEl.className = 'file';
+                        fileEl.dataset.fileId = id;
+                        fileEl.dataset.fileName = name.toLowerCase();
+                        
+                        fileEl.innerHTML = `
+                            <div class="name">${name}</div>
+                            <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
+                        `;
+                        
+                        fileEl.addEventListener('click', () => {
+                            this.selectFile(id);
+                        });
+                        
+                        listEl.appendChild(fileEl);
+                    });
+
+                    // Also populate hidden select for compatibility
+                    this.populateFileDropdown(files);
+                },
+
+                /**
+                 * Select a file and update UI
+                 */
+                selectFile(fileId) {
+                    this._selectedFileId = fileId;
+                    
+                    // Update active state
+                    document.querySelectorAll('.file').forEach(el => {
+                        if (el.dataset.fileId === fileId) {
+                            el.classList.add('is-active');
+                        } else {
+                            el.classList.remove('is-active');
+                        }
+                    });
+
+                    // Update hidden select
+                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    if (selectEl) {
+                        selectEl.value = fileId;
+                    }
+
+                    // Trigger file loading
+                    if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
+                        window.DocumentSummarizerApp._onFileSelected(fileId);
+                    }
+                },
+
+                /**
+                 * Filter files based on search input
+                 */
+                filterFiles(searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    document.querySelectorAll('.file').forEach(el => {
+                        const fileName = el.dataset.fileName || '';
+                        if (fileName.includes(term)) {
+                            el.style.display = '';
+                        } else {
+                            el.style.display = 'none';
+                        }
+                    });
+                },
+
+                /**
+                 * Populate the hidden file dropdown (for compatibility)
+                 */
+                populateFileDropdown(files) {
+                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    const countEl = document.getElementById(CONFIG.ELEMENTS.fileCount);
+                    
+                    if (!selectEl || !countEl) return;
+
+                    selectEl.innerHTML = '<option value="">— select a file —</option>';
+                    
+                    files.forEach(file => {
+                        const id = file.id || file.fileId;
+                        const name = file.name || file.fileName || id;
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = name;
+                        selectEl.appendChild(option);
+                    });
+
+                    const countText = files.length ? `(${files.length} files)` : '(no files)';
+                    countEl.textContent = countText;
+                    return countText;
+                },
+
+                /**
+                 * Show error state
+                 */
+                showError(message) {
+                    this.appendOutput(`\nError: ${message}`);
+                    const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
+                    if (listEl) {
+                        listEl.innerHTML = `<div class="loading-message">Error: ${message}</div>`;
+                    }
+                },
+
+                /**
+                 * Display file content in the content area
+                 */
+                displayFileContent(content, loading = false, status = null) {
+                    const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
+                    if (contentEl) {
+                        if (loading) {
+                            const statusText = status ? ` - ${status}` : '';
+                            contentEl.innerHTML = `<span class="processing-status">Loading file content${statusText}...</span>`;
+                        } else {
+                            contentEl.textContent = content;
+                        }
+                    }
+                },
+
+                /**
+                 * Setup event listeners for UI interactions
+                 */
+                setupEventListeners() {
+                    // Search input
+                    const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
+                    if (searchInput) {
+                        searchInput.addEventListener('input', (e) => {
+                            this.filterFiles(e.target.value);
+                        });
+                    }
+
+                    // Hidden file select (for compatibility)
+                    const fileSelect = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    if (fileSelect) {
+                        fileSelect.addEventListener('change', (event) => {
+                            const fileId = event.target.value;
+                            if (fileId) {
+                                Utils.log('UI', `File selected: ${fileId}`);
+                                if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
+                                    window.DocumentSummarizerApp._onFileSelected(fileId);
+                                }
+                            } else {
+                                this.displayFileContent('Select a file to view its content...');
+                                const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                                if (btn) btn.disabled = true;
+                            }
+                        });
+                    }
+
+                    // Summarize button
+                    const summarizeBtn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                    if (summarizeBtn) {
+                        summarizeBtn.addEventListener('click', () => {
+                            if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onSummarizeClick) {
+                                window.DocumentSummarizerApp._onSummarizeClick();
+                            }
+                        });
+                    }
+                }
+            };
+
+            // =============================================================================
+            // API SERVICE
+            // =============================================================================
+            const APIService = {
+                // Store token for reuse
+                _accessToken: null,
+
+                /**
+                 * Get SAS access token using OAuth2 password grant
+                 */
+                async getSASToken(username, password) {
+                    const url = `${CONFIG.SAS_SERVER}${CONFIG.SAS_AUTH.TOKEN_ENDPOINT}`;
+                    Utils.log('AUTH', `Getting SAS token from: ${url}`);
+
+                    try {
+                        const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
+                        
+                        const formData = new URLSearchParams({
+                            'grant_type': 'password',
+                            'username': username,
+                            'password': password
+                        });
+
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Basic ${credentials}`,
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'Accept': 'application/json'
+                            },
+                            body: formData
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`Authentication failed: HTTP ${response.status} ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        Utils.log('AUTH', 'Token received successfully');
+                        
+                        this._accessToken = data.access_token;
+                        return data.access_token;
+                    } catch (error) {
+                        Utils.log('AUTH', 'Token request failed', error);
+                        throw new Error(`Failed to get SAS token: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Get current access token (cached or fetch new one)
+                 */
+                async getAccessToken(username, password) {
+                    if (!this._accessToken) {
+                        this._accessToken = await this.getSASToken(username, password);
+                    }
+                    return this._accessToken;
+                },
+
+                /**
+                 * Clear cached token (useful for re-authentication)
+                 */
+                clearToken() {
+                    this._accessToken = null;
+                    Utils.log('AUTH', 'Token cache cleared');
+                },
+
+                /**
+                 * Fetch files for a given alert ID
+                 */
+                async fetchAlertFiles(alertId, username = null, password = null) {
+                    const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
+                    Utils.log('API', `Fetching files from: ${url}`);
+                    UIManager.appendOutput('Fetching files from SAS API...');
+
+                    try {
+                        let headers = {
+                            'Accept': 'application/json'
+                        };
+
+                        if (username && password) {
+                            try {
+                                const token = await this.getAccessToken(username, password);
+                                headers['Authorization'] = `Bearer ${token}`;
+                                Utils.log('API', 'Using authenticated request');
+                            } catch (authError) {
+                                Utils.log('API', 'Authentication failed, trying unauthenticated request', authError);
+                                UIManager.appendOutput('\nAuthentication failed, trying without auth...');
+                            }
+                        }
+
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: headers
+                        });
+
+                        Utils.log('API', `Response status: ${response.status}`);
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        Utils.log('API', 'Full response received', data);
+
+                        const files = Array.isArray(data) ? data : (data.items || data.files || []);
+                        
+                        Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
+                        return files;
+                    } catch (error) {
+                        Utils.log('API', 'Fetch failed', error);
+                        throw error;
+                    }
+                },
+
+                /**
+                 * Get raw file content from SAS
+                 */
+                async getFileContent(alertId, fileId, username, password) {
+                    const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files/${encodeURIComponent(fileId)}/content`;
+                    Utils.log('API', `Fetching file content: ${url}`);
+
+                    try {
+                        const token = await this.getAccessToken(username, password);
+                        
+                        const response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const contentType = response.headers.get('Content-Type') || '';
+                        Utils.log('API', `File content type: ${contentType}`);
+
+                        const arrayBuffer = await response.arrayBuffer();
+
+                        return {
+                            contentType: contentType,
+                            arrayBuffer: arrayBuffer
+                        };
+                    } catch (error) {
+                        Utils.log('API', 'File content fetch failed', error);
+                        throw error;
+                    }
+                },
+
+                /**
+                 * Extract text from PDF using PDF.js
+                 */
+                async extractTextFromPDF(arrayBuffer, onProgress = null) {
+                    if (typeof pdfjsLib === 'undefined') {
+                        throw new Error('PDF.js library not loaded');
+                    }
+
+                    try {
+                        Utils.log('PDF', 'Loading PDF document');
+                        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        const numPages = pdf.numPages;
+                        Utils.log('PDF', `PDF has ${numPages} pages`);
+
+                        const textBuilder = [];
+
+                        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                            if (onProgress) {
+                                onProgress(`Processing page ${pageNum} of ${numPages}`);
+                            }
+
+                            Utils.log('PDF', `Processing page ${pageNum}`);
+                            try {
+                                const page = await pdf.getPage(pageNum);
+                                const textContent = await page.getTextContent();
+                                const pageText = textContent.items
+                                    .map(item => item.str)
+                                    .join(' ')
+                                    .trim();
+
+                                if (pageText) {
+                                    textBuilder.push(pageText);
+                                }
+
+                                page.cleanup();
+                            } catch (pageError) {
+                                Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
+                            }
+                        }
+
+                        pdf.destroy();
+
+                        const fullText = textBuilder.join(' ').trim();
+                        return fullText || '[No text content could be extracted from this PDF]';
+                    } catch (error) {
+                        Utils.log('PDF', 'PDF processing failed', error);
+                        throw new Error(`PDF text extraction failed: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Extract text from file based on content type
+                 */
+                async extractTextFromFile(fileData, onProgress = null) {
+                    const { contentType, arrayBuffer } = fileData;
+
+                    try {
+                        if (contentType.includes('pdf')) {
+                            Utils.log('EXTRACT', 'Processing PDF document');
+                            return await this.extractTextFromPDF(arrayBuffer, onProgress);
+                        }
+                        else if (contentType.includes('wordprocessingml.document') || 
+                                 contentType.includes('msword') || 
+                                 contentType.includes('word')) {
+                            Utils.log('EXTRACT', 'Processing Word document');
+                            if (typeof mammoth !== 'undefined') {
+                                if (onProgress) {
+                                    onProgress('Extracting text from Word document');
+                                }
+                                const result = await mammoth.extractRawText({ arrayBuffer });
+                                return result.value;
+                            } else {
+                                return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nMammoth.js not loaded - cannot extract text`;
+                            }
+                        }
+                        else if (contentType.includes('text/plain') || contentType.includes('text/')) {
+                            Utils.log('EXTRACT', 'Processing text file');
+                            if (onProgress) {
+                                onProgress('Reading text file');
+                            }
+                            const decoder = new TextDecoder('utf-8');
+                            return decoder.decode(arrayBuffer);
+                        }
+                        else {
+                            Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
+                            if (onProgress) {
+                                onProgress('Attempting to read as text file');
+                            }
+                            const decoder = new TextDecoder('utf-8');
+                            return decoder.decode(arrayBuffer);
+                        }
+                    } catch (error) {
+                        Utils.log('EXTRACT', 'Text extraction failed', error);
+                        return `[ERROR EXTRACTING TEXT]\nContent type: ${contentType}\nError: ${error.message}\nFile size: ${arrayBuffer.byteLength} bytes`;
+                    }
+                },
+
+                /**
+                 * Call OpenAI API for summarization
+                 */
+                async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
+                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English.\n\n` +
+                                       `Summarize this document concisely, highlighting the key points:\n\n${text}`;
+
+                    const body = {
+                        model,
+                        input: systemPrompt,
+                        reasoning: { effort: "medium" },
+                        text: { verbosity: "low" },
+                        stream: !!onDelta
+                    };
+
+                    const res = await fetch(CONFIG.OPENAI.URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json',
+                            'Accept': onDelta ? 'text/event-stream' : 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    // Non-streaming path
+                    if (!onDelta) {
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) : 
+                                   (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        if (!txt) throw new Error('LLM returned no text payload');
+                        return txt;
+                    }
+
+                    // Streaming path (SSE)
+                    if (!res.ok || !res.body) {
+                        const text = await res.text().catch(() => '');
+                        throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let carry = '';
+                    let full = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        carry += decoder.decode(value, { stream: true });
+                        
+                        const frames = carry.split('\n\n');
+                        carry = frames.pop() || '';
+
+                        for (const frame of frames) {
+                            const dataLines = frame
+                                .split('\n')
+                                .filter(l => l.startsWith('data:'))
+                                .map(l => l.slice(5).trim())
+                                .join('\n');
+
+                            if (!dataLines || dataLines === '[DONE]') continue;
+
+                            let evt;
+                            try {
+                                evt = JSON.parse(dataLines);
+                            } catch {
+                                continue;
+                            }
+
+                            if (evt.type === 'response.output_text.delta') {
+                                const delta = evt.delta || '';
+                                if (delta) {
+                                    full += delta;
+                                    try {
+                                        onDelta(delta, full, evt);
+                                    } catch {
+                                        /* ignore handler errors */
+                                    }
+                                }
+                            } else if (evt.type === 'error') {
+                                throw new Error(evt.error?.message || 'Streaming error');
+                            }
+                        }
+                    }
+
+                    return full.trim();
+                }
+            };
+
+            // =============================================================================
+            // VA INTEGRATION
+            // =============================================================================
+            const VAIntegration = {
+                /**
+                 * Extract parameters from VA message object
+                 */
+                extractParameters(vaMsgObj) {
+                    const params = vaMsgObj?.parameters || [];
+                    const indexes = CONFIG.PARAMETER_INDEXES;
+
+                    return {
+                        alertId: Utils.getParamByIndex(params, indexes.alertId),
+                        openaiKey: Utils.getParamByIndex(params, indexes.openaiKey),
+                        sasUser: Utils.getParamByIndex(params, indexes.sasUser),
+                        sasPass: Utils.getParamByIndex(params, indexes.sasPass)
+                    };
+                },
+
+                /**
+                 * Handle incoming VA parameters
+                 */
+                async handleVAMessage(vaMsgObj) {
+                    const params = this.extractParameters(vaMsgObj);
+                    
+                    Utils.log('VA', 'Parameters received', {
+                        alertId: params.alertId,
+                        hasOpenAI: !!params.openaiKey,
+                        sasUser: params.sasUser,
+                        hasPass: !!params.sasPass
+                    });
+
+                    const paramStatus = [
+                        `Alert ID: ${params.alertId || 'missing'}`,
+                        `OpenAI Key: ${params.openaiKey ? 'present' : 'missing'}`,
+                        `SAS User: ${params.sasUser || 'missing'}`,
+                        `SAS Pass: ${params.sasPass ? 'present' : 'missing'}`
+                    ].join('\n');
+
+                    UIManager.updateOutput(`Received parameters:\n${paramStatus}`);
+
+                    App.setCurrentParams(params);
+
+                    if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
+                        try {
+                            const files = await APIService.fetchAlertFiles(
+                                params.alertId,
+                                params.sasUser,
+                                params.sasPass
+                            );
+                            
+                            UIManager.populateFileList(files);
+                            UIManager.appendOutput(`\nAPI Response: (${files.length} files)`);
+                        } catch (error) {
+                            UIManager.showError(error.message);
+                        }
+                    } else {
+                        UIManager.appendOutput('\nMissing required parameters - cannot fetch files');
+                    }
+                },
+
+                /**
+                 * Initialize VA integration with retry logic
+                 */
+                initialize() {
+                    const tryConnect = () => {
+                        if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
+                            va.messagingUtil.setOnDataReceivedCallback(this.handleVAMessage.bind(this));
+                            Utils.log('VA', 'Listener attached successfully');
+                            UIManager.updateOutput('VA listener attached, waiting for data...');
+                        } else {
+                            Utils.log('VA', 'Not ready, retrying...');
+                            UIManager.updateOutput('VA not ready, retrying...');
+                            setTimeout(tryConnect, CONFIG.VA_RETRY_INTERVAL);
+                        }
+                    };
+
+                    tryConnect();
+                }
+            };
+
+            // =============================================================================
+            // MAIN APPLICATION
+            // =============================================================================
+            const App = {
+                // Store current parameters for file operations
+                _currentParams: null,
+                _fileCache: new Map(),
+                _currentCleanedText: null,
+
+                /**
+                 * Initialize the entire application
+                 */
+                init() {
+                    Utils.log('APP', 'Initializing Document Summarizer App');
+
+                    try {
+                        if (typeof pdfjsLib !== 'undefined') {
+                            Utils.log('APP', 'PDF.js loaded successfully');
+                        } else {
+                            Utils.log('APP', 'Warning: PDF.js not loaded - PDF support will be limited');
+                        }
+
+                        UIManager.setupEventListeners();
+                        VAIntegration.initialize();
+
+                        window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
+                        window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
+                        window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);
+
+                    } catch (error) {
+                        Utils.log('APP', 'Initialization error', error);
+                        UIManager.updateOutput(`Error: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Store current parameters for later use
+                 */
+                setCurrentParams(params) {
+                    this._currentParams = params;
+                },
+
+                /**
+                 * Handle file selection from dropdown
+                 */
+                async handleFileSelection(fileId) {
+                    if (!this._currentParams) {
+                        UIManager.displayFileContent('Error: No parameters available for file loading');
+                        return;
+                    }
+
+                    const { alertId, sasUser, sasPass } = this._currentParams;
+
+                    if (!alertId || !sasUser || !sasPass) {
+                        UIManager.displayFileContent('Error: Missing required parameters for file loading');
+                        return;
+                    }
+
+                    try {
+                        Utils.log('APP', `Loading content for file: ${fileId}`);
+
+                        const cacheKey = `${alertId}:${fileId}`;
+                        if (this._fileCache && this._fileCache.has(cacheKey)) {
+                            Utils.log('APP', 'Using cached file content');
+                            UIManager.displayFileContent(this._fileCache.get(cacheKey));
+                            this._currentCleanedText = this._fileCache.get(cacheKey);
+                            
+                            if (this._currentParams.openaiKey) {
+                                const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                                if (btn) btn.disabled = false;
+                            }
+                            return;
+                        }
+
+                        UIManager.displayFileContent('', true);
+
+                        const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
+                        
+                        const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
+                            UIManager.displayFileContent('', true, status);
+                        });
+
+                        const cleanedText = Utils.cleanTextForLLM(extractedText, {
+                            removeExtraSpaces: true,
+                            removeSpecialChars: true,
+                            normalizeWhitespace: true,
+                            removeEmptyLines: true,
+                            trimLines: true,
+                            maxConsecutiveNewlines: 2
+                        });
+
+                        this._fileCache.set(cacheKey, cleanedText);
+
+                        if (this._fileCache.size > 10) {
+                            const firstKey = this._fileCache.keys().next().value;
+                            this._fileCache.delete(firstKey);
+                        }
+
+                        UIManager.displayFileContent(cleanedText);
+                        this._currentCleanedText = cleanedText;
+
+                        if (this._currentParams.openaiKey) {
+                            const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                            if (btn) btn.disabled = false;
+                        }
+
+                        Utils.log('APP', 'File content loaded and cleaned successfully');
+
+                        const originalLength = extractedText.length;
+                        const cleanedLength = cleanedText.length;
+                        const reduction = ((originalLength - cleanedLength) / originalLength * 100).toFixed(1);
+                        Utils.log('APP', `Text cleaning: ${originalLength} → ${cleanedLength} chars (${reduction}% reduction)`);
+
+                    } catch (error) {
+                        Utils.log('APP', 'File loading failed', error);
+                        UIManager.displayFileContent(`Error loading file content: ${error.message}`);
+                    }
+                },
+
+                /**
+                 * Get selected file ID from dropdown
+                 */
+                getSelectedFileId() {
+                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
+                    return selectEl ? selectEl.value : null;
+                },
+
+                /**
+                 * Handle summarize button click
+                 */
+                async handleSummarize() {
+                    if (!this._currentCleanedText) {
+                        alert('No document content to summarize');
+                        return;
+                    }
+
+                    if (!this._currentParams || !this._currentParams.openaiKey) {
+                        alert('OpenAI API key is required for summarization');
+                        return;
+                    }
+
+                    const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
+                    const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+
+                    try {
+                        if (summaryEl) summaryEl.textContent = 'Generating summary...';
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.textContent = 'Summarizing...';
+                        }
+
+                        const summary = await APIService.callOpenAI(
+                            this._currentCleanedText,
+                            this._currentParams.openaiKey,
+                            CONFIG.OPENAI.MODEL,
+                            (delta, full) => {
+                                if (summaryEl) summaryEl.textContent = full;
+                            }
+                        );
+
+                        if (summaryEl) summaryEl.textContent = summary;
+
+                    } catch (error) {
+                        Utils.log('APP', 'Summarization failed', error);
+                        if (summaryEl) {
+                            summaryEl.textContent = `Error generating summary: ${error.message}`;
+                        }
+                    } finally {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.textContent = 'Summarize';
+                        }
+                    }
+                },
+            };
+
+            // =============================================================================
+            // PUBLIC API
+            // =============================================================================
+            return {
+                init: App.init.bind(App),
+                getSelectedFileId: App.getSelectedFileId.bind(App),
+                
+                async getSASToken(username, password) {
+                    return APIService.getSASToken(username, password);
+                },
+                clearToken() {
+                    return APIService.clearToken();
+                },
+                async getFileContent(alertId, fileId, username, password) {
+                    return APIService.getFileContent(alertId, fileId, username, password);
+                },
+                async extractTextFromFile(fileData) {
+                    return APIService.extractTextFromFile(fileData);
+                },
+                async extractTextFromPDF(arrayBuffer, onProgress = null) {
+                    return APIService.extractTextFromPDF(arrayBuffer, onProgress);
+                },
+                cleanTextForLLM(text, options = {}) {
+                    return Utils.cleanTextForLLM(text, options);
+                },
+                _modules: {
+                    Utils,
+                    UIManager,
+                    APIService,
+                    VAIntegration,
+                    CONFIG
+                }
+            };
+        })();
+
+        // =============================================================================
+        // APPLICATION STARTUP
+        // =============================================================================
+        DocumentSummarizerApp.init();
+    </script>
+</body>
 </html>
