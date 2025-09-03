@@ -100,7 +100,7 @@
 
                 // ADD THIS NEW SECTION
                 OPENAI: {
-                    URL: 'https://api.openai.com/v1/chat/completions',
+                    URL: 'https://api.openai.com/v1/responses',
                     MODEL: 'gpt-5-nano'
                 },
 
@@ -595,49 +595,87 @@
                 /**
                  * Call OpenAI API for summarization
                  */
-                async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL) {
-                    const prompt = `Summarize this document concisely, highlighting the key points:\n\n${text}`;
+                // Same behavior & SSE handling as your working streamer
+                async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta /* optional */) {
+                    const systemPrompt =
+                        `You are a helpful assistant that creates concise, clear summaries.\n\n` +
+                        `Summarize this document concisely, highlighting the key points:\n\n${text}`;
 
                     const body = {
-                        model: model,
-                        messages: [
-                            {
-                                role: "system",
-                                content: "You are a helpful assistant that creates concise, clear summaries."
-                            },
-                            {
-                                role: "user",
-                                content: prompt
-                            }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 500
+                        model,
+                        input: systemPrompt,
+                        reasoning: { effort: "medium" },
+                        text: { verbosity: "low" },
+                        stream: !!onDelta
                     };
 
-                    try {
-                        const response = await fetch(CONFIG.OPENAI.URL, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${apiKey}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(body)
-                        });
+                    const res = await fetch(CONFIG.OPENAI.URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json',
+                            'Accept': onDelta ? 'text/event-stream' : 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    });
 
-                        if (!response.ok) {
-                            const error = await response.text();
-                            throw new Error(`OpenAI API error: ${response.status} - ${error}`);
-                        }
-
-                        const data = await response.json();
-                        return data.choices[0].message.content;
-
-                    } catch (error) {
-                        Utils.log('OPENAI', 'API call failed', error);
-                        throw error;
+                    // Non-streaming path
+                    if (!onDelta) {
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                        const txt = (API?.extractOpenAIText
+                            ? API.extractOpenAIText(json)
+                            : (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        if (!txt) throw new Error('LLM returned no text payload');
+                        return txt;
                     }
-                },
 
+                    // Streaming path (SSE)
+                    if (!res.ok || !res.body) {
+                        const text = await res.text().catch(() => '');
+                        throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let carry = '';
+                    let full = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        carry += decoder.decode(value, { stream: true });
+
+                        // Split Server-Sent-Event frames
+                        const frames = carry.split('\n\n');
+                        carry = frames.pop() || '';
+
+                        for (const frame of frames) {
+                            const dataLines = frame
+                                .split('\n')
+                                .filter(l => l.startsWith('data:'))
+                                .map(l => l.slice(5).trim())
+                                .join('\n');
+
+                            if (!dataLines || dataLines === '[DONE]') continue;
+
+                            let evt;
+                            try { evt = JSON.parse(dataLines); } catch { continue; }
+
+                            if (evt.type === 'response.output_text.delta') {
+                                const delta = evt.delta || '';
+                                if (delta) {
+                                    full += delta;
+                                    try { onDelta(delta, full, evt); } catch { /* ignore handler errors */ }
+                                }
+                            } else if (evt.type === 'error') {
+                                throw new Error(evt.error?.message || 'Streaming error');
+                            }
+                            // other event types ignored
+                        }
+                    }
+                    return full.trim();
+                }
             };
 
             // =============================================================================
@@ -882,15 +920,18 @@
                             btn.textContent = 'Summarizing...';
                         }
 
-                        // Call OpenAI
+                        // Call OpenAI with streaming
                         const summary = await APIService.callOpenAI(
                             this._currentCleanedText,
-                            this._currentParams.openaiKey
+                            this._currentParams.openaiKey,
+                            CONFIG.OPENAI.MODEL,
+                            (delta, full) => {
+                                if (summaryEl) summaryEl.textContent = full; // live updates
+                            }
                         );
 
-                        // Display summary
+                        // Final text (already shown live, but keep for safety)
                         if (summaryEl) summaryEl.textContent = summary;
-                        Utils.log('APP', 'Summary generated successfully');
 
                     } catch (error) {
                         Utils.log('APP', 'Summarization failed', error);
