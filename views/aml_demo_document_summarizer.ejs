@@ -57,6 +57,14 @@
             style="max-height: 400px; overflow-y: auto; background: #f5f5f5;">Select a file to view its content...</pre>
     </div>
 
+    <div class="summary-section" style="margin-top: 20px;">
+        <h3>AI Summary</h3>
+        <button id="summarizeBtn" style="margin-bottom: 10px;" disabled>Summarize Document</button>
+        <pre id="summaryContent"
+            style="max-height: 400px; overflow-y: auto; background: #f0f8ff; border: 1px solid #0066cc; padding: 12px; border-radius: 10px;">AI summary will appear here...</pre>
+    </div>
+
+
     <script>
         /**
          * VA Document Summarizer Application
@@ -85,8 +93,17 @@
                     output: 'out',
                     fileSelect: 'fileSelect',
                     fileCount: 'fileCount',
-                    fileContent: 'fileContent'
+                    fileContent: 'fileContent',
+                    summarizeBtn: 'summarizeBtn',
+                    summaryContent: 'summaryContent'
                 },
+
+                // ADD THIS NEW SECTION
+                OPENAI: {
+                    URL: 'https://api.openai.com/v1/chat/completions',
+                    MODEL: 'gpt-5-nano'
+                },
+
                 PDF: {
                     WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
                 }
@@ -276,6 +293,19 @@
                                 }
                             } else {
                                 this.displayFileContent('Select a file to view its content...');
+                                // Disable summarize button when no file selected
+                                const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                                if (btn) btn.disabled = true;
+                            }
+                        });
+                    }
+
+                    // ADD THIS NEW EVENT LISTENER
+                    const summarizeBtn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                    if (summarizeBtn) {
+                        summarizeBtn.addEventListener('click', () => {
+                            if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onSummarizeClick) {
+                                window.DocumentSummarizerApp._onSummarizeClick();
                             }
                         });
                     }
@@ -562,11 +592,52 @@
                         return `[ERROR EXTRACTING TEXT]\nContent type: ${contentType}\nError: ${error.message}\nFile size: ${arrayBuffer.byteLength} bytes`;
                     }
                 },
-
                 /**
-                 * Future: Add other authenticated API methods here
-                 * e.g., downloadFile, uploadFile, etc.
+                 * Call OpenAI API for summarization
                  */
+                async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL) {
+                    const prompt = `Summarize this document concisely, highlighting the key points:\n\n${text}`;
+
+                    const body = {
+                        model: model,
+                        messages: [
+                            {
+                                role: "system",
+                                content: "You are a helpful assistant that creates concise, clear summaries."
+                            },
+                            {
+                                role: "user",
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 500
+                    };
+
+                    try {
+                        const response = await fetch(CONFIG.OPENAI.URL, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${apiKey}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.text();
+                            throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+                        }
+
+                        const data = await response.json();
+                        return data.choices[0].message.content;
+
+                    } catch (error) {
+                        Utils.log('OPENAI', 'API call failed', error);
+                        throw error;
+                    }
+                },
+
             };
 
             // =============================================================================
@@ -659,6 +730,7 @@
                 // Store current parameters for file operations
                 _currentParams: null,
                 _fileCache: new Map(),
+                _currentCleanedText: null,
 
                 /**
                  * Initialize the entire application
@@ -683,6 +755,8 @@
                         // Expose file selection handler globally
                         window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
+                        window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);  // ADD THIS
+
 
                     } catch (error) {
                         Utils.log('APP', 'Initialization error', error);
@@ -755,6 +829,12 @@
 
                         // Display the cleaned text
                         UIManager.displayFileContent(cleanedText);
+                        this._currentCleanedText = cleanedText;
+                        // Enable summarize button if we have an OpenAI key
+                        if (this._currentParams.openaiKey) {  // ADD THIS
+                            const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                            if (btn) btn.disabled = false;
+                        }
                         Utils.log('APP', 'File content loaded and cleaned successfully');
 
                         // Log cleaning stats for debugging
@@ -775,6 +855,55 @@
                 getSelectedFileId() {
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     return selectEl ? selectEl.value : null;
+                },
+
+                /**
+                 * Handle summarize button click
+                 */
+                async handleSummarize() {
+                    if (!this._currentCleanedText) {
+                        alert('No document content to summarize');
+                        return;
+                    }
+
+                    if (!this._currentParams || !this._currentParams.openaiKey) {
+                        alert('OpenAI API key is required for summarization');
+                        return;
+                    }
+
+                    const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
+                    const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+
+                    try {
+                        // Update UI to show loading
+                        if (summaryEl) summaryEl.textContent = 'Generating summary...';
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.textContent = 'Summarizing...';
+                        }
+
+                        // Call OpenAI
+                        const summary = await APIService.callOpenAI(
+                            this._currentCleanedText,
+                            this._currentParams.openaiKey
+                        );
+
+                        // Display summary
+                        if (summaryEl) summaryEl.textContent = summary;
+                        Utils.log('APP', 'Summary generated successfully');
+
+                    } catch (error) {
+                        Utils.log('APP', 'Summarization failed', error);
+                        if (summaryEl) {
+                            summaryEl.textContent = `Error generating summary: ${error.message}`;
+                        }
+                    } finally {
+                        // Reset button
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.textContent = 'Summarize Document';
+                        }
+                    }
                 },
 
                 /**
