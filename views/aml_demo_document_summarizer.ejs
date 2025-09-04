@@ -240,6 +240,49 @@
             box-shadow: 0 0 0 4px rgba(4, 120, 206, .12)
         }
 
+        /* Make button host spinner + label inline */
+        .btn-primary {
+            display: inline-flex;
+            /* ADD */
+            align-items: center;
+            /* ADD */
+            gap: 8px;
+            /* ADD */
+            transition: transform .06s, box-shadow .2s, filter .2s;
+            /* ADD */
+        }
+
+        /* Inline spinner exactly like other app */
+        .spinner {
+            /* ADD */
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .6);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg)
+            }
+        }
+
+        /* Swap label <-> spinner while loading */
+        .loading .spinner {
+            display: inline-block;
+        }
+
+        /* ADD */
+        .loading .labeltext {
+            display: none;
+        }
+
+        /* ADD */
+
+
         /* Content areas */
         #fileContent {
             white-space: pre-wrap;
@@ -313,7 +356,10 @@
                     <p class="subtitle">Generate a concise summary with one click.</p>
                 </div>
                 <div class="row">
-                    <button id="summarizeBtn" class="btn-primary" type="button" disabled>Summarize</button>
+                    <button id="summarizeBtn" class="btn-primary" type="button" disabled aria-busy="false">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span class="labeltext">Summarize</span>
+                    </button>
                 </div>
             </div>
 
@@ -404,7 +450,7 @@
                 },
                 AUTO_REFRESH: {
                     ENABLED: true,
-                    INTERVAL: 10000 // 10 seconds
+                    INTERVAL: 5000 // milli seconds
                 },
             };
 
@@ -1411,7 +1457,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         if (summaryEl) summaryEl.innerHTML = '<span class="processing-status">Generating summary...</span>';
                         if (btn) {
                             btn.disabled = true;
-                            btn.textContent = 'Summarizing...';
+                            btn.classList.add('loading');          // ADD
+                            btn.setAttribute('aria-busy', 'true');  // ADD (a11y)
                         }
 
                         const summary = await APIService.callOpenAI(
@@ -1454,7 +1501,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     } finally {
                         if (btn) {
                             btn.disabled = false;
-                            btn.textContent = 'Summarize';
+                            btn.classList.remove('loading');        
+                            btn.setAttribute('aria-busy', 'false');  
                         }
                         // Clear the summarizing file ID when done
                         this._summarizingFileId = null;
