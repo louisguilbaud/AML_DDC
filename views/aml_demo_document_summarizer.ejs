@@ -130,6 +130,30 @@
             min-height: 0
         }
 
+        /* Pack rows to the top (removes big gaps under search and between sections) */
+        .left,
+        .right {
+            align-content: start;
+        }
+
+        /* Make File Content and Summary equal height and stretch their surfaces */
+        .right {
+            grid-template-rows: 1fr 1fr;
+        }
+
+        .right .surface {
+            height: 100%;
+        }
+
+        /* Let both right-side boxes fill their tracks */
+        .file-content-box {
+            max-height: none;
+        }
+
+        .summary-box {
+            max-height: none;
+        }
+
         /* File list */
         .search {
             display: flex;
