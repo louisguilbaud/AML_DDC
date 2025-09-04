@@ -10,7 +10,7 @@
     <!-- PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
-        /* ===== Theme + base (from prototype) ===== */
+        /* ===== Theme + base ===== */
         :root {
             --bg: #fff;
             --fg: #1d1d1f;
@@ -54,7 +54,6 @@
             padding: 24px 24px 28px;
             display: grid;
             gap: 18px;
-            max-height: calc(100vh - 4vh);
         }
 
         /* Header */
@@ -97,61 +96,47 @@
             border-radius: 14px;
             background: var(--grey-soft);
             padding: 14px;
-            min-height: 120px;
             overflow: auto;
             font-size: 14px
         }
-
-        .left .surface {
-            max-height: 40vh;
-        }
-
-        /* uses .surface's overflow:auto */
 
         /* Layout */
         .grid {
             display: grid;
             grid-template-columns: 320px 1fr;
             gap: 18px;
-            min-height: 540px
+            height: calc(100vh - 200px);
+            min-height: 500px;
+            max-height: 800px;
         }
 
         .left {
-            display: grid;
-            grid-template-rows: auto auto;
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            min-height: 0
+        }
+
+        .left .surface {
+            flex: 1;
+            min-height: 0;
         }
 
         .right {
-            display: grid;
-            grid-template-rows: auto auto;
-            gap: 12px;
-            min-height: 0
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        /* Pack rows to the top (removes big gaps under search and between sections) */
-        .left,
-        .right {
-            align-content: start;
-        }
-
-        /* Make File Content and Summary equal height and stretch their surfaces */
-        .right {
-            grid-template-rows: 1fr 1fr;
+        .right>section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         .right .surface {
-            height: 100%;
-        }
-
-        /* Let both right-side boxes fill their tracks */
-        .file-content-box {
-            max-height: none;
-        }
-
-        .summary-box {
-            max-height: none;
+            flex: 1;
+            min-height: 0;
         }
 
         /* File list */
@@ -251,16 +236,9 @@
             font-family: inherit;
         }
 
-        /* Summary box */
-        .summary-box {
-            min-height: 240px;
-            max-height: 40vh;
-        }
-
         /* Status message */
         #out {
             display: none;
-            /* Hide the debug output */
         }
 
         .processing-status {
@@ -282,17 +260,14 @@
         /* Responsive */
         @media (max-width:1024px) {
             .grid {
-                grid-template-columns: 1fr
+                grid-template-columns: 1fr;
+                height: auto;
+                max-height: none;
             }
 
             .left {
-                grid-template-rows: auto auto
+                max-height: 300px;
             }
-        }
-
-        /* Prevent File Content from expanding; allow scrolling */
-        .file-content-box {
-            overflow: auto;
         }
     </style>
 </head>
@@ -1347,6 +1322,7 @@
         // APPLICATION STARTUP
         // =============================================================================
         DocumentSummarizerApp.init();
+        /*
         function lockFileContentHeight() {
             const box = document.querySelector('.file-content-box');
             if (!box) return;
@@ -1356,7 +1332,10 @@
         }
         window.addEventListener('load', () => {
             requestAnimationFrame(lockFileContentHeight);
-        });    </script>
+
+        }); 
+        */
+    </script>
 </body>
 
 </html>
