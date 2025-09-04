@@ -105,15 +105,18 @@
             display: grid;
             grid-template-columns: 320px 1fr;
             gap: 18px;
-            height: calc(100vh - 200px);
             min-height: 500px;
-            max-height: 800px;
         }
 
         .left {
             display: flex;
             flex-direction: column;
             gap: 10px;
+            max-height: 80vh;
+            /* Limit collection height but allow it to grow */
+            position: sticky;
+            top: 20px;
+            /* Keep collection visible when scrolling */
         }
 
         .left .surface {
@@ -125,13 +128,22 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            align-items: stretch;
         }
 
         .right>section {
-            flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0;
+        }
+
+        .right>section:first-child {
+            flex-shrink: 0;
+            /* Keep file content at fixed height */
+        }
+
+        .right>section:last-child {
+            flex: 1 0 auto;
+            /* Allow summary to expand */
         }
 
         .right .surface {
@@ -261,12 +273,12 @@
         @media (max-width:1024px) {
             .grid {
                 grid-template-columns: 1fr;
-                height: auto;
-                max-height: none;
             }
 
             .left {
                 max-height: 300px;
+                position: relative;
+                top: auto;
             }
         }
 
@@ -274,6 +286,13 @@
         .file-content-box {
             max-height: 40vh;
             overflow-y: auto;
+        }
+
+        .summary-box {
+            min-height: 200px;
+            /* Ensure minimum height */
+            max-height: none;
+            /* Allow unlimited expansion */
         }
     </style>
 </head>
