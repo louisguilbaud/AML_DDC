@@ -1493,11 +1493,15 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             '<div class="line" style="width:96%"></div>' +
                             '<div class="line" style="width:72%"></div>' +
                             '<div class="line" style="width:84%"></div>' +
+                            '<div class="line" style="width:74%"></div>' +
+                            '<div class="line" style="width:98%"></div>' +
+                            '<div class="line" style="width:92%"></div>' +
+                            '<div class="line" style="width:67%"></div>' +
                             '</div>';
                         if (btn) {
                             btn.disabled = true;
-                            btn.classList.add('loading');          // ADD
-                            btn.setAttribute('aria-busy', 'true');  // ADD (a11y)
+                            btn.classList.add('loading');          
+                            btn.setAttribute('aria-busy', 'true');  
                         }
 
                         const summary = await APIService.callOpenAI(
