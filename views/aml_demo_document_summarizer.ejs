@@ -343,6 +343,39 @@
             max-height: none;
             /* Allow unlimited expansion */
         }
+
+        /* Skeleton loader (flowing opaque lines) */
+        .skel {
+            display: grid;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .skel .line {
+            height: 10px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
+            background-size: 200% 100%;
+            animation: shimmer 2.5s linear infinite;
+        }
+
+        /* make skeleton non-selectable */
+        .skel,
+        .skel * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
     </style>
 </head>
 
@@ -1454,7 +1487,13 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
 
                     try {
-                        if (summaryEl) summaryEl.innerHTML = '<span class="processing-status">Generating summary...</span>';
+                        if (summaryEl) summaryEl.innerHTML =
+                            '<div class="skel" aria-hidden="true">' +
+                            '<div class="line" style="width:88%"></div>' +
+                            '<div class="line" style="width:96%"></div>' +
+                            '<div class="line" style="width:72%"></div>' +
+                            '<div class="line" style="width:84%"></div>' +
+                            '</div>';
                         if (btn) {
                             btn.disabled = true;
                             btn.classList.add('loading');          // ADD
@@ -1501,8 +1540,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     } finally {
                         if (btn) {
                             btn.disabled = false;
-                            btn.classList.remove('loading');        
-                            btn.setAttribute('aria-busy', 'false');  
+                            btn.classList.remove('loading');
+                            btn.setAttribute('aria-busy', 'false');
                         }
                         // Clear the summarizing file ID when done
                         this._summarizingFileId = null;
