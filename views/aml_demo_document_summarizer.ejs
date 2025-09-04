@@ -1224,12 +1224,12 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     if (this._summaryCache && this._summaryCache.has(summaryCacheKey)) {
                         // Display cached summary
                         if (summaryEl) {
-                            summaryEl.textContent = this._summaryCache.get(summaryCacheKey);
+                            summaryEl.innerHTML = this._summaryCache.get(summaryCacheKey);
                         }
                     } else {
                         // Clear summary area when no cached summary exists
                         if (summaryEl) {
-                            summaryEl.textContent = 'AI summary will appear here...';
+                            summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>';
                         }
                     }
 
@@ -1338,7 +1338,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
 
                     try {
-                        if (summaryEl) summaryEl.textContent = 'Generating summary...';
+                        if (summaryEl) summaryEl.innerHTML = '<span class="processing-status">Generating summary...</span>';
                         if (btn) {
                             btn.disabled = true;
                             btn.textContent = 'Summarizing...';
@@ -1352,7 +1352,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                                 // Only update UI if still viewing the same file
                                 const currentFileId = this.getSelectedFileId();
                                 if (summaryEl && this._summarizingFileId === currentFileId) {
-                                    summaryEl.textContent = full;
+                                    summaryEl.innerHTML  = full;
                                 }
                             }
                         );
@@ -1360,7 +1360,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         //  Only update final summary if still viewing the same file
                         const currentFileId = this.getSelectedFileId();
                         if (summaryEl && this._summarizingFileId === currentFileId) {
-                            summaryEl.textContent = summary;
+                            summaryEl.innerHTML  = summary;
                         }
 
                         // Cache the summary regardless of which file is currently selected
