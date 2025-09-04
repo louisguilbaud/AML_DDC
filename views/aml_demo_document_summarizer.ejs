@@ -401,7 +401,11 @@
                 },
                 PDF: {
                     WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-                }
+                },
+                AUTO_REFRESH: {
+                    ENABLED: true,
+                    INTERVAL: 10000 // 10 seconds
+                },
             };
 
             // Initialize PDF.js worker
@@ -550,6 +554,9 @@
 
                     if (!listEl) return;
 
+                    // Store current selection before clearing
+                    const currentSelection = this._selectedFileId;
+
                     if (!files || files.length === 0) {
                         listEl.innerHTML = '<div class="loading-message">No files available</div>';
                         return;
@@ -568,10 +575,15 @@
                         fileEl.dataset.fileId = id;
                         fileEl.dataset.fileName = name.toLowerCase();
 
+                        // Restore active state if this was previously selected
+                        if (id === currentSelection) {
+                            fileEl.classList.add('is-active');
+                        }
+
                         fileEl.innerHTML = `
-                            <div class="name">${name}</div>
-                            <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
-                        `;
+            <div class="name">${name}</div>
+            <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
+        `;
 
                         fileEl.addEventListener('click', () => {
                             this.selectFile(id);
@@ -582,6 +594,12 @@
 
                     // Also populate hidden select for compatibility
                     this.populateFileDropdown(files);
+
+                    // Restore search filter if present
+                    const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
+                    if (searchInput && searchInput.value) {
+                        this.filterFiles(searchInput.value);
+                    }
                 },
 
                 /**
@@ -1002,7 +1020,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     const body = {
                         model,
                         input: systemPrompt,
-                        reasoning: { effort: "medium" },
+                        reasoning: { effort: "low" },
                         text: { verbosity: "low" },
                         stream: !!onDelta
                     };
@@ -1136,11 +1154,14 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
 
                             UIManager.populateFileList(files);
                             UIManager.appendOutput(`\nAPI Response: (${files.length} files)`);
+
+                            App.startAutoRefresh();
                         } catch (error) {
                             UIManager.showError(error.message);
                         }
                     } else {
                         UIManager.appendOutput('\nMissing required parameters - cannot fetch files');
+                        App.stopAutoRefresh();
                     }
                 },
 
@@ -1174,6 +1195,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                 _summaryCache: new Map(),
                 _currentCleanedText: null,
                 _summarizingFileId: null,
+                _refreshInterval: null,
 
                 /**
                  * Initialize the entire application
@@ -1198,6 +1220,47 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     } catch (error) {
                         Utils.log('APP', 'Initialization error', error);
                         UIManager.updateOutput(`Error: ${error.message}`);
+                    }
+                },
+
+                // Add this new method:
+                startAutoRefresh() {
+                    if (!CONFIG.AUTO_REFRESH.ENABLED || this._refreshInterval) return;
+
+                    this._refreshInterval = setInterval(async () => {
+                        if (!this._currentParams) return;
+
+                        const { alertId, sasUser, sasPass } = this._currentParams;
+
+                        if (alertId && sasUser && sasPass) {
+                            try {
+                                Utils.log('AUTO_REFRESH', 'Fetching updated file list');
+
+                                const files = await APIService.fetchAlertFiles(
+                                    alertId,
+                                    sasUser,
+                                    sasPass
+                                );
+
+                                // Update file list while preserving selection
+                                UIManager.populateFileList(files);
+
+                                Utils.log('AUTO_REFRESH', `Updated file list: ${files.length} files`);
+                            } catch (error) {
+                                Utils.log('AUTO_REFRESH', 'Refresh failed', error);
+                                // Don't show error to user on auto-refresh failures
+                            }
+                        }
+                    }, CONFIG.AUTO_REFRESH.INTERVAL);
+
+                    Utils.log('AUTO_REFRESH', `Started auto-refresh every ${CONFIG.AUTO_REFRESH.INTERVAL}ms`);
+                },
+
+                stopAutoRefresh() {
+                    if (this._refreshInterval) {
+                        clearInterval(this._refreshInterval);
+                        this._refreshInterval = null;
+                        Utils.log('AUTO_REFRESH', 'Stopped auto-refresh');
                     }
                 },
 
