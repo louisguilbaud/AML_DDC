@@ -9,6 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
     <!-- PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- markdown parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <style>
         /* ===== Theme + base ===== */
         :root {
@@ -294,6 +296,71 @@
             max-height: none;
             /* Allow unlimited expansion */
         }
+
+        /* Add these styles for better markdown rendering */
+        #summaryContent {
+            line-height: 1.6;
+        }
+
+        #summaryContent h1,
+        #summaryContent h2,
+        #summaryContent h3 {
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+        }
+
+        #summaryContent h1 {
+            font-size: 1.5em;
+        }
+
+        #summaryContent h2 {
+            font-size: 1.3em;
+        }
+
+        #summaryContent h3 {
+            font-size: 1.1em;
+        }
+
+        #summaryContent p {
+            margin: 0.5em 0;
+        }
+
+        #summaryContent ul,
+        #summaryContent ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+
+        #summaryContent li {
+            margin: 0.25em 0;
+        }
+
+        #summaryContent strong {
+            font-weight: 600;
+        }
+
+        #summaryContent code {
+            background: var(--grey-soft);
+            padding: 0.1em 0.3em;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        #summaryContent pre {
+            background: var(--grey-soft);
+            padding: 0.5em;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        #summaryContent blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 1em;
+            margin: 0.5em 0;
+            color: var(--muted);
+        }
     </style>
 </head>
 
@@ -507,6 +574,22 @@
                         'xls': 'XLS'
                     };
                     return types[ext] || ext.toUpperCase();
+                },
+                /**
+                 * Parse markdown to HTML safely
+                 */
+                parseMarkdown(text) {
+                    if (typeof marked !== 'undefined') {
+                        // Configure marked for safety
+                        marked.setOptions({
+                            breaks: true,  // Convert line breaks to <br>
+                            gfm: true,     // GitHub flavored markdown
+                            sanitize: false // We'll handle sanitization separately if needed
+                        });
+                        return marked.parse(text);
+                    }
+                    // Fallback to plain text if marked is not available
+                    return text.replace(/\n/g, '<br>');
                 }
             };
 
@@ -662,12 +745,14 @@
                 /**
                  * Display file content in the content area
                  */
-                displayFileContent(content, loading = false, status = null) {
+                displayFileContent(content, loading = false, status = null, isHtml = false) {
                     const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
                     if (contentEl) {
                         if (loading) {
                             const statusText = status ? ` - ${status}` : '';
                             contentEl.innerHTML = `<span class="processing-status">Loading file content${statusText}...</span>`;
+                        } else if (isHtml) {
+                            contentEl.innerHTML = content;
                         } else {
                             contentEl.textContent = content;
                         }
@@ -1209,7 +1294,7 @@
                     if (this._summaryCache && this._summaryCache.has(summaryCacheKey)) {
                         // Display cached summary
                         if (summaryEl) {
-                            summaryEl.textContent = this._summaryCache.get(summaryCacheKey);
+                            summaryEl.innerHTML = Utils.parseMarkdown(this._summaryCache.get(summaryCacheKey));
                         }
                     } else {
                         // Clear summary area when no cached summary exists
@@ -1337,7 +1422,7 @@
                                 // Only update UI if still viewing the same file
                                 const currentFileId = this.getSelectedFileId();
                                 if (summaryEl && this._summarizingFileId === currentFileId) {
-                                    summaryEl.textContent = full;
+                                    summaryEl.innerHTML = Utils.parseMarkdown(full);
                                 }
                             }
                         );
@@ -1345,7 +1430,7 @@
                         //  Only update final summary if still viewing the same file
                         const currentFileId = this.getSelectedFileId();
                         if (summaryEl && this._summarizingFileId === currentFileId) {
-                            summaryEl.textContent = summary;
+                            summaryEl.innerHTML = Utils.parseMarkdown(summary);
                         }
 
                         // Cache the summary regardless of which file is currently selected
@@ -1372,7 +1457,7 @@
                             btn.textContent = 'Summarize';
                         }
                         // Clear the summarizing file ID when done
-                        this._summarizingFileId = null;  
+                        this._summarizingFileId = null;
                     }
                 }
             };
