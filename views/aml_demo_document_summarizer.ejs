@@ -269,6 +269,12 @@
                 max-height: 300px;
             }
         }
+
+        /* Add this rule to prevent file content from expanding */
+        .file-content-box {
+            max-height: 40vh;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -1322,19 +1328,6 @@
         // APPLICATION STARTUP
         // =============================================================================
         DocumentSummarizerApp.init();
-        /*
-        function lockFileContentHeight() {
-            const box = document.querySelector('.file-content-box');
-            if (!box) return;
-            const h = Math.round(box.getBoundingClientRect().height);
-            box.style.maxHeight = h + 'px';
-            box.style.overflow = 'auto';
-        }
-        window.addEventListener('load', () => {
-            requestAnimationFrame(lockFileContentHeight);
-
-        }); 
-        */
     </script>
 </body>
 
