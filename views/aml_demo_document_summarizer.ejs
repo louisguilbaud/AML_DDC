@@ -299,14 +299,17 @@
 
         /* Add these styles for better markdown rendering */
         #summaryContent {
-            line-height: 1.6;
+            line-height: 1.5;
+            /* Slightly reduced from 1.6 */
         }
 
         #summaryContent h1,
         #summaryContent h2,
         #summaryContent h3 {
-            margin-top: 1em;
-            margin-bottom: 0.5em;
+            margin-top: 0.8em;
+            /* Reduced from 1em */
+            margin-bottom: 0.4em;
+            /* Reduced from 0.5em */
             font-weight: 600;
         }
 
@@ -323,17 +326,26 @@
         }
 
         #summaryContent p {
-            margin: 0.5em 0;
+            margin: 0.3em 0;
+            /* Reduced from 0.5em */
         }
 
         #summaryContent ul,
         #summaryContent ol {
-            margin: 0.5em 0;
+            margin: 0.3em 0;
+            /* Reduced from 0.5em */
             padding-left: 1.5em;
         }
 
         #summaryContent li {
-            margin: 0.25em 0;
+            margin: 0.15em 0;
+            /* Reduced from 0.25em */
+        }
+
+        /* Remove extra spacing for nested lists */
+        #summaryContent li>ul,
+        #summaryContent li>ol {
+            margin: 0.1em 0;
         }
 
         #summaryContent strong {
@@ -353,13 +365,25 @@
             padding: 0.5em;
             border-radius: 6px;
             overflow-x: auto;
+            margin: 0.3em 0;
+            /* Added margin control */
         }
 
         #summaryContent blockquote {
             border-left: 3px solid var(--primary);
             padding-left: 1em;
-            margin: 0.5em 0;
+            margin: 0.3em 0;
+            /* Reduced from 0.5em */
             color: var(--muted);
+        }
+
+        /* Fix for first and last child margins */
+        #summaryContent>*:first-child {
+            margin-top: 0;
+        }
+
+        #summaryContent>*:last-child {
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -582,7 +606,7 @@
                     if (typeof marked !== 'undefined') {
                         // Configure marked for safety
                         marked.setOptions({
-                            breaks: true,  // Convert line breaks to <br>
+                            breaks: false,  // Don't convert line breaks to <br>
                             gfm: true,     // GitHub flavored markdown
                             sanitize: false // We'll handle sanitization separately if needed
                         });
