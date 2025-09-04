@@ -1151,6 +1151,7 @@
                 _fileCache: new Map(),
                 _summaryCache: new Map(),
                 _currentCleanedText: null,
+                _summarizingFileId: null,
 
                 /**
                  * Initialize the entire application
@@ -1315,6 +1316,9 @@
                     const { alertId } = this._currentParams;
                     const summaryCacheKey = `${alertId}:${fileId}`;
 
+                    // Track which file is being summarized
+                    this._summarizingFileId = fileId;  // ADD THIS LINE
+
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
 
@@ -1330,13 +1334,21 @@
                             this._currentParams.openaiKey,
                             CONFIG.OPENAI.MODEL,
                             (delta, full) => {
-                                if (summaryEl) summaryEl.textContent = full;
+                                // Only update UI if still viewing the same file
+                                const currentFileId = this.getSelectedFileId();
+                                if (summaryEl && this._summarizingFileId === currentFileId) {
+                                    summaryEl.textContent = full;
+                                }
                             }
                         );
 
-                        if (summaryEl) summaryEl.textContent = summary;
+                        //  Only update final summary if still viewing the same file
+                        const currentFileId = this.getSelectedFileId();
+                        if (summaryEl && this._summarizingFileId === currentFileId) {
+                            summaryEl.textContent = summary;
+                        }
 
-                        // Cache the summary
+                        // Cache the summary regardless of which file is currently selected
                         this._summaryCache.set(summaryCacheKey, summary);
 
                         // Limit cache size
@@ -1349,7 +1361,9 @@
 
                     } catch (error) {
                         Utils.log('APP', 'Summarization failed', error);
-                        if (summaryEl) {
+                        //  Only show error if still viewing the same file
+                        const currentFileId = this.getSelectedFileId();
+                        if (summaryEl && this._summarizingFileId === currentFileId) {
                             summaryEl.textContent = `Error generating summary: ${error.message}`;
                         }
                     } finally {
@@ -1357,8 +1371,10 @@
                             btn.disabled = false;
                             btn.textContent = 'Summarize';
                         }
+                        // Clear the summarizing file ID when done
+                        this._summarizingFileId = null;  
                     }
-                },
+                }
             };
 
             // =============================================================================
