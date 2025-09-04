@@ -964,8 +964,12 @@
                  * Call OpenAI API for summarization
                  */
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
-                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English.\n\n` +
-                        `Summarize this document concisely, highlighting the key points:\n\n${text}`;
+                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English. Instructions:
+                    - Produce an abstractive summary no longer than 1/4th the length of the input text.
+                    - In all cases, the summary must be no more than 500 words.
+                    - Focus on the main points; avoid unnecessary elaboration. \n\n` +
+                        `Summarize this document concisely, highlighting the key points:\n\n${text}
+                    `;
 
                     const body = {
                         model,
