@@ -241,12 +241,18 @@
         }
 
         /* Content areas */
-        #fileContent,
-        #summaryContent {
+        #fileContent {
             white-space: pre-wrap;
             word-wrap: break-word;
             font-family: inherit;
         }
+
+        #summaryContent {
+            word-wrap: break-word;
+            font-family: inherit;
+        }
+
+        /* normal HTML flow */
 
         /* Status message */
         #out {
@@ -340,7 +346,8 @@
                     <section>
                         <div class="label">Summary</div>
                         <div class="surface summary-box" aria-label="AI Summary">
-                            <div id="summaryContent" aria-live="polite"><span class="muted">AI summary will appear here...</span></div>
+                            <div id="summaryContent" aria-live="polite"><span class="muted">AI summary will appear
+                                    here...</span></div>
                         </div>
                     </section>
                 </main>
@@ -1352,7 +1359,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                                 // Only update UI if still viewing the same file
                                 const currentFileId = this.getSelectedFileId();
                                 if (summaryEl && this._summarizingFileId === currentFileId) {
-                                    summaryEl.innerHTML  = full;
+                                    summaryEl.innerHTML = full;
                                 }
                             }
                         );
@@ -1360,7 +1367,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         //  Only update final summary if still viewing the same file
                         const currentFileId = this.getSelectedFileId();
                         if (summaryEl && this._summarizingFileId === currentFileId) {
-                            summaryEl.innerHTML  = summary;
+                            summaryEl.innerHTML = summary;
                         }
 
                         // Cache the summary regardless of which file is currently selected
