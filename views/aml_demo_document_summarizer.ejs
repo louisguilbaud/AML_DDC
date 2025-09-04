@@ -299,17 +299,14 @@
 
         /* Add these styles for better markdown rendering */
         #summaryContent {
-            line-height: 1.5;
-            /* Slightly reduced from 1.6 */
+            line-height: 1.6;
         }
 
         #summaryContent h1,
         #summaryContent h2,
         #summaryContent h3 {
-            margin-top: 0.8em;
-            /* Reduced from 1em */
-            margin-bottom: 0.4em;
-            /* Reduced from 0.5em */
+            margin-top: 1em;
+            margin-bottom: 0.5em;
             font-weight: 600;
         }
 
@@ -326,26 +323,17 @@
         }
 
         #summaryContent p {
-            margin: 0.3em 0;
-            /* Reduced from 0.5em */
+            margin: 0.5em 0;
         }
 
         #summaryContent ul,
         #summaryContent ol {
-            margin: 0.3em 0;
-            /* Reduced from 0.5em */
+            margin: 0.5em 0;
             padding-left: 1.5em;
         }
 
         #summaryContent li {
-            margin: 0.15em 0;
-            /* Reduced from 0.25em */
-        }
-
-        /* Remove extra spacing for nested lists */
-        #summaryContent li>ul,
-        #summaryContent li>ol {
-            margin: 0.1em 0;
+            margin: 0.25em 0;
         }
 
         #summaryContent strong {
@@ -365,25 +353,13 @@
             padding: 0.5em;
             border-radius: 6px;
             overflow-x: auto;
-            margin: 0.3em 0;
-            /* Added margin control */
         }
 
         #summaryContent blockquote {
             border-left: 3px solid var(--primary);
             padding-left: 1em;
-            margin: 0.3em 0;
-            /* Reduced from 0.5em */
+            margin: 0.5em 0;
             color: var(--muted);
-        }
-
-        /* Fix for first and last child margins */
-        #summaryContent>*:first-child {
-            margin-top: 0;
-        }
-
-        #summaryContent>*:last-child {
-            margin-bottom: 0;
         }
     </style>
 </head>
@@ -431,7 +407,7 @@
                     <section>
                         <div class="label">Summary</div>
                         <div class="surface summary-box" aria-label="AI Summary">
-                            <div id="summaryContent">AI summary will appear here...</div>
+                            <pre id="summaryContent">AI summary will appear here...</pre>
                         </div>
                     </section>
                 </main>
@@ -606,7 +582,7 @@
                     if (typeof marked !== 'undefined') {
                         // Configure marked for safety
                         marked.setOptions({
-                            breaks: false,  // Don't convert line breaks to <br>
+                            breaks: true,  // Convert line breaks to <br>
                             gfm: true,     // GitHub flavored markdown
                             sanitize: false // We'll handle sanitization separately if needed
                         });
@@ -1077,13 +1053,28 @@
                  * Call OpenAI API for summarization
                  */
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
-                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English. Instructions:
-                    - Produce an abstractive summary no longer than 1/4th the length of the input text.
-                    - In all cases, the summary must be no more than 500 words.
-                    - Focus on the main points; avoid unnecessary elaboration.
-                    - Output the summary in clean Markdown format, using headings (#, ##), bold (**), and bullet points (- or *).
-                    - Do not include any content outside of the Markdown.` +
-                        `Summarize this document concisely, highlighting the key points:\n\n${text}
+                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries in English.
+
+Rules:
+- Length: ≤ 1/4 of the input, and never more than 500 words.
+- Output: **strict, self-contained HTML5 only** (no Markdown, no code fences).
+- Use semantic tags only: <article>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>.
+- Do NOT include <script>, <style>, images, iframes, inline event handlers, or external resources.
+- Return exactly one HTML snippet; nothing before or after it.
+
+Structure to follow:
+<article>
+  <h2>Title</h2>
+  <p>One-sentence gist.</p>
+  <h3>Key points</h3>
+  <ul>
+    <li>…</li>
+  </ul>
+  <h3>Details</h3>
+  <p>…</p>
+</article>
+
+Summarize this document concisely, highlighting the key points:\n\n${text}
                     `;
 
                     const body = {
