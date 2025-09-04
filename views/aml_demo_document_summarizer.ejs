@@ -967,7 +967,10 @@
                     const systemPrompt = `You are a helpful assistant that creates concise, clear summaries, always in English. Instructions:
                     - Produce an abstractive summary no longer than 1/4th the length of the input text.
                     - In all cases, the summary must be no more than 500 words.
-                    - Focus on the main points; avoid unnecessary elaboration. \n\n` +
+                    - Focus on the main points; avoid unnecessary elaboration.
+                    - Output the summary in clean HTML format using <h2>, <h3>, <p>, <ul>, and <li> tags for structure.
+                    - Use <strong> for emphasis where appropriate.
+                    - Do not include any explanations or text outside of the HTML.\n\n` +
                         `Summarize this document concisely, highlighting the key points:\n\n${text}
                     `;
 
