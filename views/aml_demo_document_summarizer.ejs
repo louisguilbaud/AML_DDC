@@ -22,6 +22,12 @@
             --grey-soft: #fafafa;
             --primary-soft: #E8F3FF;
             --content-indent: 14px;
+            --file-wave-min: .85;
+            /* lowest visibility (0..1). Try .9 if you want even subtler */
+            --file-wave-width: 30%;
+            /* width of the soft band */
+            --file-wave-speed: 2.8s;
+            /* animation speed */
         }
 
         * {
@@ -479,35 +485,73 @@
             }
         }
 
-        /* Flowing transparency wave when a file is summarizing */
+        /* Flowing transparency wave when a file is summarizing (subtle + seamless) */
         .file.is-summarizing .name,
         .file.is-summarizing .meta {
             position: relative;
-            /* Use a moving mask so the text stays the same color but its alpha "waves" */
+
+            /* A soft dip that never goes fully transparent */
             -webkit-mask-image: linear-gradient(90deg,
                     rgba(0, 0, 0, 1) 0%,
-                    rgba(0, 0, 0, .35) 45%,
-                    rgba(0, 0, 0, 1) 100%);
+                    rgba(0, 0, 0, var(--file-wave-min)) var(--file-wave-width),
+                    rgba(0, 0, 0, 1) calc(var(--file-wave-width) * 2));
             mask-image: linear-gradient(90deg,
                     rgba(0, 0, 0, 1) 0%,
-                    rgba(0, 0, 0, .35) 45%,
-                    rgba(0, 0, 0, 1) 100%);
+                    rgba(0, 0, 0, var(--file-wave-min)) var(--file-wave-width),
+                    rgba(0, 0, 0, 1) calc(var(--file-wave-width) * 2));
+
+            /* Tile the pattern so there’s never a gap outside the gradient */
+            -webkit-mask-repeat: repeat;
+            mask-repeat: repeat;
+
+            /* Slide the mask across the text */
             -webkit-mask-size: 200% 100%;
             mask-size: 200% 100%;
-            -webkit-mask-repeat: no-repeat;
-            mask-repeat: no-repeat;
-            animation: file-wave 2.5s linear infinite;
+            animation: file-wave var(--file-wave-speed) linear infinite;
+
+            /* micro-perf */
+            will-change: -webkit-mask-position, mask-position;
         }
 
         @keyframes file-wave {
-            from {
-                -webkit-mask-position: 200% 0;
-                mask-position: 200% 0;
+            0% {
+                -webkit-mask-position: 0% 0;
+                mask-position: 0% 0;
             }
 
-            to {
-                -webkit-mask-position: -200% 0;
-                mask-position: -200% 0;
+            100% {
+                -webkit-mask-position: 100% 0;
+                mask-position: 100% 0;
+            }
+        }
+
+        /* Respect users who prefer less motion */
+        @media (prefers-reduced-motion: reduce) {
+
+            .file.is-summarizing .name,
+            .file.is-summarizing .meta {
+                animation: none;
+            }
+        }
+
+        /* Fallback if masks aren’t supported (older browsers) */
+        @supports not (mask-image: linear-gradient(90deg, #000, #000)) {
+
+            .file.is-summarizing .name,
+            .file.is-summarizing .meta {
+                animation: file-opacity 2.2s ease-in-out infinite;
+            }
+
+            @keyframes file-opacity {
+
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                50% {
+                    opacity: var(--file-wave-min);
+                }
             }
         }
     </style>
@@ -812,7 +856,7 @@
                         });
 
                         listEl.appendChild(fileEl);
-                        
+
                     });
 
                     // Also populate hidden select for compatibility
@@ -820,7 +864,7 @@
 
                     // apply summarizing state to freshly rendered rows
                     window.DocumentSummarizerApp?._updateBtn?.();
-                    
+
                     // Restore search filter if present
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
                     if (searchInput && searchInput.value) {
