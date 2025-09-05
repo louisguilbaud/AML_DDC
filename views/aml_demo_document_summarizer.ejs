@@ -936,9 +936,10 @@
                                     window.DocumentSummarizerApp._onFileSelected(fileId);
                                 }
                             } else {
+                                // Clear selection so the centralized updater knows no file is selected
+                                this._selectedFileId = null;
                                 this.displayFileContent('Select a file to view its content...');
-                                const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                                if (btn) btn.disabled = true;
+                                window.DocumentSummarizerApp?._updateBtn?.();
                             }
                         });
                     }
@@ -1409,7 +1410,6 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                 _fileCache: new Map(),
                 _summaryCache: new Map(),
                 _currentCleanedText: null,
-                _summarizingFileId: null,
                 _refreshInterval: null,
                 _inflightLoads: new Set(),   // de-dupe concurrent loads
                 _preloadToken: null,         // lets us abort an older preload wave
@@ -1434,6 +1434,9 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
                         window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);
+
+                        window.DocumentSummarizerApp._updateBtn =
+                            this._updateSummarizeButtonForCurrentSelection.bind(this);
 
                         // Add cleanup on page unload
                         window.addEventListener('beforeunload', () => {
