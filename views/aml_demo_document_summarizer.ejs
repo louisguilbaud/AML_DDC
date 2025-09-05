@@ -757,11 +757,11 @@
 
                         const fileEl = document.createElement('div');
                         fileEl.className = 'file';
-                        fileEl.dataset.fileId = id;
+                        fileEl.dataset.fileId = String(id);
                         fileEl.dataset.fileName = name.toLowerCase();
 
                         // Restore active state if this was previously selected
-                        if (id === currentSelection) {
+                        if (String(id) === String(currentSelection)) {
                             fileEl.classList.add('is-active');
                         }
 
@@ -791,16 +791,11 @@
                  * Select a file and update UI
                  */
                 selectFile(fileId) {
-                    this._selectedFileId = fileId;
-
-                    // Store globally for access in App.getSelectedFileId()
-                    if (window.DocumentSummarizerApp) {
-                        window.DocumentSummarizerApp._selectedFileId = fileId;
-                    }
+                    this._selectedFileId = String(fileId);
 
                     // Update active state
                     document.querySelectorAll('.file').forEach(el => {
-                        if (el.dataset.fileId === fileId) {
+                        if (el.dataset.fileId === String(fileId)) {
                             el.classList.add('is-active');
                         } else {
                             el.classList.remove('is-active');
@@ -810,12 +805,12 @@
                     // Update hidden select
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     if (selectEl) {
-                        selectEl.value = fileId;
+                        selectEl.value = String(fileId);
                     }
 
-                    // Trigger file loading
-                    if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
-                        window.DocumentSummarizerApp._onFileSelected(fileId);
+                    // Trigger file loading via the handlers exposed in App.init()
+                    if (window.DocumentSummarizerApp?._onFileSelected) {
+                        window.DocumentSummarizerApp._onFileSelected(String(fileId));
                     }
                 },
                 /**
@@ -848,7 +843,7 @@
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
                         const option = document.createElement('option');
-                        option.value = id;
+                        option.value = String(id);
                         option.textContent = name;
                         selectEl.appendChild(option);
                     });
@@ -1431,6 +1426,13 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
                         window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);
 
+                        // Add cleanup on page unload
+                        window.addEventListener('beforeunload', () => {
+                            this.stopAutoRefresh();
+                            APIService.clearToken();
+                            Utils.log('APP', 'Cleanup completed on page unload');
+                        });
+
                     } catch (error) {
                         Utils.log('APP', 'Initialization error', error);
                         UIManager.updateOutput(`Error: ${error.message}`);
@@ -1501,14 +1503,18 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         return;
                     }
 
-                    // Update summary display based on cache
-                    const summaryCacheKey = `${alertId}:${fileId}`;
+                    // Update summary display based on cache (match any fingerprint)
+                    const baseKey = `${String(alertId)}:${String(fileId)}:`;
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
 
-                    if (this._summaryCache && this._summaryCache.has(summaryCacheKey)) {
-                        // Display cached summary
-                        if (summaryEl) {
-                            summaryEl.innerHTML = this._summaryCache.get(summaryCacheKey);
+                    if (this._summaryCache) {
+                        const matchKey = [...this._summaryCache.keys()].find(k => k.startsWith(baseKey));
+                        if (matchKey && summaryEl) {
+                            summaryEl.innerHTML = this._summaryCache.get(matchKey);
+                        } else {
+                            if (summaryEl) {
+                                summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>';
+                            }
                         }
                     } else {
                         // Clear summary area when no cached summary exists
@@ -1582,43 +1588,55 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                  * Get selected file ID from dropdown
                  */
                 getSelectedFileId() {
-                    // First check if we have a stored selected ID
-                    if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._selectedFileId) {
-                        return window.DocumentSummarizerApp._selectedFileId;
-                    }
-                    // Fallback to select element
-                    const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
-                    return selectEl ? selectEl.value : null;
+                    // Single source of truth from UIManager
+                    return UIManager._selectedFileId || null;
                 },
-
                 /**
                  * Handle summarize button click
                  */
                 async handleSummarize() {
+                    // Prevent multiple simultaneous summarizations
+                    if (this._isSummarizing) {
+                        Utils.log('APP', 'Summarization already in progress');
+                        return;
+                    }
                     if (!this._currentCleanedText) {
                         alert('No document content to summarize');
                         return;
                     }
-
                     if (!this._currentParams || !this._currentParams.openaiKey) {
                         alert('OpenAI API key is required for summarization');
                         return;
                     }
 
-                    // Get the current file ID for caching
-                    const fileId = this.getSelectedFileId();
+                    // Get normalized IDs
+                    const fileId = String(this.getSelectedFileId() ?? '');
                     if (!fileId) {
                         alert('No file selected');
                         return;
                     }
+                    const alertId = String(this._currentParams?.alertId ?? 'GLOBAL');
 
-                    const { alertId } = this._currentParams;
-                    const summaryCacheKey = `${alertId}:${fileId}`;
-
-                    // Track which file is being summarized
-                    this._summarizingFileId = fileId;  // ADD THIS LINE
+                    // Cache key with cheap content fingerprint to avoid staleness
+                    const fp = String(this._currentCleanedText.length);
+                    const summaryCacheKey = `${alertId}:${fileId}:${fp}`;
 
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
+
+                    // Check if we already have a cached summary
+                    if (this._summaryCache.has(summaryCacheKey)) {
+                        const cachedSummary = this._summaryCache.get(summaryCacheKey);
+                        if (summaryEl) summaryEl.innerHTML = cachedSummary;
+                        Utils.log('APP', 'Using cached summary');
+                        return; // always return on cache hit, even if summaryEl is null
+                    }
+
+                    // Set flag to prevent concurrent requests
+                    this._isSummarizing = true;
+                    this._summarizingFileId = fileId;
+                    // Composite guard: alert + file
+                    this._summarizingKey = `${alertId}:${fileId}`;
+
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
 
                     try {
@@ -1644,36 +1662,35 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             this._currentParams.openaiKey,
                             CONFIG.OPENAI.MODEL,
                             (delta, full) => {
-                                // Only update UI if still viewing the same file
-                                const currentFileId = this.getSelectedFileId();
-                                if (summaryEl && this._summarizingFileId === currentFileId) {
+                                // Update only if still same alert+file
+                                const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
+                                if (summaryEl && this._summarizingKey === currentKey) {
                                     summaryEl.innerHTML = full;
                                 }
                             }
                         );
 
-                        //  Only update final summary if still viewing the same file
-                        const currentFileId = this.getSelectedFileId();
-                        if (summaryEl && this._summarizingFileId === currentFileId) {
+                        // Final update: guard by composite key
+                        const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
+                        if (summaryEl && this._summarizingKey === currentKey) {
                             summaryEl.innerHTML = summary;
                         }
 
-                        // Cache the summary regardless of which file is currently selected
+                        // Cache the summary
                         this._summaryCache.set(summaryCacheKey, summary);
 
                         // Limit cache size
-                        if (this._summaryCache.size > 10) {
+                        if (this._summaryCache.size > 15) {
                             const firstKey = this._summaryCache.keys().next().value;
                             this._summaryCache.delete(firstKey);
                         }
 
                         Utils.log('APP', `Summary cached for file: ${fileId}`);
-
                     } catch (error) {
                         Utils.log('APP', 'Summarization failed', error);
-                        //  Only show error if still viewing the same file
-                        const currentFileId = this.getSelectedFileId();
-                        if (summaryEl && this._summarizingFileId === currentFileId) {
+                        // Only show error if still viewing the same file (existing behavior preserved)
+                        const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
+                        if (summaryEl && this._summarizingKey === currentKey) {
                             summaryEl.textContent = `Error generating summary: ${error.message}`;
                         }
                     } finally {
@@ -1682,8 +1699,10 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             btn.classList.remove('loading');
                             btn.setAttribute('aria-busy', 'false');
                         }
-                        // Clear the summarizing file ID when done
+                        // Clear flags
+                        this._isSummarizing = false;
                         this._summarizingFileId = null;
+                        this._summarizingKey = null;
                     }
                 }
             };
