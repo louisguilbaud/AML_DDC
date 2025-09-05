@@ -500,10 +500,10 @@
 
             <!-- Main grid layout -->
             <div class="grid">
-                <!-- Left: Collection -->
-                <aside class="left" aria-label="Collection">
+                <!-- Left: Documents -->
+                <aside class="left" aria-label="Documents">
                     <div>
-                        <div class="label">Collection</div>
+                        <div class="label">Documents</div>
                         <div class="search">
                             <div class="search-wrapper">
                                 <input id="searchInput" placeholder="Search documents…" />
@@ -522,8 +522,8 @@
                 <!-- Right: File Content + Summary -->
                 <main class="right">
                     <section>
-                        <div class="label">File Content</div>
-                        <div class="surface file-content-box" aria-label="File Content">
+                        <div class="label">Content</div>
+                        <div class="surface file-content-box" aria-label="Content">
                             <pre id="fileContent">Select a file to view its content...</pre>
                         </div>
                     </section>
@@ -876,8 +876,7 @@
                     const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
                     if (contentEl) {
                         if (loading) {
-                            const statusText = status ? ` - ${status}` : '';
-                            contentEl.innerHTML = `<span class="processing-status">Loading file content${statusText}...</span>`;
+                            contentEl.innerHTML = `<span class="processing-status">Loading document content...</span>`;
                         } else {
                             contentEl.textContent = content;
                         }
