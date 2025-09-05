@@ -485,34 +485,41 @@
             }
         }
 
-        /* Flowing transparency wave when a file is summarizing (subtle + seamless) */
+        /* Flowing transparency wave - OPTIMIZED */
         .file.is-summarizing .name,
         .file.is-summarizing .meta {
             position: relative;
-            -webkit-mask-position: 0 0; 
-            mask-position: 0 0;   
 
-            /* A soft dip that never goes fully transparent */
+            /* Create a seamless repeating gradient pattern */
             -webkit-mask-image: linear-gradient(90deg,
                     rgba(0, 0, 0, 1) 0%,
-                    rgba(0, 0, 0, var(--file-wave-min)) var(--file-wave-width),
-                    rgba(0, 0, 0, 1) calc(var(--file-wave-width) * 2));
+                    rgba(0, 0, 0, var(--file-wave-min)) 25%,
+                    rgba(0, 0, 0, 1) 50%,
+                    rgba(0, 0, 0, var(--file-wave-min)) 75%,
+                    rgba(0, 0, 0, 1) 100%);
             mask-image: linear-gradient(90deg,
                     rgba(0, 0, 0, 1) 0%,
-                    rgba(0, 0, 0, var(--file-wave-min)) var(--file-wave-width),
-                    rgba(0, 0, 0, 1) calc(var(--file-wave-width) * 2));
+                    rgba(0, 0, 0, var(--file-wave-min)) 25%,
+                    rgba(0, 0, 0, 1) 50%,
+                    rgba(0, 0, 0, var(--file-wave-min)) 75%,
+                    rgba(0, 0, 0, 1) 100%);
 
-            /* Tile the pattern so there’s never a gap outside the gradient */
-            -webkit-mask-repeat: repeat;
-            mask-repeat: repeat;
-
-            /* Slide the mask across the text */
+            /* Size the mask to create smooth tiling */
             -webkit-mask-size: 200% 100%;
             mask-size: 200% 100%;
+
+            /* No need for repeat since we're animating position */
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+
+            /* Animate the full cycle for seamless loop */
             animation: file-wave var(--file-wave-speed) linear infinite;
 
-            /* micro-perf */
-            will-change: -webkit-mask-position, mask-position;
+            /* Optimize rendering */
+            will-change: mask-position;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            transform: translateZ(0);
         }
 
         @keyframes file-wave {
@@ -522,31 +529,9 @@
             }
 
             100% {
-                -webkit-mask-position: 100% 0;
-                mask-position: 100% 0;
-            }
-        }
-
-        /* Fallback if masks aren’t supported (older browsers) */
-        @supports not (mask-image: linear-gradient(90deg, #000, #000)) {
-
-            .file.is-summarizing .name,
-            .file.is-summarizing .meta {
-                animation: file-opacity 2.2s ease-in-out infinite;
-                -webkit-mask-position: 0 0; 
-                mask-position: 0 0;       
-            }
-
-            @keyframes file-opacity {
-
-                0%,
-                100% {
-                    opacity: 1;
-                }
-
-                50% {
-                    opacity: var(--file-wave-min);
-                }
+                /* Move the full 200% width for seamless loop */
+                -webkit-mask-position: -200% 0;
+                mask-position: -200% 0;
             }
         }
     </style>
