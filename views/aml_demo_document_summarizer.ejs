@@ -478,6 +478,38 @@
                 background-position: -200% 0;
             }
         }
+
+        /* Flowing transparency wave when a file is summarizing */
+        .file.is-summarizing .name,
+        .file.is-summarizing .meta {
+            position: relative;
+            /* Use a moving mask so the text stays the same color but its alpha "waves" */
+            -webkit-mask-image: linear-gradient(90deg,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, .35) 45%,
+                    rgba(0, 0, 0, 1) 100%);
+            mask-image: linear-gradient(90deg,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, .35) 45%,
+                    rgba(0, 0, 0, 1) 100%);
+            -webkit-mask-size: 200% 100%;
+            mask-size: 200% 100%;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            animation: file-wave 2.5s linear infinite;
+        }
+
+        @keyframes file-wave {
+            from {
+                -webkit-mask-position: 200% 0;
+                mask-position: 200% 0;
+            }
+
+            to {
+                -webkit-mask-position: -200% 0;
+                mask-position: -200% 0;
+            }
+        }
     </style>
 </head>
 
@@ -780,11 +812,15 @@
                         });
 
                         listEl.appendChild(fileEl);
+                        
                     });
 
                     // Also populate hidden select for compatibility
                     this.populateFileDropdown(files);
 
+                    // apply summarizing state to freshly rendered rows
+                    window.DocumentSummarizerApp?._updateBtn?.();
+                    
                     // Restore search filter if present
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
                     if (searchInput && searchInput.value) {
@@ -1472,6 +1508,15 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     btn.disabled = !canSummarizeThisFile || isSummarizingThisFile;
                     btn.classList.toggle('loading', isSummarizingThisFile);
                     btn.setAttribute('aria-busy', isSummarizingThisFile ? 'true' : 'false');
+
+                    // keep the documents list in sync (show flowing fade on items being summarized)
+                    if (alertId) {
+                        document.querySelectorAll('.file').forEach(el => {
+                            const fid = el.dataset.fileId;
+                            const summarizing = this._activeSummaries.has(this._key(alertId, fid));
+                            el.classList.toggle('is-summarizing', summarizing);
+                        });
+                    }
                 },
 
                 startAutoRefresh() {
