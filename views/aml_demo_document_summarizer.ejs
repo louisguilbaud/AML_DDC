@@ -484,6 +484,7 @@
                 background-position: -200% 0;
             }
         }
+
     </style>
 </head>
 
@@ -722,10 +723,7 @@
             // =============================================================================
             const UIManager = {
                 _allFiles: [],
-                // With these lines:
-                _selectedFileIds: new Set(),  // Track multiple selections
-                _lastClickedFileId: null,     // Track last clicked for shift-select
-                _viewingFileId: null,         // Track which file content is being viewed
+                _selectedFileId: null,
 
                 /**
                  * Update the main output display
@@ -748,15 +746,13 @@
                  * Populate the file list with clickable items
                  */
                 populateFileList(files) {
-                    const newIds = new Set(files.map(f => String(f.id || f.fileId)));
-                    this._selectedFileIds = new Set([...this._selectedFileIds].filter(id => newIds.has(id)));
                     this._allFiles = files;
                     const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
 
                     if (!listEl) return;
 
                     // Store current selection before clearing
-                    const currentSelections = new Set(this._selectedFileIds);
+                    const currentSelection = this._selectedFileId;
 
                     if (!files || files.length === 0) {
                         listEl.innerHTML = '<div class="loading-message">No files available</div>';
@@ -777,9 +773,8 @@
                         fileEl.dataset.fileName = name.toLowerCase();
 
                         // Restore active state if this was previously selected
-                        if (currentSelections.has(String(id))) {
+                        if (String(id) === String(currentSelection)) {
                             fileEl.classList.add('is-active');
-                            this._selectedFileIds.add(String(id));
                         }
 
                         fileEl.innerHTML = `
@@ -787,8 +782,8 @@
             <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
         `;
 
-                        fileEl.addEventListener('click', (event) => {
-                            this.selectFile(id, event);
+                        fileEl.addEventListener('click', () => {
+                            this.selectFile(id);
                         });
 
                         listEl.appendChild(fileEl);
@@ -811,85 +806,27 @@
                 /**
                  * Select a file and update UI
                  */
-                selectFile(fileId, event = null) {
-                    const isCtrlCmd = event && (event.ctrlKey || event.metaKey);
-                    const isShift = event && event.shiftKey;
+                selectFile(fileId) {
+                    this._selectedFileId = String(fileId);
 
-                    fileId = String(fileId);
-
-                    // Handle different selection modes
-                    if (isCtrlCmd) {
-                        // Toggle selection
-                        if (this._selectedFileIds.has(fileId)) {
-                            this._selectedFileIds.delete(fileId);
-                        } else {
-                            this._selectedFileIds.add(fileId);
-                        }
-                    } else if (isShift && this._lastClickedFileId) {
-                        // Range selection
-                        const allFileElements = Array.from(document.querySelectorAll('.file'));
-                        const visibleFiles = allFileElements.filter(el => el.style.display !== 'none');
-                        const startIdx = visibleFiles.findIndex(el => el.dataset.fileId === this._lastClickedFileId);
-                        const endIdx = visibleFiles.findIndex(el => el.dataset.fileId === fileId);
-
-                        if (startIdx !== -1 && endIdx !== -1) {
-                            const [minIdx, maxIdx] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)];
-                            // Clear and select range
-                            this._selectedFileIds.clear();
-                            for (let i = minIdx; i <= maxIdx; i++) {
-                                this._selectedFileIds.add(visibleFiles[i].dataset.fileId);
-                            }
-                        }
-                    } else {
-                        // Single selection (clear others)
-                        this._selectedFileIds.clear();
-                        this._selectedFileIds.add(fileId);
-                    }
-
-                    this._lastClickedFileId = fileId;
-
-                    // Update UI
+                    // Update active state
                     document.querySelectorAll('.file').forEach(el => {
-                        if (this._selectedFileIds.has(el.dataset.fileId)) {
+                        if (el.dataset.fileId === String(fileId)) {
                             el.classList.add('is-active');
                         } else {
                             el.classList.remove('is-active');
                         }
                     });
 
-                    // Update hidden select (for compatibility)
+                    // Update hidden select
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     if (selectEl) {
-                        selectEl.value = this._selectedFileIds.size === 1 ? fileId : '';
+                        selectEl.value = String(fileId);
                     }
 
-                    // Handle content display
-                    if (this._selectedFileIds.size === 1) {
-                        // Single file selected - show its content
-                        this._viewingFileId = fileId;
-                        if (window.DocumentSummarizerApp?._onFileSelected) {
-                            window.DocumentSummarizerApp._onFileSelected(fileId);
-                        }
-                    } else if (this._selectedFileIds.size > 1) {
-                        // Multiple files selected - show count
-                        this._viewingFileId = null;
-                        const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
-                        if (contentEl) {
-                            contentEl.textContent = `${this._selectedFileIds.size} files selected`;
-                        }
-
-                        // Clear summary area
-                        const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-                        if (summaryEl) {
-                            summaryEl.innerHTML = '<span class="muted">Select individual files to view their summaries</span>';
-                        }
-
-                        // Update button
-                        window.DocumentSummarizerApp?._updateBtn?.();
-                    } else {
-                        // No selection
-                        this._viewingFileId = null;
-                        this.displayFileContent('Select a file to view its content...');
+                    // Trigger file loading via the handlers exposed in App.init()
+                    if (window.DocumentSummarizerApp?._onFileSelected) {
+                        window.DocumentSummarizerApp._onFileSelected(String(fileId));
                     }
                 },
                 /**
@@ -1011,8 +948,7 @@
                                 }
                             } else {
                                 // Clear selection so the centralized updater knows no file is selected
-                                this._selectedFileIds.clear();
-                                this._viewingFileId = null;
+                                this._selectedFileId = null;
                                 this.displayFileContent('Select a file to view its content...');
                                 window.DocumentSummarizerApp?._updateBtn?.();
                             }
@@ -1028,61 +964,7 @@
                             }
                         });
                     }
-                    document.addEventListener('keydown', (e) => {
-                        // Ctrl/Cmd + A for select all
-                        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-                            const filelistEl = document.getElementById(CONFIG.ELEMENTS.filelist);
-                            if (filelistEl && filelistEl.contains(document.activeElement) ||
-                                document.activeElement === document.body) {
-                                e.preventDefault();
-
-                                // Select all visible files
-                                const visibleFiles = Array.from(document.querySelectorAll('.file'))
-                                    .filter(el => el.style.display !== 'none');
-
-                                this._selectedFileIds.clear();
-                                visibleFiles.forEach(el => {
-                                    this._selectedFileIds.add(el.dataset.fileId);
-                                    el.classList.add('is-active');
-                                });
-
-                                // Update content display
-                                const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
-                                if (contentEl) {
-                                    contentEl.textContent = `${this._selectedFileIds.size} files selected`;
-                                }
-
-                                // Clear summary
-                                const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-                                if (summaryEl) {
-                                    summaryEl.innerHTML = '<span class="muted">Select individual files to view their summaries</span>';
-                                }
-
-                                this._viewingFileId = null;
-                                window.DocumentSummarizerApp?._updateBtn?.();
-                            }
-                        }
-
-                        // Escape to clear selection
-                        if (e.key === 'Escape') {
-                            if (this._selectedFileIds.size > 0) {
-                                this._selectedFileIds.clear();
-                                document.querySelectorAll('.file.is-active').forEach(el => {
-                                    el.classList.remove('is-active');
-                                });
-                                this.displayFileContent('Select a file to view its content...');
-                                const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-                                if (summaryEl) {
-                                    summaryEl.innerHTML = '<span class="muted">AI summary will appear here...</span>';
-                                }
-                                this._viewingFileId = null;
-                                window.DocumentSummarizerApp?._updateBtn?.();
-                            }
-                        }
-                    });
                 }
-
-
             };
 
             // =============================================================================
@@ -1588,38 +1470,21 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
                     if (!btn) return;
 
-                    const selectedIds = this.getSelectedFileIds();
+                    const fileId = this.getSelectedFileId();
                     const alertId = this._currentParams?.alertId;
 
-                    // Check if any selected files are currently being summarized
-                    let isAnySummarizing = false;
-                    if (alertId && selectedIds.size > 0) {
-                        for (const fileId of selectedIds) {
-                            if (this._activeSummaries.has(this._key(alertId, fileId))) {
-                                isAnySummarizing = true;
-                                break;
-                            }
-                        }
-                    }
+                    const isSummarizingThisFile =
+                        !!fileId && !!alertId && this._activeSummaries.has(this._key(alertId, fileId));
 
-                    // Can summarize if we have selections and API key
-                    const canSummarize = selectedIds.size > 0 && !!this._currentParams?.openaiKey;
+                    const canSummarizeThisFile =
+                        !!this._currentCleanedText && !!this._currentParams?.openaiKey && !!fileId;
 
-                    btn.disabled = !canSummarize || isAnySummarizing;
-                    btn.classList.toggle('loading', isAnySummarizing);
-                    btn.setAttribute('aria-busy', isAnySummarizing ? 'true' : 'false');
+                    // Drive the button purely from the *current file* state
+                    btn.disabled = !canSummarizeThisFile || isSummarizingThisFile;
+                    btn.classList.toggle('loading', isSummarizingThisFile);
+                    btn.setAttribute('aria-busy', isSummarizingThisFile ? 'true' : 'false');
 
-                    // Update button text for multi-select
-                    const labelEl = btn.querySelector('.labeltext');
-                    if (labelEl) {
-                        if (selectedIds.size > 1) {
-                            labelEl.textContent = `Summarize (${selectedIds.size})`;
-                        } else {
-                            labelEl.textContent = 'Summarize';
-                        }
-                    }
-
-                    // Update file visual states
+                    // keep the documents list in sync (show flowing fade on items being summarized)
                     if (alertId) {
                         document.querySelectorAll('.file').forEach(el => {
                             const fid = el.dataset.fileId;
@@ -1846,134 +1711,111 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                 /**
                  * Get selected file ID from dropdown
                  */
-
                 getSelectedFileId() {
-                    // For single viewing compatibility
-                    return UIManager._viewingFileId || null;
-                },
-                getSelectedFileIds() {
-                    // For multi-select operations
-                    return UIManager._selectedFileIds;
+                    // Single source of truth from UIManager
+                    return UIManager._selectedFileId || null;
                 },
                 /**
                  * Handle summarize button click
                  */
                 async handleSummarize() {
-                    const selectedIds = this.getSelectedFileIds();
-
-                    if (selectedIds.size === 0) {
-                        alert('No files selected');
+                    // Allow parallel, but only one per file
+                    if (!this._currentCleanedText) {
+                        alert('No document content to summarize');
                         return;
                     }
-
                     if (!this._currentParams || !this._currentParams.openaiKey) {
                         alert('OpenAI API key is required for summarization');
                         return;
                     }
 
-                    const alertId = String(this._currentParams?.alertId ?? 'GLOBAL');
-                    const { sasUser, sasPass } = this._currentParams;
-
-                    // Process all selected files
-                    const promises = [];
-
-                    for (const fileId of selectedIds) {
-                        const key = this._key(alertId, fileId);
-
-                        // Skip if already summarizing
-                        if (this._activeSummaries.has(key)) {
-                            Utils.log('APP', `Already summarizing ${key}`);
-                            continue;
-                        }
-
-                        // Start async summarization for this file
-                        const promise = this.summarizeSingleFile(alertId, fileId, sasUser, sasPass);
-                        promises.push(promise);
+                    const fileId = String(this.getSelectedFileId() ?? '');
+                    if (!fileId) {
+                        alert('No file selected');
+                        return;
                     }
-
-                    // Wait for all to complete (or fail)
-                    await Promise.allSettled(promises);
-                    Utils.log('APP', `Batch summarization complete for ${promises.length} files`);
-                },
-
-                // Add this new method right after handleSummarize:
-                async summarizeSingleFile(alertId, fileId, sasUser, sasPass) {
+                    const alertId = String(this._currentParams?.alertId ?? 'GLOBAL');
                     const key = this._key(alertId, fileId);
 
+                    // Build cache key first and return early on cache hit (NO activeSummaries change)
+                    const fp = String(this._currentCleanedText.length);
+                    const summaryCacheKey = `${alertId}:${fileId}:${fp}`;
+                    const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
+
+                    if (this._summaryCache.has(summaryCacheKey)) {
+                        const cachedSummary = this._summaryCache.get(summaryCacheKey);
+                        if (summaryEl) summaryEl.innerHTML = cachedSummary;
+                        Utils.log('APP', 'Using cached summary');
+                        return;
+                    }
+
+                    // De-dupe only the same file; allow parallel across other files
+                    if (this._activeSummaries.has(key)) {
+                        Utils.log('APP', `Already summarizing ${key}`);
+                        return;
+                    }
+
+                    // Mark this file as summarizing and update the button for the *current* selection
+                    this._activeSummaries.add(key);
+                    this._updateSummarizeButtonForCurrentSelection();
+
                     try {
-                        // Mark as summarizing
-                        this._activeSummaries.add(key);
-                        this._updateSummarizeButtonForCurrentSelection();
-
-                        // Get file content from cache or fetch it
-                        const cacheKey = `${alertId}:${fileId}`;
-                        let cleanedText;
-
-                        if (this._fileCache.has(cacheKey)) {
-                            cleanedText = this._fileCache.get(cacheKey);
-                        } else {
-                            // Need to fetch and process the file
-                            const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
-                            const extractedText = await APIService.extractTextFromFile(fileData);
-                            cleanedText = Utils.cleanTextForLLM(extractedText, {
-                                removeExtraSpaces: true,
-                                removeSpecialChars: true,
-                                normalizeWhitespace: true,
-                                removeEmptyLines: true,
-                                trimLines: true,
-                                maxConsecutiveNewlines: 2
-                            });
-
-                            // Cache it
-                            this._fileCache.set(cacheKey, cleanedText);
-                            if (this._fileCache.size > 10) {
-                                const firstKey = this._fileCache.keys().next().value;
-                                this._fileCache.delete(firstKey);
-                            }
+                        // Show skeleton only if this file is still the one being viewed
+                        const isStillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
+                        if (summaryEl && isStillSelected) {
+                            summaryEl.innerHTML =
+                                '<div class="skel" aria-hidden="true">' +
+                                '<div class="line" style="width:88%"></div>' +
+                                '<div class="line" style="width:96%"></div>' +
+                                '<div class="line" style="width:72%"></div>' +
+                                '<div class="line" style="width:84%"></div>' +
+                                '<div class="line" style="width:74%"></div>' +
+                                '<div class="line" style="width:98%"></div>' +
+                                '<div class="line" style="width:92%"></div>' +
+                                '<div class="line" style="width:67%"></div>' +
+                                '</div>';
                         }
 
-                        // Check if summary already exists
-                        const fp = String(cleanedText.length);
-                        const summaryCacheKey = `${alertId}:${fileId}:${fp}`;
-
-                        if (this._summaryCache.has(summaryCacheKey)) {
-                            Utils.log('APP', `Summary already cached for file: ${fileId}`);
-                            return;
-                        }
-
-                        // Generate summary
                         const summary = await APIService.callOpenAI(
-                            cleanedText,
+                            this._currentCleanedText,
                             this._currentParams.openaiKey,
-                            CONFIG.OPENAI.MODEL
+                            CONFIG.OPENAI.MODEL,
+                            (delta, full) => {
+                                // Live-stream ONLY to the currently viewed file
+                                const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
+                                if (summaryEl && selectedKey === key) {
+                                    summaryEl.innerHTML = full;
+                                }
+                            }
                         );
 
-                        // Cache the summary
+                        // Final render (only if user is still on this file)
+                        const stillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
+                        if (summaryEl && stillSelected) {
+                            summaryEl.innerHTML = summary;
+                        }
+
+                        // Cache
                         this._summaryCache.set(summaryCacheKey, summary);
                         if (this._summaryCache.size > 15) {
                             const firstKey = this._summaryCache.keys().next().value;
                             this._summaryCache.delete(firstKey);
                         }
 
-                        Utils.log('APP', `Summary completed and cached for file: ${fileId}`);
-
-                        // If this file is currently being viewed, update the display
-                        if (this.getSelectedFileId() === String(fileId)) {
-                            const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-                            if (summaryEl) {
-                                summaryEl.innerHTML = summary;
-                            }
-                        }
-
+                        Utils.log('APP', `Summary cached for file: ${fileId}`);
                     } catch (error) {
-                        Utils.log('APP', `Summarization failed for file ${fileId}`, error);
+                        Utils.log('APP', 'Summarization failed', error);
+                        const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
+                        if (summaryEl && selectedKey === key) {
+                            summaryEl.textContent = `Error generating summary: ${error.message}`;
+                        }
                     } finally {
-                        // Clear the busy flag
+                        // Always clear the per-file busy flag, then refresh the button for what's currently shown
                         this._activeSummaries.delete(key);
                         this._updateSummarizeButtonForCurrentSelection();
                     }
 
-                },
+                }
             };
 
             // =============================================================================
