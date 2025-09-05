@@ -288,11 +288,22 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             font-family: inherit;
+            margin: 0;
         }
 
         #summaryContent {
             word-wrap: break-word;
             font-family: inherit;
+            margin: 0;
+        }
+
+        /* Add these new rules */
+        #summaryContent>*:first-child {
+            margin-top: 0;
+        }
+
+        #summaryContent>*:last-child {
+            margin-bottom: 0;
         }
 
         /* normal HTML flow */
@@ -348,7 +359,7 @@
         .skel {
             display: grid;
             gap: 8px;
-            margin-top: 4px;
+            margin: 0; 
         }
 
         .skel .line {
@@ -1500,8 +1511,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             '</div>';
                         if (btn) {
                             btn.disabled = true;
-                            btn.classList.add('loading');          
-                            btn.setAttribute('aria-busy', 'true');  
+                            btn.classList.add('loading');
+                            btn.setAttribute('aria-busy', 'true');
                         }
 
                         const summary = await APIService.callOpenAI(
