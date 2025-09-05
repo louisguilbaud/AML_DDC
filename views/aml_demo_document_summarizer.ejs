@@ -593,7 +593,7 @@
                 },
                 PRELOAD: {
                     ENABLED: true,
-                    COUNT: 5,     // how many files to warm up
+                    COUNT: 10,     // how many files to preload
                     DELAY: 200    // ms between requests to be gentle on the server
                 },
             };
@@ -1413,6 +1413,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                 _refreshInterval: null,
                 _inflightLoads: new Set(),   // de-dupe concurrent loads
                 _preloadToken: null,         // lets us abort an older preload wave
+                _activeSummaries: new Set(), // set of "<alertId>:<fileId>" currently summarizing
 
                 /**
                  * Initialize the entire application
@@ -1445,6 +1446,29 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         Utils.log('APP', 'Initialization error', error);
                         UIManager.updateOutput(`Error: ${error.message}`);
                     }
+                },
+
+                _key(alertId, fileId) {
+                    return `${String(alertId ?? 'GLOBAL')}:${String(fileId ?? '')}`;
+                },
+
+                _updateSummarizeButtonForCurrentSelection() {
+                    const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                    if (!btn) return;
+
+                    const fileId = this.getSelectedFileId();
+                    const alertId = this._currentParams?.alertId;
+
+                    const isSummarizingThisFile =
+                        !!fileId && !!alertId && this._activeSummaries.has(this._key(alertId, fileId));
+
+                    const canSummarizeThisFile =
+                        !!this._currentCleanedText && !!this._currentParams?.openaiKey && !!fileId;
+
+                    // Drive the button purely from the *current file* state
+                    btn.disabled = !canSummarizeThisFile || isSummarizingThisFile;
+                    btn.classList.toggle('loading', isSummarizingThisFile);
+                    btn.setAttribute('aria-busy', isSummarizingThisFile ? 'true' : 'false');
                 },
 
                 startAutoRefresh() {
@@ -1581,6 +1605,9 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         return;
                     }
 
+                    this._currentCleanedText = null;
+                    this._updateSummarizeButtonForCurrentSelection();
+
                     // Update summary display based on cache (match any fingerprint)
                     const baseKey = `${String(alertId)}:${String(fileId)}:`;
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
@@ -1610,10 +1637,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             UIManager.displayFileContent(this._fileCache.get(cacheKey));
                             this._currentCleanedText = this._fileCache.get(cacheKey);
 
-                            if (this._currentParams.openaiKey) {
-                                const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                                if (btn) btn.disabled = false;
-                            }
+                            this._updateSummarizeButtonForCurrentSelection();
                             return;
                         }
 
@@ -1644,10 +1668,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         UIManager.displayFileContent(cleanedText);
                         this._currentCleanedText = cleanedText;
 
-                        if (this._currentParams.openaiKey) {
-                            const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
-                            if (btn) btn.disabled = false;
-                        }
+                        this._updateSummarizeButtonForCurrentSelection();
 
                         Utils.log('APP', 'File content loaded and cleaned successfully');
 
@@ -1659,6 +1680,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
                         UIManager.displayFileContent(`Error loading file content: ${error.message}`);
+                        this._currentCleanedText = null;
+                        this._updateSummarizeButtonForCurrentSelection();
                     }
                 },
 
@@ -1673,11 +1696,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                  * Handle summarize button click
                  */
                 async handleSummarize() {
-                    // Prevent multiple simultaneous summarizations
-                    if (this._isSummarizing) {
-                        Utils.log('APP', 'Summarization already in progress');
-                        return;
-                    }
+                    // Allow parallel, but only one per file
                     if (!this._currentCleanedText) {
                         alert('No document content to summarize');
                         return;
@@ -1687,52 +1706,51 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         return;
                     }
 
-                    // Get normalized IDs
                     const fileId = String(this.getSelectedFileId() ?? '');
                     if (!fileId) {
                         alert('No file selected');
                         return;
                     }
                     const alertId = String(this._currentParams?.alertId ?? 'GLOBAL');
+                    const key = this._key(alertId, fileId);
 
-                    // Cache key with cheap content fingerprint to avoid staleness
+                    // Build cache key first and return early on cache hit (NO activeSummaries change)
                     const fp = String(this._currentCleanedText.length);
                     const summaryCacheKey = `${alertId}:${fileId}:${fp}`;
-
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
 
-                    // Check if we already have a cached summary
                     if (this._summaryCache.has(summaryCacheKey)) {
                         const cachedSummary = this._summaryCache.get(summaryCacheKey);
                         if (summaryEl) summaryEl.innerHTML = cachedSummary;
                         Utils.log('APP', 'Using cached summary');
-                        return; // always return on cache hit, even if summaryEl is null
+                        return;
                     }
 
-                    // Set flag to prevent concurrent requests
-                    this._isSummarizing = true;
-                    this._summarizingFileId = fileId;
-                    // Composite guard: alert + file
-                    this._summarizingKey = `${alertId}:${fileId}`;
+                    // De-dupe only the same file; allow parallel across other files
+                    if (this._activeSummaries.has(key)) {
+                        Utils.log('APP', `Already summarizing ${key}`);
+                        return;
+                    }
 
-                    const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
+                    // Mark this file as summarizing and update the button for the *current* selection
+                    this._activeSummaries.add(key);
+                    this._updateSummarizeButtonForCurrentSelection();
 
                     try {
-                        if (summaryEl) summaryEl.innerHTML =
-                            '<div class="skel" aria-hidden="true">' +
-                            '<div class="line" style="width:88%"></div>' +
-                            '<div class="line" style="width:96%"></div>' +
-                            '<div class="line" style="width:72%"></div>' +
-                            '<div class="line" style="width:84%"></div>' +
-                            '<div class="line" style="width:74%"></div>' +
-                            '<div class="line" style="width:98%"></div>' +
-                            '<div class="line" style="width:92%"></div>' +
-                            '<div class="line" style="width:67%"></div>' +
-                            '</div>';
-                        if (btn) {
-                            btn.disabled = true;
-                            btn.classList.add('loading');
-                            btn.setAttribute('aria-busy', 'true');
+                        // Show skeleton only if this file is still the one being viewed
+                        const isStillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
+                        if (summaryEl && isStillSelected) {
+                            summaryEl.innerHTML =
+                                '<div class="skel" aria-hidden="true">' +
+                                '<div class="line" style="width:88%"></div>' +
+                                '<div class="line" style="width:96%"></div>' +
+                                '<div class="line" style="width:72%"></div>' +
+                                '<div class="line" style="width:84%"></div>' +
+                                '<div class="line" style="width:74%"></div>' +
+                                '<div class="line" style="width:98%"></div>' +
+                                '<div class="line" style="width:92%"></div>' +
+                                '<div class="line" style="width:67%"></div>' +
+                                '</div>';
                         }
 
                         const summary = await APIService.callOpenAI(
@@ -1740,24 +1758,22 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                             this._currentParams.openaiKey,
                             CONFIG.OPENAI.MODEL,
                             (delta, full) => {
-                                // Update only if still same alert+file
-                                const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
-                                if (summaryEl && this._summarizingKey === currentKey) {
+                                // Live-stream ONLY to the currently viewed file
+                                const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
+                                if (summaryEl && selectedKey === key) {
                                     summaryEl.innerHTML = full;
                                 }
                             }
                         );
 
-                        // Final update: guard by composite key
-                        const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
-                        if (summaryEl && this._summarizingKey === currentKey) {
+                        // Final render (only if user is still on this file)
+                        const stillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
+                        if (summaryEl && stillSelected) {
                             summaryEl.innerHTML = summary;
                         }
 
-                        // Cache the summary
+                        // Cache
                         this._summaryCache.set(summaryCacheKey, summary);
-
-                        // Limit cache size
                         if (this._summaryCache.size > 15) {
                             const firstKey = this._summaryCache.keys().next().value;
                             this._summaryCache.delete(firstKey);
@@ -1766,22 +1782,16 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         Utils.log('APP', `Summary cached for file: ${fileId}`);
                     } catch (error) {
                         Utils.log('APP', 'Summarization failed', error);
-                        // Only show error if still viewing the same file (existing behavior preserved)
-                        const currentKey = `${String(this._currentParams?.alertId ?? 'GLOBAL')}:${String(this.getSelectedFileId() ?? '')}`;
-                        if (summaryEl && this._summarizingKey === currentKey) {
+                        const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
+                        if (summaryEl && selectedKey === key) {
                             summaryEl.textContent = `Error generating summary: ${error.message}`;
                         }
                     } finally {
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.classList.remove('loading');
-                            btn.setAttribute('aria-busy', 'false');
-                        }
-                        // Clear flags
-                        this._isSummarizing = false;
-                        this._summarizingFileId = null;
-                        this._summarizingKey = null;
+                        // Always clear the per-file busy flag, then refresh the button for what's currently shown
+                        this._activeSummaries.delete(key);
+                        this._updateSummarizeButtonForCurrentSelection();
                     }
+
                 }
             };
 
