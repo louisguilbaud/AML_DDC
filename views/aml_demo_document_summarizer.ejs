@@ -532,6 +532,19 @@
             backface-visibility: hidden;
             transform: translateZ(0);
         }
+
+        @keyframes file-wave {
+            0% {
+                -webkit-mask-position: 0% 0;
+                mask-position: 0% 0;
+            }
+
+            100% {
+                /* Move the full 100% width for seamless loop */
+                -webkit-mask-position: 0% 0;
+                mask-position: 0% 0;
+            }
+        }
     </style>
 </head>
 
