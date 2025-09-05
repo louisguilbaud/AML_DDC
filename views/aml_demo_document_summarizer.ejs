@@ -485,24 +485,28 @@
             }
         }
 
-        /* Flowing transparency wave - WORKING VERSION */
+        /* Flowing transparency wave - SMOOTH VERSION */
         .file.is-summarizing .name,
         .file.is-summarizing .meta {
             position: relative;
 
-            /* Single wave pattern that moves across */
+            /* Wider, smoother gradient for more gradual transitions */
             -webkit-mask-image: linear-gradient(90deg,
-                    rgba(0, 0, 0, 0.5) 0%,
+                    rgba(0, 0, 0, 0.6) 0%,
+                    rgba(0, 0, 0, 0.8) 25%,
                     rgba(0, 0, 0, 1) 50%,
-                    rgba(0, 0, 0, 0.5) 100%);
+                    rgba(0, 0, 0, 0.8) 75%,
+                    rgba(0, 0, 0, 0.6) 100%);
             mask-image: linear-gradient(90deg,
-                    rgba(0, 0, 0, 0.5) 0%,
+                    rgba(0, 0, 0, 0.6) 0%,
+                    rgba(0, 0, 0, 0.8) 25%,
                     rgba(0, 0, 0, 1) 50%,
-                    rgba(0, 0, 0, 0.5) 100%);
+                    rgba(0, 0, 0, 0.8) 75%,
+                    rgba(0, 0, 0, 0.6) 100%);
 
-            /* Make mask smaller than element to show wave */
-            -webkit-mask-size: 50% 100%;
-            mask-size: 50% 100%;
+            /* Make mask wider for smoother movement */
+            -webkit-mask-size: 150% 100%;
+            mask-size: 150% 100%;
 
             /* Allow repeat for continuous effect */
             -webkit-mask-repeat: repeat-x;
@@ -523,8 +527,8 @@
             }
 
             100% {
-                -webkit-mask-position: 50% 0;
-                mask-position: 50% 0;
+                -webkit-mask-position: 150% 0;
+                mask-position: 150% 0;
             }
         }
     </style>
