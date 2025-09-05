@@ -591,6 +591,11 @@
                     ENABLED: true,
                     INTERVAL: 5000 // milli seconds
                 },
+                PRELOAD: {
+                    ENABLED: true,
+                    COUNT: 5,     // how many files to warm up
+                    DELAY: 200    // ms between requests to be gentle on the server
+                },
             };
 
             // Initialize PDF.js worker
@@ -1363,6 +1368,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
 
                             UIManager.populateFileList(files);
                             UIManager.appendOutput(`\nAPI Response: (${files.length} files)`);
+                            App.preloadFirstFiles(files);
 
                             App.startAutoRefresh();
                         } catch (error) {
@@ -1405,6 +1411,8 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                 _currentCleanedText: null,
                 _summarizingFileId: null,
                 _refreshInterval: null,
+                _inflightLoads: new Set(),   // de-dupe concurrent loads
+                _preloadToken: null,         // lets us abort an older preload wave
 
                 /**
                  * Initialize the entire application
@@ -1439,7 +1447,6 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     }
                 },
 
-                // Add this new method:
                 startAutoRefresh() {
                     if (!CONFIG.AUTO_REFRESH.ENABLED || this._refreshInterval) return;
 
@@ -1478,6 +1485,77 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         this._refreshInterval = null;
                         Utils.log('AUTO_REFRESH', 'Stopped auto-refresh');
                     }
+                },
+
+                async preloadFirstFiles(files) {
+                    if (!CONFIG.PRELOAD.ENABLED) return;
+                    if (!this._currentParams) return;
+
+                    const { alertId, sasUser, sasPass } = this._currentParams;
+                    if (!alertId || !sasUser || !sasPass) return;
+
+                    const list = (files && files.length ? files : UIManager._allFiles) || [];
+                    if (!list.length) return;
+
+                    const token = Symbol('preload');
+                    this._preloadToken = token;
+
+                    const toPreload = list.slice(0, CONFIG.PRELOAD.COUNT);
+
+                    for (const f of toPreload) {
+                        // Abort if a newer preload started (e.g., alert switched / list refreshed)
+                        if (this._preloadToken !== token) {
+                            Utils.log('PRELOAD', 'Aborted previous preload wave');
+                            return;
+                        }
+
+                        const fileId = String(f.id || f.fileId || '');
+                        if (!fileId) continue;
+
+                        const cacheKey = `${String(alertId)}:${fileId}`;
+
+                        // Skip if already cached or currently being fetched
+                        if (this._fileCache.has(cacheKey) || this._inflightLoads.has(cacheKey)) {
+                            continue;
+                        }
+
+                        try {
+                            this._inflightLoads.add(cacheKey);
+
+                            // Fetch & extract, same pipeline as handleFileSelection (but no UI updates)
+                            const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
+                            const extracted = await APIService.extractTextFromFile(fileData);
+                            const cleaned = Utils.cleanTextForLLM(extracted, {
+                                removeExtraSpaces: true,
+                                removeSpecialChars: true,
+                                normalizeWhitespace: true,
+                                removeEmptyLines: true,
+                                trimLines: true,
+                                maxConsecutiveNewlines: 2
+                            });
+
+                            // Put into cache (respect your existing size limit logic)
+                            this._fileCache.set(cacheKey, cleaned);
+                            if (this._fileCache.size > 10) {
+                                const firstKey = this._fileCache.keys().next().value;
+                                this._fileCache.delete(firstKey);
+                            }
+
+                            Utils.log('PRELOAD', `Cached file ${fileId}`);
+                        } catch (e) {
+                            Utils.log('PRELOAD', `Failed to preload ${fileId}`, e);
+                            // swallow — preloading must be silent
+                        } finally {
+                            this._inflightLoads.delete(cacheKey);
+                        }
+
+                        // Small gap between requests (optional)
+                        if (CONFIG.PRELOAD.DELAY) {
+                            await new Promise(r => setTimeout(r, CONFIG.PRELOAD.DELAY));
+                        }
+                    }
+
+                    Utils.log('PRELOAD', 'Preload finished');
                 },
 
                 /**
