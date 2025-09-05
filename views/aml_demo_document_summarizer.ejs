@@ -155,17 +155,73 @@
         .search {
             display: flex;
             gap: 8px;
-            margin-bottom: 10px
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .search-wrapper {
+            position: relative;
+            width: 100%;
         }
 
         .search input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 10px 36px 10px 12px;
             border: 1px solid var(--border);
             border-radius: 14px;
             background: #fff;
             outline: none;
         }
+
+        .search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 0;
+            display: none;
+            /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: var(--muted);
+            transition: all 0.15s ease;
+        }
+
+        .search-clear:hover {
+            background: rgba(0, 0, 0, 0.06);
+            color: var(--fg);
+        }
+
+        .search-clear.visible {
+            display: flex;
+            /* Show when visible class is added */
+        }
+
+        /* The X icon using CSS */
+        .search-clear::before,
+        .search-clear::after {
+            content: '';
+            position: absolute;
+            width: 12px;
+            height: 1.5px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+
+        .search-clear::before {
+            transform: rotate(45deg);
+        }
+
+        .search-clear::after {
+            transform: rotate(-45deg);
+        }
+
 
         .filelist {
             display: grid;
@@ -449,7 +505,11 @@
                     <div>
                         <div class="label">Collection</div>
                         <div class="search">
-                            <input id="searchInput" placeholder="Search documents…" />
+                            <div class="search-wrapper">
+                                <input id="searchInput" placeholder="Search documents…" />
+                                <button id="searchClear" class="search-clear" type="button"
+                                    aria-label="Clear search"></button>
+                            </div>
                         </div>
                     </div>
                     <div class="surface">
@@ -830,10 +890,40 @@
                 setupEventListeners() {
                     // Search input
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
-                    if (searchInput) {
+                    const searchClear = document.getElementById('searchClear');
+                    if (searchInput && searchClear) {
+                        // Handle input changes
                         searchInput.addEventListener('input', (e) => {
+                            const hasValue = e.target.value.length > 0;
+
+                            // Show/hide clear button
+                            if (hasValue) {
+                                searchClear.classList.add('visible');
+                            } else {
+                                searchClear.classList.remove('visible');
+                            }
+
+                            // Filter files
                             this.filterFiles(e.target.value);
                         });
+
+                        // Handle clear button click
+                        searchClear.addEventListener('click', () => {
+                            searchInput.value = '';
+                            searchClear.classList.remove('visible');
+                            this.filterFiles(''); // Reset filter to show all files
+                            searchInput.focus(); // Return focus to input
+                        });
+
+                        // Also handle keyboard clearing (optional - for ESC key)
+                        searchInput.addEventListener('keydown', (e) => {
+                            if (e.key === 'Escape' && e.target.value) {
+                                searchInput.value = '';
+                                searchClear.classList.remove('visible');
+                                this.filterFiles('');
+                            }
+                        });
+
                     }
 
                     // Hidden file select (for compatibility)
