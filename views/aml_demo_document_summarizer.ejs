@@ -275,13 +275,47 @@
             display: inline-block;
         }
 
-        /* ADD */
         .loading .labeltext {
             display: none;
         }
 
-        /* ADD */
+        /* Remove top margins from ALL first elements inside these containers */
+        #fileContent>*:first-child,
+        #summaryContent>*:first-child,
+        #summaryContent article:first-child,
+        #summaryContent h1:first-child,
+        #summaryContent h2:first-child,
+        #summaryContent h3:first-child,
+        #summaryContent p:first-child {
+            margin-top: 0 !important;
+        }
 
+        /* Also ensure article elements don't add spacing */
+        #summaryContent article {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Ensure all heading elements inside summary don't add extra top margin when they're first */
+        #summaryContent>article>*:first-child {
+            margin-top: 0 !important;
+        }
+
+        /* Fix any potential spacing from the muted text spans */
+        .muted {
+            color: var(--muted);
+            display: inline-block;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Ensure the processing-status doesn't add margin */
+        .processing-status {
+            color: var(--primary);
+            font-style: italic;
+            margin: 0;
+            padding: 0;
+        }
 
         /* Content areas */
         #fileContent {
@@ -289,6 +323,7 @@
             word-wrap: break-word;
             font-family: inherit;
             margin: 0;
+            padding: 0;
         }
 
         #summaryContent {
@@ -359,7 +394,7 @@
         .skel {
             display: grid;
             gap: 8px;
-            margin: 0; 
+            margin: 0;
         }
 
         .skel .line {
