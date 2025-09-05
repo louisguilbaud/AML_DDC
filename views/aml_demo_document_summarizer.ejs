@@ -748,6 +748,8 @@
                  * Populate the file list with clickable items
                  */
                 populateFileList(files) {
+                    const newIds = new Set(files.map(f => String(f.id || f.fileId)));
+                    this._selectedFileIds = new Set([...this._selectedFileIds].filter(id => newIds.has(id)));
                     this._allFiles = files;
                     const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
 
