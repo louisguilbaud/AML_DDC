@@ -485,30 +485,41 @@
             }
         }
 
-        /* Flowing transparency wave - OPTIMIZED */
+        /* Flowing transparency wave - FIXED for 50% minimum visibility */
         .file.is-summarizing .name,
         .file.is-summarizing .meta {
             position: relative;
 
-            /* Create a seamless repeating gradient pattern */
+            /* Create a smooth wave that never goes below 50% visibility */
             -webkit-mask-image: linear-gradient(90deg,
-                    rgba(0, 0, 0, 1) 20%,
-                    rgba(0, 0, 0, var(--file-wave-min)) 25%,
+                    rgba(0, 0, 0, 1) 0%,
+                    /* Full opacity at start */
+                    rgba(0, 0, 0, 0.5) 15%,
+                    /* Fade to 50% */
+                    rgba(0, 0, 0, 0.5) 35%,
+                    /* Hold at 50% */
                     rgba(0, 0, 0, 1) 50%,
-                    rgba(0, 0, 0, var(--file-wave-min)) 75%,
+                    /* Back to full */
+                    rgba(0, 0, 0, 0.5) 65%,
+                    /* Fade to 50% */
+                    rgba(0, 0, 0, 0.5) 85%,
+                    /* Hold at 50% */
                     rgba(0, 0, 0, 1) 100%);
+            /* Full opacity at end */
             mask-image: linear-gradient(90deg,
-                    rgba(0, 0, 0, 1) 20%,
-                    rgba(0, 0, 0, var(--file-wave-min)) 25%,
+                    rgba(0, 0, 0, 1) 0%,
+                    rgba(0, 0, 0, 0.5) 15%,
+                    rgba(0, 0, 0, 0.5) 35%,
                     rgba(0, 0, 0, 1) 50%,
-                    rgba(0, 0, 0, var(--file-wave-min)) 75%,
+                    rgba(0, 0, 0, 0.5) 65%,
+                    rgba(0, 0, 0, 0.5) 85%,
                     rgba(0, 0, 0, 1) 100%);
 
             /* Size the mask to create smooth tiling */
             -webkit-mask-size: 200% 100%;
             mask-size: 200% 100%;
 
-            /* No need for repeat since we're animating position */
+            /* No repeat needed */
             -webkit-mask-repeat: no-repeat;
             mask-repeat: no-repeat;
 
