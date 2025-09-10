@@ -9,6 +9,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
     <!-- PDF.js library for PDF text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/dompurify@3.1.6/dist/purify.min.js"
+        integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
     <style>
         /* ===== Theme + base ===== */
         :root {
@@ -484,7 +487,6 @@
                 background-position: -200% 0;
             }
         }
-
     </style>
 </head>
 
@@ -596,14 +598,21 @@
                 },
                 AUTO_REFRESH: {
                     ENABLED: true,
-                    INTERVAL: 5000 // milli seconds
+                    INTERVAL: 4000 // milli seconds
                 },
                 PRELOAD: {
                     ENABLED: true,
                     COUNT: 10,     // how many files to preload
                     DELAY: 200    // ms between requests to be gentle on the server
                 },
+
             };
+
+            // Strict allow-list for LLM HTML (blocks scripts, styles, events, links, etc.)
+            const SANITIZE = (html) => DOMPurify.sanitize(html, {
+                ALLOWED_TAGS: ['article', 'h2', 'h3', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote'],
+                ALLOWED_ATTR: [] // no attributes allowed
+            });
 
             // Initialize PDF.js worker
             if (typeof pdfjsLib !== 'undefined') {
@@ -1638,7 +1647,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     if (this._summaryCache) {
                         const matchKey = [...this._summaryCache.keys()].find(k => k.startsWith(baseKey));
                         if (matchKey && summaryEl) {
-                            summaryEl.innerHTML = this._summaryCache.get(matchKey);
+                            summaryEl.innerHTML = SANITIZE(this._summaryCache.get(matchKey));
                         } else {
                             if (summaryEl) {
                                 summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>';
@@ -1744,7 +1753,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
 
                     if (this._summaryCache.has(summaryCacheKey)) {
                         const cachedSummary = this._summaryCache.get(summaryCacheKey);
-                        if (summaryEl) summaryEl.innerHTML = cachedSummary;
+                        if (summaryEl) summaryEl.innerHTML = SANITIZE(cachedSummary);
                         Utils.log('APP', 'Using cached summary');
                         return;
                     }
@@ -1784,7 +1793,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                                 // Live-stream ONLY to the currently viewed file
                                 const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
                                 if (summaryEl && selectedKey === key) {
-                                    summaryEl.innerHTML = full;
+                                    summaryEl.innerHTML = SANITIZE(full);
                                 }
                             }
                         );
@@ -1792,11 +1801,12 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         // Final render (only if user is still on this file)
                         const stillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
                         if (summaryEl && stillSelected) {
-                            summaryEl.innerHTML = summary;
+                            const safeFinal = SANITIZE(summary);
+                            summaryEl.innerHTML = safeFinal;
+                            // Cache the sanitized version
+                            this._summaryCache.set(summaryCacheKey, safeFinal);
                         }
 
-                        // Cache
-                        this._summaryCache.set(summaryCacheKey, summary);
                         if (this._summaryCache.size > 15) {
                             const firstKey = this._summaryCache.keys().next().value;
                             this._summaryCache.delete(firstKey);
