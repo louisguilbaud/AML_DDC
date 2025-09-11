@@ -702,6 +702,11 @@
                     <p class="subtitle">Generate a concise summary with one click.</p>
                 </div>
                 <div class="row">
+                    <!-- Summarize stays in header; auto-hidden in Chat mode via CSS -->
+                    <button id="summarizeBtn" class="btn-primary" type="button" disabled aria-busy="false">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span class="labeltext">Summarize</span>
+                    </button>
                     <!-- Segmented control: Summary <-> Chat -->
                     <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false"
                         aria-label="Toggle summary or chat">
@@ -709,12 +714,6 @@
                         <span class="label">Chat</span>
                         <span class="pill" aria-hidden="true"></span>
                     </div>
-
-                    <!-- Summarize stays in header; auto-hidden in Chat mode via CSS -->
-                    <button id="summarizeBtn" class="btn-primary" type="button" disabled aria-busy="false">
-                        <span class="spinner" aria-hidden="true"></span>
-                        <span class="labeltext">Summarize</span>
-                    </button>
                 </div>
             </div>
 
