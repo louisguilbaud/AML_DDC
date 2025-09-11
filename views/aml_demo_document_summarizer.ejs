@@ -1493,29 +1493,55 @@
                  * Call OpenAI API for summarization
                  */
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
-                    const systemPrompt = `You are a helpful assistant that creates concise, clear summaries in English.
+                    const isMulti = text.startsWith('[[MULTI_DOC]]') || text.includes('==== [DOC ');
 
+                    // Clip overly large payloads
+                    const MAX_CHARS = 300000;
+                    if (text.length > MAX_CHARS) {
+                        text = text.slice(0, MAX_CHARS) + '\n[...trimmed]';
+                    }
+
+                    const singlePrompt = `You are a helpful assistant that creates concise, clear summaries in English.
 Rules:
 - Length: ≤ 1/4 of the input, and never more than 500 words.
-- Output: **strict, self-contained HTML5 only** (no Markdown, no code fences).
-- Use semantic tags only: <article>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>.
-- Do NOT include <script>, <style>, images, iframes, inline event handlers, or external resources.
-- Return exactly one HTML snippet; nothing before or after it.
-
-Structure to follow:
+- Output: strict, self-contained HTML5 (no Markdown).
+- Use only: <article>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>.
+- No <script>, <style>, images, iframes, links or inline events.
+Structure:
 <article>
   <h2>Title</h2>
   <p>One-sentence gist.</p>
   <h3>Key points</h3>
-  <ul>
-    <li>…</li>
-  </ul>
+  <ul><li>…</li></ul>
   <h3>Details</h3>
   <p>…</p>
 </article>
 
-Summarize this document concisely, highlighting the key points:\n\n${text}
-                    `;
+Summarize this document:\n\n${text}`;
+
+                    const multiPrompt = `You are a helpful assistant that summarizes a set of documents (marked by "==== [DOC n] <name> ====").
+Rules:
+- One cohesive HTML5 summary for ALL documents, ≤ 500 words total.
+- Output: strict HTML5; allowed: <article>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <blockquote>.
+- Deduplicate, merge overlaps, note contradictions. No quotes/links.
+
+Structure:
+<article>
+  <h2>Overall summary</h2>
+  <p>1–2 sentence gist across all docs.</p>
+  <h3>Key themes</h3>
+  <ul><li>Theme — short rationale</li></ul>
+  <h3>Per-document highlights</h3>
+  <ul>
+    <li>Use format: DOC n — <em>name</em>: 1–2 bullets of the most unique points.</li>
+  </ul>
+  <h3>Risks / disagreements</h3>
+  <ul><li>…if any…</li></ul>
+</article>
+
+Summarize the set:\n\n${text}`;
+
+                    const systemPrompt = isMulti ? multiPrompt : singlePrompt;
 
                     const body = {
                         model,
@@ -1524,7 +1550,6 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         text: { verbosity: "low" },
                         stream: !!onDelta
                     };
-
                     const res = await fetch(CONFIG.OPENAI.URL, {
                         method: 'POST',
                         headers: {
@@ -2144,7 +2169,25 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                                 if (cleaned) parts.push(cleaned);
                             }
 
-                            const combined = parts.join('\n\n');
+                            // add a header + per-doc delimiters the LLM can detect
+                            const lines = UIManager._allFiles.map((f, i) => {
+                                const name = (f.name || f.fileName || f.id || `Document ${i + 1}`).toString();
+                                return `- [DOC ${i + 1}] ${name}`;
+                            });
+                            const combined = [
+                                '[[MULTI_DOC]]',                         // <— marker the LLM can key on
+                                'INPUT CONTAINS MULTIPLE DOCUMENTS',
+                                'TABLE OF CONTENTS:',
+                                ...lines,
+                                '',                                      // blank line
+                                ...UIManager._allFiles.map((f, i) => {
+                                    const name = (f.name || f.fileName || f.id || `Document ${i + 1}`).toString();
+                                    const fid = String(f.id || f.fileId || '');
+                                    const cacheKey = `${alertId}:${fid}`;
+                                    const text = this._fileCache.get(cacheKey) || ''; // already filled above
+                                    return `==== [DOC ${i + 1}] ${name} ====\n${text}`;
+                                })
+                            ].join('\n');
                             UIManager.displayFileContent(combined);
                             this._currentCleanedText = combined;
                             this._updateSummarizeButtonForCurrentSelection();
