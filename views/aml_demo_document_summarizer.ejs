@@ -237,6 +237,7 @@
             gap: 8px
         }
 
+
         .file {
             border: 1px solid transparent;
             border-radius: 12px;
@@ -265,6 +266,18 @@
             font-size: 12px;
             color: var(--muted)
         }
+
+        /*  special "All Documents" row + separator */
+        .filelist .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        .file.all-docs .meta {
+            font-style: italic
+        }
+
 
         /* Button */
         .row {
@@ -843,6 +856,10 @@
                         title: 'Document Chat',
                         subtitle: 'Ask questions about this document.'
                     }
+                },
+                SPECIAL: {
+                    ALL_ID: '__ALL__',
+                    ALL_NAME: 'All Documents'
                 }
             };
 
@@ -997,10 +1014,8 @@
                 populateFileList(files) {
                     this._allFiles = files;
                     const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
-
                     if (!listEl) return;
 
-                    // Store current selection before clearing
                     const currentSelection = this._selectedFileId;
 
                     if (!files || files.length === 0) {
@@ -1008,9 +1023,27 @@
                         return;
                     }
 
-                    // Clear and populate
                     listEl.innerHTML = '';
 
+                    // --- ADD: permanent "All Documents" row ---
+                    const allEl = document.createElement('div');
+                    allEl.className = 'file all-docs';
+                    allEl.dataset.fileId = CONFIG.SPECIAL.ALL_ID;
+                    allEl.dataset.fileName = CONFIG.SPECIAL.ALL_NAME.toLowerCase();
+                    if (String(currentSelection) === CONFIG.SPECIAL.ALL_ID) allEl.classList.add('is-active');
+                    allEl.innerHTML = `
+    <div class="name">${CONFIG.SPECIAL.ALL_NAME}</div>
+    <div class="meta">${files.length} documents · combined view</div>
+  `;
+                    allEl.addEventListener('click', () => { this.selectFile(CONFIG.SPECIAL.ALL_ID); });
+                    listEl.appendChild(allEl);
+
+                    // --- ADD: thin separator line ---
+                    const sep = document.createElement('div');
+                    sep.className = 'divider';
+                    listEl.appendChild(sep);
+
+                    // --- Existing: individual documents ---
                     files.forEach(file => {
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
@@ -1021,35 +1054,25 @@
                         fileEl.dataset.fileId = String(id);
                         fileEl.dataset.fileName = name.toLowerCase();
 
-                        // Restore active state if this was previously selected
-                        if (String(id) === String(currentSelection)) {
-                            fileEl.classList.add('is-active');
-                        }
+                        if (String(id) === String(currentSelection)) fileEl.classList.add('is-active');
 
                         fileEl.innerHTML = `
-            <div class="name">${name}</div>
-            <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
-        `;
-
-                        fileEl.addEventListener('click', () => {
-                            this.selectFile(id);
-                        });
-
+      <div class="name">${name}</div>
+      <div class="meta">${Utils.getFileTypeDisplay(name)} · ${Utils.formatFileSize(size)}</div>
+    `;
+                        fileEl.addEventListener('click', () => { this.selectFile(id); });
                         listEl.appendChild(fileEl);
-
                     });
 
-                    // Also populate hidden select for compatibility
+                    // hidden select 
                     this.populateFileDropdown(files);
 
-                    // apply summarizing state to freshly rendered rows
-                    window.DocumentSummarizerApp?._updateBtn?.();
-
-                    // Restore search filter if present
+                    // restore search filter if present
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
-                    if (searchInput && searchInput.value) {
-                        this.filterFiles(searchInput.value);
-                    }
+                    if (searchInput && searchInput.value) this.filterFiles(searchInput.value);
+
+                    // keep summarize button state fresh
+                    window.DocumentSummarizerApp?._updateBtn?.();
                 },
 
                 /**
@@ -1084,6 +1107,8 @@
                 filterFiles(searchTerm) {
                     const term = searchTerm.toLowerCase();
                     document.querySelectorAll('.file').forEach(el => {
+                        const isAll = el.classList.contains('all-docs');
+                        if (isAll) { el.style.display = ''; return; }    // always show "All Documents"
                         const fileName = el.dataset.fileName || '';
                         if (fileName.includes(term)) {
                             el.style.display = '';
@@ -2074,90 +2099,84 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                  * Handle file selection from dropdown
                  */
                 async handleFileSelection(fileId) {
-                    if (!this._currentParams) {
-                        UIManager.displayFileContent('Error: No parameters available for file loading');
-                        return;
-                    }
-
+                    if (!this._currentParams) { UIManager.displayFileContent('Error: No parameters available for file loading'); return; }
                     const { alertId, sasUser, sasPass } = this._currentParams;
-
-                    if (!alertId || !sasUser || !sasPass) {
-                        UIManager.displayFileContent('Error: Missing required parameters for file loading');
-                        return;
-                    }
+                    if (!alertId || !sasUser || !sasPass) { UIManager.displayFileContent('Error: Missing required parameters for file loading'); return; }
 
                     this._currentCleanedText = null;
                     this._updateSummarizeButtonForCurrentSelection();
 
-                    // Update summary display based on cache (match any fingerprint)
+                    // keep cached summary display logic (unchanged) ...
                     const baseKey = `${String(alertId)}:${String(fileId)}:`;
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
-
                     if (this._summaryCache) {
                         const matchKey = [...this._summaryCache.keys()].find(k => k.startsWith(baseKey));
-                        if (matchKey && summaryEl) {
-                            summaryEl.innerHTML = SANITIZE(this._summaryCache.get(matchKey));
-                        } else {
-                            if (summaryEl) {
-                                summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>';
-                            }
-                        }
-                    } else {
-                        // Clear summary area when no cached summary exists
-                        if (summaryEl) {
-                            summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>';
-                        }
+                        if (matchKey && summaryEl) { summaryEl.innerHTML = SANITIZE(this._summaryCache.get(matchKey)); }
+                        else if (summaryEl) { summaryEl.innerHTML = '<span style="color: var(--muted)">AI summary will appear here...</span>'; }
                     }
 
                     try {
-                        Utils.log('APP', `Loading content for file: ${fileId}`);
+                        // === ADD: special "All Documents" concatenation path ===
+                        if (String(fileId) === CONFIG.SPECIAL.ALL_ID) {
+                            UIManager.displayFileContent('', true);
 
+                            const parts = [];
+                            for (const f of UIManager._allFiles) {
+                                const fid = String(f.id || f.fileId || '');
+                                if (!fid) continue;
+                                const cacheKey = `${alertId}:${fid}`;
+
+                                let cleaned;
+                                if (this._fileCache.has(cacheKey)) {
+                                    cleaned = this._fileCache.get(cacheKey);
+                                } else {
+                                    const fileData = await APIService.getFileContent(alertId, fid, sasUser, sasPass);
+                                    const extracted = await APIService.extractTextFromFile(fileData);
+                                    cleaned = Utils.cleanTextForLLM(extracted, {
+                                        removeExtraSpaces: true, removeSpecialChars: true, normalizeWhitespace: true,
+                                        removeEmptyLines: true, trimLines: true, maxConsecutiveNewlines: 2
+                                    });
+                                    this._fileCache.set(cacheKey, cleaned);
+                                    if (this._fileCache.size > 10) this._fileCache.delete(this._fileCache.keys().next().value);
+                                }
+
+                                // Append content; keep it simple: just a blank line between docs
+                                if (cleaned) parts.push(cleaned);
+                            }
+
+                            const combined = parts.join('\n\n');
+                            UIManager.displayFileContent(combined);
+                            this._currentCleanedText = combined;
+                            this._updateSummarizeButtonForCurrentSelection();
+                            return; // IMPORTANT: stop here; skip single-file path
+                        }
+                        // === END ADD ===
+
+                        // --- existing single-file path (unchanged) ---
                         const cacheKey = `${alertId}:${fileId}`;
                         if (this._fileCache && this._fileCache.has(cacheKey)) {
-                            Utils.log('APP', 'Using cached file content');
                             UIManager.displayFileContent(this._fileCache.get(cacheKey));
                             this._currentCleanedText = this._fileCache.get(cacheKey);
-
                             this._updateSummarizeButtonForCurrentSelection();
                             return;
                         }
 
                         UIManager.displayFileContent('', true);
-
                         const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
-
                         const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
                             UIManager.displayFileContent('', true, status);
                         });
-
                         const cleanedText = Utils.cleanTextForLLM(extractedText, {
-                            removeExtraSpaces: true,
-                            removeSpecialChars: true,
-                            normalizeWhitespace: true,
-                            removeEmptyLines: true,
-                            trimLines: true,
-                            maxConsecutiveNewlines: 2
+                            removeExtraSpaces: true, removeSpecialChars: true, normalizeWhitespace: true,
+                            removeEmptyLines: true, trimLines: true, maxConsecutiveNewlines: 2
                         });
 
                         this._fileCache.set(cacheKey, cleanedText);
-
-                        if (this._fileCache.size > 10) {
-                            const firstKey = this._fileCache.keys().next().value;
-                            this._fileCache.delete(firstKey);
-                        }
+                        if (this._fileCache.size > 10) this._fileCache.delete(this._fileCache.keys().next().value);
 
                         UIManager.displayFileContent(cleanedText);
                         this._currentCleanedText = cleanedText;
-
                         this._updateSummarizeButtonForCurrentSelection();
-
-                        Utils.log('APP', 'File content loaded and cleaned successfully');
-
-                        const originalLength = extractedText.length;
-                        const cleanedLength = cleanedText.length;
-                        const reduction = ((originalLength - cleanedLength) / originalLength * 100).toFixed(1);
-                        Utils.log('APP', `Text cleaning: ${originalLength} → ${cleanedLength} chars (${reduction}% reduction)`);
-
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
                         UIManager.displayFileContent(`Error loading file content: ${error.message}`);
@@ -2165,6 +2184,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         this._updateSummarizeButtonForCurrentSelection();
                     }
                 },
+
 
                 /**
                  * Get selected file ID from dropdown
