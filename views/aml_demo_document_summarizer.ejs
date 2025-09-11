@@ -160,6 +160,11 @@
             min-height: 0;
         }
 
+        /* Force a taller summary pane before content renders */
+        .right .summary-box {
+            min-height: 320px;
+        }
+
         /* File list */
         .search {
             display: flex;
@@ -1165,7 +1170,7 @@
                     if (String(currentSelection) === CONFIG.SPECIAL.ALL_ID) allEl.classList.add('is-active');
                     allEl.innerHTML = `
     <div class="name">${CONFIG.SPECIAL.ALL_NAME}</div>
-    <div class="meta">${files.length} documents · combined view</div>
+    <div class="meta">${files.length} documents</div>
   `;
                     allEl.addEventListener('click', () => { this.selectFile(CONFIG.SPECIAL.ALL_ID); });
                     listEl.appendChild(allEl);
