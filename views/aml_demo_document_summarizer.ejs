@@ -1761,8 +1761,6 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         const showChat = !this.els.card.classList.contains('show-chat');
                         this.els.card.classList.toggle('show-chat', showChat);
                         this.els.toggle.setAttribute('aria-checked', showChat ? 'true' : 'false');
-                        // focus input when opening chat
-                        if (showChat) setTimeout(() => this.els.input?.focus(), 0);
                     });
                 },
 
