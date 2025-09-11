@@ -1565,6 +1565,88 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                     }
 
                     return full.trim();
+                },
+                /**
+                 * Call OpenAI for document-grounded Q&A (no summary system prompt)
+                 */
+                async callOpenAIChat(prompt, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
+                    const body = {
+                        model,
+                        input: prompt,                 // <-- use the prompt exactly as built by Chat.buildPrompt
+                        reasoning: { effort: "low" },
+                        text: { verbosity: "low" },
+                        stream: !!onDelta
+                    };
+
+                    const res = await fetch(CONFIG.OPENAI.URL, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json',
+                            'Accept': onDelta ? 'text/event-stream' : 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    // Non-streaming path
+                    if (!onDelta) {
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) :
+                            (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        if (!txt) throw new Error('LLM returned no text payload');
+                        return txt;
+                    }
+
+                    // Streaming path (SSE)
+                    if (!res.ok || !res.body) {
+                        const text = await res.text().catch(() => '');
+                        throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
+                    }
+
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let carry = '';
+                    let full = '';
+
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+
+                        carry += decoder.decode(value, { stream: true });
+
+                        const frames = carry.split('\n\n');
+                        carry = frames.pop() || '';
+
+                        for (const frame of frames) {
+                            const dataLines = frame
+                                .split('\n')
+                                .filter(l => l.startsWith('data:'))
+                                .map(l => l.slice(5).trim())
+                                .join('\n');
+
+                            if (!dataLines || dataLines === '[DONE]') continue;
+
+                            let evt;
+                            try {
+                                evt = JSON.parse(dataLines);
+                            } catch {
+                                continue;
+                            }
+
+                            if (evt.type === 'response.output_text.delta') {
+                                const delta = evt.delta || '';
+                                if (delta) {
+                                    full += delta;
+                                    try { onDelta(delta, full, evt); } catch { }
+                                }
+                            } else if (evt.type === 'error') {
+                                throw new Error(evt.error?.message || 'Streaming error');
+                            }
+                        }
+                    }
+
+                    return full.trim();
                 }
             };
 
@@ -1748,7 +1830,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         if (!App._currentCleanedText) throw new Error('Select a file first; no document loaded');
 
                         const prompt = this.buildPrompt(text, App._currentCleanedText);
-                        const final = await APIService.callOpenAI(prompt, params.openaiKey, CONFIG.OPENAI.MODEL, (_d, full) => {
+                        const final = await APIService.callOpenAIChat(prompt, params.openaiKey, CONFIG.OPENAI.MODEL, (_d, full) => {
                             buf = full;
                             if (!raf) raf = requestAnimationFrame(flush);
                         });
