@@ -834,7 +834,16 @@
                     COUNT: 10,     // how many files to preload
                     DELAY: 200    // ms between requests to be gentle on the server
                 },
-
+                HEADINGS: {
+                    summary: {
+                        title: 'Document Summarizer',
+                        subtitle: 'Generate a concise summary with one click.'
+                    },
+                    chat: {
+                        title: 'Document Chat',
+                        subtitle: 'Ask questions about this document.'
+                    }
+                }
             };
 
             // Strict allow-list for LLM HTML (blocks scripts, styles, events, links, etc.)
@@ -1747,20 +1756,36 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
                         card: document.querySelector('.card'),
                         input: document.getElementById(CONFIG.ELEMENTS.chatText),
                         send: document.getElementById(CONFIG.ELEMENTS.chatSendBtn),
-                        msgs: document.getElementById(CONFIG.ELEMENTS.chatMessages)
+                        msgs: document.getElementById(CONFIG.ELEMENTS.chatMessages),
+                        title: document.getElementById('title'),
+                        subtitle: document.querySelector('.subtitle')
                     };
+
+                    this.setHeader = (showChat) => {
+                        const h = CONFIG.HEADINGS[showChat ? 'chat' : 'summary'];
+                        if (this.els.title) this.els.title.textContent = h.title;
+                        if (this.els.subtitle) this.els.subtitle.textContent = h.subtitle;
+                        document.title = h.title; // optional: page <title>
+                    };
+
                     // Seed a welcome
                     this.addMsg('bot', "Hi! Ask me anything about the currently selected document.");
                     this.refreshSend();
+
+                    this.setHeader(this.els.card.classList.contains('show-chat'));
+
                     // Events
                     this.els.send.addEventListener('click', () => this.handleSend());
                     this.els.input.addEventListener('input', () => this.refreshSend());
                     this.els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); } });
+
                     // Toggle Summary <-> Chat
                     this.els.toggle.addEventListener('click', () => {
                         const showChat = !this.els.card.classList.contains('show-chat');
                         this.els.card.classList.toggle('show-chat', showChat);
                         this.els.toggle.setAttribute('aria-checked', showChat ? 'true' : 'false');
+                        this.setHeader(showChat);
+
                     });
                 },
 
