@@ -487,6 +487,208 @@
                 background-position: -200% 0;
             }
         }
+
+        /* === VIEW TOGGLE (Summary <-> Chat) === */
+        .viewtoggle {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            width: 200px;
+            height: 36px;
+            padding: 4px;
+            border-radius: 999px;
+            background: var(--grey-soft);
+            border: 1px solid var(--border);
+            font-weight: 600;
+            user-select: none;
+            cursor: pointer
+        }
+
+        .viewtoggle .label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            margin: 0;
+            padding: 0;
+            text-transform: none;
+            letter-spacing: 0;
+            line-height: 1;
+            color: var(--muted);
+            position: relative;
+            z-index: 1
+        }
+
+        .viewtoggle .pill {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            height: 28px;
+            width: calc(50% - 4px);
+            border-radius: 999px;
+            background: var(--primary);
+            box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+            transition: transform .0s;
+            z-index: 0;
+            pointer-events: none
+        }
+
+        .card:not(.show-chat) .viewtoggle .label:first-child,
+        .card.show-chat .viewtoggle .label:nth-child(2) {
+            color: #fff !important
+        }
+
+        .card.show-chat .viewtoggle .pill {
+            transform: translateX(100%)
+        }
+
+        /* Hide Summarize button in Chat mode (same behavior as Alert app) */
+        .card.show-chat #summarizeBtn {
+            display: none
+        }
+
+        /* Pane visibility control */
+        #pane-chat {
+            display: none
+        }
+
+        .card.show-chat #pane-chat {
+            display: block
+        }
+
+        .card.show-chat #pane-summary {
+            display: none
+        }
+
+        /* Inline disclaimer in Chat mode */
+        .card.show-chat::after {
+            content: "Generative AI can make mistakes. Check important info.";
+            display: block;
+            margin-top: 7px;
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center
+        }
+
+        /* === CHAT UI (reused from Alert Summarizer) === */
+        .chat {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--grey-soft);
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .chat-messages {
+            min-height: 273px;
+            max-height: clamp(360px, 55vh, 720px);
+            overflow: auto;
+            display: grid;
+            gap: 10px;
+            padding-right: 4px;
+            align-content: start;
+            align-items: start;
+            grid-auto-rows: max-content
+        }
+
+        .msg {
+            display: flex
+        }
+
+        .msg .bubble {
+            border: 1px solid var(--border);
+            background: #f7f7f7;
+            color: var(--fg);
+            padding: 10px 12px;
+            border-radius: 14px 14px 4px 14px;
+            font-size: 14px;
+            line-height: 1.35;
+            max-width: 72%;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .04)
+        }
+
+        .msg.bot .bubble {
+            background: #fff;
+            color: var(--fg);
+            border-color: var(--border)
+        }
+
+        .msg.user {
+            justify-content: flex-end
+        }
+
+        .msg.user .bubble {
+            background: var(--primary-soft);
+            color: var(--fg);
+            border-color: var(--border);
+            border-radius: 14px 14px 14px 4px
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 8px
+        }
+
+        #chatText {
+            flex: 1;
+            border: 1px solid rgba(0, 0, 0, .12);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font: inherit;
+            outline: none
+        }
+
+        #chatText:focus {
+            border-color: var(--primary-press);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
+        }
+
+        .typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .typing .dots {
+            display: inline-flex;
+            gap: 4px
+        }
+
+        .typing .dots i {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--muted);
+            opacity: .35;
+            animation: dotpulse 1s ease-in-out infinite
+        }
+
+        .typing .dots i:nth-child(2) {
+            animation-delay: .2s
+        }
+
+        .typing .dots i:nth-child(3) {
+            animation-delay: .4s
+        }
+
+        /* reuse existing @keyframes dotpulse from Alert app via your spinner keyframes; if absent, add: */
+        @keyframes dotpulse {
+
+            0%,
+            100% {
+                transform: translateY(0);
+                opacity: .25
+            }
+
+            50% {
+                transform: translateY(-3px);
+                opacity: 1
+            }
+        }
     </style>
 </head>
 
@@ -500,6 +702,15 @@
                     <p class="subtitle">Generate a concise summary with one click.</p>
                 </div>
                 <div class="row">
+                    <!-- Segmented control: Summary <-> Chat -->
+                    <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false"
+                        aria-label="Toggle summary or chat">
+                        <span class="label">Summary</span>
+                        <span class="label">Chat</span>
+                        <span class="pill" aria-hidden="true"></span>
+                    </div>
+
+                    <!-- Summarize stays in header; auto-hidden in Chat mode via CSS -->
                     <button id="summarizeBtn" class="btn-primary" type="button" disabled aria-busy="false">
                         <span class="spinner" aria-hidden="true"></span>
                         <span class="labeltext">Summarize</span>
@@ -537,13 +748,28 @@
                         </div>
                     </section>
 
-                    <section>
-                        <div class="label">Summary</div>
-                        <div class="surface summary-box" aria-label="AI Summary">
-                            <div id="summaryContent" aria-live="polite"><span class="muted">AI summary will appear
-                                    here...</span></div>
-                        </div>
-                    </section>
+                    <div id="pane-summary">
+                        <section>
+                            <div class="label">Summary</div>
+                            <div class="surface summary-box" aria-label="AI Summary">
+                                <div id="summaryContent" aria-live="polite"><span class="muted">AI summary will appear
+                                        here...</span></div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div id="pane-chat">
+                        <section>
+                            <div class="label">Chat</div>
+                            <div class="chat" id="chat">
+                                <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
+                                <div class="chat-input">
+                                    <input id="chatText" type="text" placeholder="Ask about this document…" />
+                                    <button id="chatSendBtn" class="btn-primary" type="button" disabled>Send</button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
                 </main>
             </div>
 
@@ -587,7 +813,11 @@
                     summarizeBtn: 'summarizeBtn',
                     summaryContent: 'summaryContent',
                     filelist: 'filelist',
-                    searchInput: 'searchInput'
+                    searchInput: 'searchInput',
+                    viewToggle: 'viewToggle',
+                    chatText: 'chatText',
+                    chatSendBtn: 'chatSendBtn',
+                    chatMessages: 'chatMessages'
                 },
                 OPENAI: {
                     URL: 'https://api.openai.com/v1/responses',
@@ -623,6 +853,8 @@
             // UTILITIES
             // =============================================================================
             const Utils = {
+                escapeHtml(s = '') { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) },
+
                 /**
                  * Get parameter value by index from VA parameters array
                  */
@@ -1422,6 +1654,118 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
             };
 
             // =============================================================================
+            // CHAT (document-grounded Q&A)
+            // =============================================================================
+            const Chat = {
+                _busy: false,
+                els: {},
+
+                init() {
+                    this.els = {
+                        toggle: document.getElementById(CONFIG.ELEMENTS.viewToggle),
+                        card: document.querySelector('.card'),
+                        input: document.getElementById(CONFIG.ELEMENTS.chatText),
+                        send: document.getElementById(CONFIG.ELEMENTS.chatSendBtn),
+                        msgs: document.getElementById(CONFIG.ELEMENTS.chatMessages)
+                    };
+                    // Seed a welcome
+                    this.addMsg('bot', "Hi! Ask me anything about the currently selected document.");
+                    this.refreshSend();
+                    // Events
+                    this.els.send.addEventListener('click', () => this.handleSend());
+                    this.els.input.addEventListener('input', () => this.refreshSend());
+                    this.els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); } });
+                    // Toggle Summary <-> Chat
+                    this.els.toggle.addEventListener('click', () => {
+                        const showChat = !this.els.card.classList.contains('show-chat');
+                        this.els.card.classList.toggle('show-chat', showChat);
+                        this.els.toggle.setAttribute('aria-checked', showChat ? 'true' : 'false');
+                        // focus input when opening chat
+                        if (showChat) setTimeout(() => this.els.input?.focus(), 0);
+                    });
+                },
+
+                refreshSend() {
+                    const hasKey = !!App._currentParams?.openaiKey;
+                    const hasDoc = !!App._currentCleanedText;
+                    const hasText = (this.els.input?.value.trim().length > 0);
+                    if (this.els.send) this.els.send.disabled = this._busy || !(hasKey && hasDoc && hasText);
+                },
+
+                addMsg(role, html) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'msg ' + role;
+                    const bubble = document.createElement('div');
+                    bubble.className = 'bubble';
+                    bubble.innerHTML = html;
+                    wrap.appendChild(bubble);
+                    this.els.msgs.appendChild(wrap);
+                    this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
+                    return bubble;
+                },
+
+                thinking() {
+                    const bubble = this.addMsg('bot', '<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>');
+                    return { bubble, stop: () => { bubble.parentElement?.remove(); } };
+                },
+
+                buildPrompt(userText, docText) {
+                    const DOC = Utils.cleanTextForLLM(docText || '', { maxConsecutiveNewlines: 2 });
+                    const clipped = DOC.length > 12000 ? DOC.slice(0, 12000) + '\n[...trimmed for length]' : DOC;
+                    return [
+                        "SYSTEM:",
+                        "You are a concise assistant answering questions ONLY using the provided Document content.",
+                        "If the answer is not in the Document, say so plainly. Keep answers brief and clear.",
+                        "",
+                        "DOCUMENT:",
+                        clipped,
+                        "",
+                        "USER QUESTION:",
+                        userText,
+                        "",
+                        "ASSISTANT:"
+                    ].join("\n");
+                },
+
+                async handleSend() {
+                    const text = this.els.input.value.trim();
+                    if (!text) return;
+                    // render user
+                    this.addMsg('user', Utils.escapeHtml(text));
+                    this.els.input.value = '';
+                    this._busy = true; this.refreshSend();
+
+                    const think = this.thinking();
+                    await new Promise(r => requestAnimationFrame(r)); // paint typing first
+
+                    let buf = '';
+                    let raf = null;
+                    const flush = () => { think.bubble.innerHTML = Utils.escapeHtml(buf).replace(/\n/g, '<br>'); raf = null; this.els.msgs.scrollTop = this.els.msgs.scrollHeight; };
+
+                    try {
+                        const params = App._currentParams || {};
+                        if (!params.openaiKey) throw new Error('Missing OpenAI key');
+                        if (!App._currentCleanedText) throw new Error('Select a file first; no document loaded');
+
+                        const prompt = this.buildPrompt(text, App._currentCleanedText);
+                        const final = await APIService.callOpenAI(prompt, params.openaiKey, CONFIG.OPENAI.MODEL, (_d, full) => {
+                            buf = full;
+                            if (!raf) raf = requestAnimationFrame(flush);
+                        });
+
+                        if (raf) { cancelAnimationFrame(raf); raf = null; }
+                        think.bubble.innerHTML = Utils.escapeHtml(final).replace(/\n/g, '<br>');
+                        this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
+                    } catch (e) {
+                        think.bubble.innerHTML = `<em>Sorry, I couldn't complete that: ${Utils.escapeHtml(e.message)}</em>`;
+                        console.error('[chat]', e);
+                    } finally {
+                        this._busy = false; this.refreshSend();
+                    }
+                }
+            };
+
+            // =============================================================================
             // MAIN APPLICATION
             // =============================================================================
             const App = {
@@ -1450,6 +1794,7 @@ Summarize this document concisely, highlighting the key points:\n\n${text}
 
                         UIManager.setupEventListeners();
                         VAIntegration.initialize();
+                        Chat.init();
 
                         window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
