@@ -31,6 +31,19 @@
             /* width of the soft band */
             --file-wave-speed: 2.8s;
             /* animation speed */
+            /* Summary pane */
+            --summary-font: clamp(15px, 1.1vw, 18px);
+            --summary-h2: clamp(18px, 1.3vw, 22px);
+            --summary-h3: clamp(16px, 1.2vw, 19px);
+
+            /* View toggle (pill) */
+            --toggle-font: 15px;
+            --toggle-height: 40px;
+
+            /* Chat */
+            --chat-font: 16px;
+            --chat-line: 1.5;
+            --chat-input-font: 16px;
         }
 
         * {
@@ -404,6 +417,18 @@
             word-wrap: break-word;
             font-family: inherit;
             margin: 0;
+            font-size: var(--summary-font);
+            line-height: 1.6;
+        }
+
+        #summaryContent h2 {
+            font-size: var(--summary-h2);
+            margin: 0 0 6px;
+        }
+
+        #summaryContent h3 {
+            font-size: var(--summary-h3);
+            margin: 12px 0 6px;
         }
 
         /* Add these new rules */
@@ -499,7 +524,7 @@
             align-items: center;
             gap: 0;
             width: 200px;
-            height: 36px;
+            height: var(--toggle-height);
             padding: 4px;
             border-radius: 999px;
             background: var(--grey-soft);
@@ -514,7 +539,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: var(--toggle-font);
             margin: 0;
             padding: 0;
             text-transform: none;
@@ -529,7 +554,7 @@
             position: absolute;
             top: 4px;
             left: 4px;
-            height: 28px;
+            height: calc(var(--toggle-height) - 8px);
             width: calc(50% - 4px);
             border-radius: 999px;
             background: var(--primary);
@@ -609,8 +634,8 @@
             color: var(--fg);
             padding: 10px 12px;
             border-radius: 14px 14px 4px 14px;
-            font-size: 14px;
-            line-height: 1.35;
+            font-size: var(--chat-font);
+            line-height: var(--chat-line);
             max-width: 72%;
             box-shadow: 0 1px 2px rgba(0, 0, 0, .04)
         }
@@ -643,7 +668,10 @@
             border-radius: 14px;
             padding: 12px 14px;
             font: inherit;
-            outline: none
+            outline: none;
+            font-size: var(--chat-input-font);
+            padding: 14px 16px;
+            /* a little extra padding for bigger text */
         }
 
         #chatText:focus {
@@ -668,7 +696,8 @@
             border-radius: 50%;
             background: var(--muted);
             opacity: .35;
-            animation: dotpulse 1s ease-in-out infinite
+            animation: dotpulse 1s ease-in-out infinite;
+            transform: translateY(0); 
         }
 
         .typing .dots i:nth-child(2) {
