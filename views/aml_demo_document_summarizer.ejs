@@ -43,12 +43,11 @@
             --fs-4: 24px;
             --fs-5: 28px;
 
-            /* Optional: gentle fluid cap (keeps sizes from ballooning) */
-            --f(h): clamp(var(--fs-0), 0.95rem + 0.15vw, var(--fs-1));
-            --f(h2): clamp(var(--fs-2), 1.05rem + 0.25vw, var(--fs-3));
-            --f(h3): clamp(var(--fs-1), 1.0rem + 0.2vw, var(--fs-2));
+            /* gentle fluid caps */
+            --f-body: clamp(var(--fs-0), 0.95rem + 0.15vw, var(--fs-1));
+            --f-h2: clamp(var(--fs-2), 1.05rem + 0.25vw, var(--fs-3));
+            --f-h3: clamp(var(--fs-1), 1rem + 0.20vw, var(--fs-2));
 
-            /* Reused elsewhere */
             --toggle-height: 40px;
             --chat-line: 1.45;
         }
@@ -286,13 +285,13 @@
 
         .file .name {
             font-weight: 600;
-            font-size: var(--fs-1);
+            font-size: var(--fs-2);
         }
 
         .file .meta {
             font-size: 12px;
             color: var(--muted);
-            font-size: var(--fs--1);
+            font-size: var(--fs--2);
         }
 
         /*  special "All Documents" row + separator */
