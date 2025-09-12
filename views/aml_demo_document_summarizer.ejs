@@ -363,7 +363,6 @@
         }
 
         /* Remove top margins from ALL first elements inside these containers */
-        #fileContent>*:first-child,
         #summaryContent>*:first-child,
         #summaryContent article:first-child,
         #summaryContent h1:first-child,
@@ -400,14 +399,6 @@
             padding: 0;
         }
 
-        /* Content areas */
-        #fileContent {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: inherit;
-            margin: 0;
-            padding: 0;
-        }
 
         #summaryContent {
             word-wrap: break-word;
@@ -460,11 +451,6 @@
             }
         }
 
-        /* Add this rule to prevent file content from expanding */
-        .file-content-box {
-            max-height: 20vh;
-            overflow-y: auto;
-        }
 
         .summary-box {
             min-height: 200px;
@@ -958,7 +944,6 @@
                     output: 'out',
                     fileSelect: 'fileSelect',
                     fileCount: 'fileCount',
-                    fileContent: 'fileContent',
                     summarizeBtn: 'summarizeBtn',
                     summaryContent: 'summaryContent',
                     filelist: 'filelist',
@@ -1308,19 +1293,6 @@
                     }
                 },
 
-                /**
-                 * Display file content in the content area
-                 */
-                displayFileContent(content, loading = false, status = null) {
-                    const contentEl = document.getElementById(CONFIG.ELEMENTS.fileContent);
-                    if (contentEl) {
-                        if (loading) {
-                            contentEl.innerHTML = `<span class="processing-status">Loading document content...</span>`;
-                        } else {
-                            contentEl.textContent = content;
-                        }
-                    }
-                },
 
                 /**
                  * Setup event listeners for UI interactions
@@ -1377,7 +1349,6 @@
                             } else {
                                 // Clear selection so the centralized updater knows no file is selected
                                 this._selectedFileId = null;
-                                this.displayFileContent('Select a file to view its content...');
                                 window.DocumentSummarizerApp?._updateBtn?.();
                             }
                         });
@@ -1729,8 +1700,7 @@ Summarize the set:\n\n${text}`;
                     if (!onDelta) {
                         const json = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) :
-                            (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        const txt = (json.output_text ?? json.choices?.[0]?.message?.content ?? '');
                         if (!txt) throw new Error('LLM returned no text payload');
                         return txt;
                     }
@@ -2344,6 +2314,11 @@ Summarize the set:\n\n${text}`;
                 async openContentModal(fileId, fileName = 'Document') {
                     try {
                         const { alertId, sasUser, sasPass } = this._currentParams || {};
+                        if (!alertId || !sasUser || !sasPass) {
+                            this._currentCleanedText = null;
+                            this._updateSummarizeButtonForCurrentSelection();
+                            return; // bail gracefully
+                        } 
                         const modal = document.getElementById('contentModal');
                         const pre = document.getElementById('modalFileContent');
                         const title = document.getElementById('contentModalTitle');
@@ -2573,9 +2548,7 @@ Summarize the set:\n\n${text}`;
                  * Handle file selection from dropdown
                  */
                 async handleFileSelection(fileId) {
-                    if (!this._currentParams) { UIManager.displayFileContent('Error: No parameters available for file loading'); return; }
                     const { alertId, sasUser, sasPass } = this._currentParams;
-                    if (!alertId || !sasUser || !sasPass) { UIManager.displayFileContent('Error: Missing required parameters for file loading'); return; }
 
                     this._currentCleanedText = null;
                     this._updateSummarizeButtonForCurrentSelection();
@@ -2592,7 +2565,7 @@ Summarize the set:\n\n${text}`;
                     try {
                         // === ADD: special "All Documents" concatenation path ===
                         if (String(fileId) === CONFIG.SPECIAL.ALL_ID) {
-                            UIManager.displayFileContent('', true);
+
 
                             const parts = [];
                             for (const f of UIManager._allFiles) {
@@ -2637,7 +2610,7 @@ Summarize the set:\n\n${text}`;
                                     return `==== [DOC ${i + 1}] ${name} ====\n${text}`;
                                 })
                             ].join('\n');
-                            UIManager.displayFileContent(combined);
+
                             this._currentCleanedText = combined;
                             this._updateSummarizeButtonForCurrentSelection();
 
@@ -2652,7 +2625,6 @@ Summarize the set:\n\n${text}`;
                         // --- existing single-file path (unchanged) ---
                         const cacheKey = `${alertId}:${fileId}`;
                         if (this._fileCache && this._fileCache.has(cacheKey)) {
-                            UIManager.displayFileContent(this._fileCache.get(cacheKey));
                             this._currentCleanedText = this._fileCache.get(cacheKey);
                             this._updateSummarizeButtonForCurrentSelection();
                             if (document.querySelector('.card')?.classList.contains('show-chat')) {
@@ -2662,10 +2634,8 @@ Summarize the set:\n\n${text}`;
                             return;
                         }
 
-                        UIManager.displayFileContent('', true);
                         const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
                         const extractedText = await APIService.extractTextFromFile(fileData, (status) => {
-                            UIManager.displayFileContent('', true, status);
                         });
                         const cleanedText = Utils.cleanTextForLLM(extractedText, {
                             removeExtraSpaces: true, removeSpecialChars: true, normalizeWhitespace: true,
@@ -2675,7 +2645,6 @@ Summarize the set:\n\n${text}`;
                         this._fileCache.set(cacheKey, cleanedText);
                         if (this._fileCache.size > 10) this._fileCache.delete(this._fileCache.keys().next().value);
 
-                        UIManager.displayFileContent(cleanedText);
                         this._currentCleanedText = cleanedText;
                         this._updateSummarizeButtonForCurrentSelection();
                         if (document.querySelector('.card')?.classList.contains('show-chat')) {
@@ -2685,7 +2654,6 @@ Summarize the set:\n\n${text}`;
 
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
-                        UIManager.displayFileContent(`Error loading file content: ${error.message}`);
                         this._currentCleanedText = null;
                         this._updateSummarizeButtonForCurrentSelection();
                     }
