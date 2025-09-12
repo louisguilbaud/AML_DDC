@@ -1649,10 +1649,19 @@
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
                     const isMulti = text.startsWith('[[MULTI_DOC]]') || text.includes('==== [DOC ');
 
-                    // Clip overly large payloads
-                    const MAX_CHARS = 300000;
-                    if (text.length > MAX_CHARS) {
-                        text = text.slice(0, MAX_CHARS) + '\n[...trimmed]';
+                    // Character limits based on page estimates
+                    const CHARS_PER_PAGE = 2000;
+                    const MAX_CHARS_PER_DOC = 20 * CHARS_PER_PAGE;  // 40,000 chars (~20 pages)
+                    const MAX_CHARS_TOTAL = 120 * CHARS_PER_PAGE;   // 240,000 chars (~120 pages)
+
+                    // Process multi-document text
+                    if (isMulti) {
+                        text = this.clipMultiDocuments(text, MAX_CHARS_PER_DOC, MAX_CHARS_TOTAL);
+                    } else {
+                        // Single document clipping
+                        if (text.length > MAX_CHARS_TOTAL) {
+                            text = text.slice(0, MAX_CHARS_TOTAL) + '\n[...document trimmed]';
+                        }
                     }
 
                     const singlePrompt = `You are a helpful assistant that creates concise, clear summaries in English.
@@ -1687,7 +1696,9 @@ Structure:
   <ul><li>Theme — short rationale</li></ul>
   <h3>Per-document highlights</h3>
   <ul>
-    <li>Use format: DOC n — <em>name</em>: 1–2 bullets of the most unique points.</li>
+    <li><strong>DOC 1 — <em>name</em>:</strong> Most unique point from this document</li>
+    <li><strong>DOC 2 — <em>name</em>:</strong> Most unique point from this document</li>
+    <!-- one <li> per document -->
   </ul>
   <h3>Risks / disagreements</h3>
   <ul><li>…if any…</li></ul>
@@ -1859,8 +1870,130 @@ Summarize the set:\n\n${text}`;
                     }
 
                     return full.trim();
+                },
+
+                /**
+ * Clip individual documents and total concatenation for multi-doc summaries
+ */
+                clipMultiDocuments(text, maxPerDoc, maxTotal) {
+                    // Parse documents - first collect all matches
+                    const docPattern = /==== \[DOC (\d+)\] (.*?) ====/g;
+                    const matches = [];
+                    let match;
+
+                    // Collect all document headers first
+                    while ((match = docPattern.exec(text)) !== null) {
+                        matches.push({
+                            index: match.index,
+                            num: match[1],
+                            name: match[2],
+                            header: match[0]
+                        });
+                    }
+
+                    // Extract preamble
+                    const preamble = matches.length > 0 ? text.slice(0, matches[0].index) : '';
+
+                    // Extract document contents
+                    const documents = matches.map((match, i) => {
+                        const docStart = match.index + match.header.length;
+                        const docEnd = i < matches.length - 1 ? matches[i + 1].index : text.length;
+                        const content = text.slice(docStart, docEnd).trim();
+
+                        return {
+                            num: match.num,
+                            name: match.name,
+                            header: match.header,
+                            content: content,
+                            originalLength: content.length
+                        };
+                    });
+
+                    // Clip individual documents if needed
+                    let totalChars = preamble.length;
+                    const clippedDocs = documents.map(doc => {
+                        let content = doc.content;
+                        if (content.length > maxPerDoc) {
+                            // Try to clip at a sentence boundary
+                            const clipPoint = this.findSentenceBoundary(content, maxPerDoc);
+                            content = content.slice(0, clipPoint) + '\n[...document trimmed from ' +
+                                Math.round(doc.originalLength / 1000) + 'k to ' +
+                                Math.round(clipPoint / 1000) + 'k chars]';
+                        }
+
+                        totalChars += doc.header.length + content.length + 2; // +2 for newlines
+
+                        return {
+                            ...doc,
+                            content: content,
+                            clipped: content.length < doc.originalLength
+                        };
+                    });
+
+                    // If still too long, proportionally reduce all documents
+                    if (totalChars > maxTotal) {
+                        const reductionRatio = (maxTotal - preamble.length) / (totalChars - preamble.length);
+
+                        return preamble + clippedDocs.map(doc => {
+                            const targetLength = Math.floor(doc.content.length * reductionRatio * 0.9); // 0.9 for safety margin
+                            const clipPoint = this.findSentenceBoundary(doc.content, targetLength);
+                            const clippedContent = doc.content.slice(0, clipPoint);
+
+                            return doc.header + '\n' + clippedContent +
+                                '\n[...trimmed to fit total limit]';
+                        }).join('\n\n');
+                    }
+
+                    // Reconstruct text
+                    return preamble + clippedDocs.map(doc =>
+                        doc.header + '\n' + doc.content
+                    ).join('\n\n');
+                },
+                /**
+                 * Find a good sentence boundary near the target length
+                 */
+                findSentenceBoundary(text, targetLength) {
+                    if (text.length <= targetLength) return text.length;
+
+                    // Look for sentence end within 200 chars before target
+                    const searchStart = Math.max(0, targetLength - 200);
+                    const searchText = text.slice(searchStart, targetLength);
+
+                    // Find last sentence ending
+                    const sentenceEnds = ['. ', '.\n', '! ', '!\n', '? ', '?\n'];
+                    let lastEnd = -1;
+                    let endChar = '';
+
+                    for (const end of sentenceEnds) {
+                        const pos = searchText.lastIndexOf(end);
+                        if (pos > lastEnd) {
+                            lastEnd = pos;
+                            endChar = end;
+                        }
+                    }
+
+                    if (lastEnd > -1) {
+                        return searchStart + lastEnd + endChar.length;
+                    }
+
+                    // No sentence boundary found, look for paragraph break
+                    const lastNewline = searchText.lastIndexOf('\n');
+                    if (lastNewline > -1) {
+                        return searchStart + lastNewline + 1;
+                    }
+
+                    // Fall back to word boundary
+                    const lastSpace = searchText.lastIndexOf(' ');
+                    if (lastSpace > -1) {
+                        return searchStart + lastSpace + 1;
+                    }
+
+                    // Last resort: hard cut
+                    return targetLength;
                 }
             };
+
+
 
             // =============================================================================
             // VA INTEGRATION
