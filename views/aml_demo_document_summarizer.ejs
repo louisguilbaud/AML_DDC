@@ -2087,6 +2087,38 @@ Summarize the set:\n\n${text}`;
                 _busy: false,
                 els: {},
 
+                // per-document chat threads 
+                _threads: new Map(),           // key -> [{role:'user'|'bot', html:string}]
+                _lastBotNodeByKey: new Map(),  // key -> DOM node of last bot bubble (for streaming)
+
+                currentKey() {
+                    const a = App._currentParams?.alertId ?? 'GLOBAL';
+                    const f = App.getSelectedFileId?.() ?? null;
+                    return f ? `${a}:${f}` : null;
+                },
+
+                renderThread(key = this.currentKey()) {
+                    if (!this.els.msgs) return;
+                    this.els.msgs.innerHTML = '';
+                    if (!key) return;
+
+                    let arr = this._threads.get(key);
+                    if (!arr) {
+                        // seed a per-doc welcome message
+                        arr = [{ role: 'bot', html: "Hi! Ask me anything about the currently selected document." }];
+                        this._threads.set(key, arr);
+                    }
+                    for (const m of arr) this.addMsg(m.role, m.html);
+                    this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
+                },
+
+                appendToThread(role, html, key = this.currentKey()) {
+                    if (!key) return;
+                    const arr = this._threads.get(key) ?? [];
+                    arr.push({ role, html });
+                    this._threads.set(key, arr);
+                },
+
                 init() {
                     this.els = {
                         toggle: document.getElementById(CONFIG.ELEMENTS.viewToggle),
@@ -2105,11 +2137,13 @@ Summarize the set:\n\n${text}`;
                         document.title = h.title; // optional: page <title>
                     };
 
-                    // Seed a welcome
-                    this.addMsg('bot', "Hi! Ask me anything about the currently selected document.");
                     this.refreshSend();
 
                     this.setHeader(this.els.card.classList.contains('show-chat'));
+                    if (this.els.card.classList.contains('show-chat')) {
+                        this.renderThread(this.currentKey());
+                    }
+
 
                     // Events
                     this.els.send.addEventListener('click', () => this.handleSend());
@@ -2122,6 +2156,7 @@ Summarize the set:\n\n${text}`;
                         this.els.card.classList.toggle('show-chat', showChat);
                         this.els.toggle.setAttribute('aria-checked', showChat ? 'true' : 'false');
                         this.setHeader(showChat);
+                        if (showChat) this.renderThread(this.currentKey());
 
                     });
                 },
@@ -2159,8 +2194,8 @@ Summarize the set:\n\n${text}`;
                     if (isMulti) {
                         // Use sophisticated clipping for multi-docs
                         // Smaller limits for chat context (vs summarization)
-                        const CHARS_PER_DOC_CHAT = 5000;  
-                        const MAX_CHARS_CHAT = 50000;     
+                        const CHARS_PER_DOC_CHAT = 5000;
+                        const MAX_CHARS_CHAT = 50000;
 
                         processedText = APIService.clipMultiDocuments(
                             processedText,
@@ -2197,17 +2232,39 @@ Summarize the set:\n\n${text}`;
                 async handleSend() {
                     const text = this.els.input.value.trim();
                     if (!text) return;
-                    // render user
-                    this.addMsg('user', Utils.escapeHtml(text));
+
+                    const key = this.currentKey();
+
+                    // user message (preserve line breaks)
+                    const userHtml = Utils.escapeHtml(text).replace(/\n/g, '<br>');
+                    this.addMsg('user', userHtml);
+                    this.appendToThread('user', userHtml, key);
+
                     this.els.input.value = '';
                     this._busy = true; this.refreshSend();
 
+                    // show typing bubble and REUSE it for streaming
                     const think = this.thinking();
-                    await new Promise(r => requestAnimationFrame(r)); // paint typing first
+                    await new Promise(r => requestAnimationFrame(r));
 
                     let buf = '';
                     let raf = null;
-                    const flush = () => { think.bubble.innerHTML = Utils.escapeHtml(buf).replace(/\n/g, '<br>'); raf = null; this.els.msgs.scrollTop = this.els.msgs.scrollHeight; };
+                    let final = ''; // make visible to finally
+
+                    // thread slot for the bot reply
+                    this.appendToThread('bot', '', key);
+                    const botIdx = this._threads.get(key).length - 1;
+
+                    // stream into the typing bubble
+                    const botBubble = think.bubble;
+                    const flush = () => {
+                        const safe = Utils.escapeHtml(buf).replace(/\n/g, '<br>');
+                        botBubble.innerHTML = safe;
+                        const arr = this._threads.get(key);
+                        if (arr && arr[botIdx]) arr[botIdx].html = safe;
+                        raf = null;
+                        this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
+                    };
 
                     try {
                         const params = App._currentParams || {};
@@ -2215,16 +2272,17 @@ Summarize the set:\n\n${text}`;
                         if (!App._currentCleanedText) throw new Error('Select a file first; no document loaded');
 
                         const prompt = this.buildPrompt(text, App._currentCleanedText);
-                        const final = await APIService.callOpenAIChat(prompt, params.openaiKey, CONFIG.OPENAI.MODEL, (_d, full) => {
-                            buf = full;
-                            if (!raf) raf = requestAnimationFrame(flush);
-                        });
+                        final = await APIService.callOpenAIChat(
+                            prompt, params.openaiKey, CONFIG.OPENAI.MODEL,
+                            (_d, full) => { buf = full; if (!raf) raf = requestAnimationFrame(flush); }
+                        );
 
                         if (raf) { cancelAnimationFrame(raf); raf = null; }
-                        think.bubble.innerHTML = Utils.escapeHtml(final).replace(/\n/g, '<br>');
-                        this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
+                        if (!buf.trim()) { buf = final; flush(); } // non-stream edge case
                     } catch (e) {
-                        think.bubble.innerHTML = `<em>Sorry, I couldn't complete that: ${Utils.escapeHtml(e.message)}</em>`;
+                        // show error in the same bubble and in the thread
+                        buf = `Sorry, I couldn't complete that: ${e.message}`;
+                        flush();
                         console.error('[chat]', e);
                     } finally {
                         this._busy = false; this.refreshSend();
@@ -2582,6 +2640,11 @@ Summarize the set:\n\n${text}`;
                             UIManager.displayFileContent(combined);
                             this._currentCleanedText = combined;
                             this._updateSummarizeButtonForCurrentSelection();
+
+                            if (document.querySelector('.card')?.classList.contains('show-chat')) {
+                                Chat.renderThread(Chat.currentKey());  //  swap chat to this doc's thread
+                            }
+                            Chat.refreshSend();
                             return; // IMPORTANT: stop here; skip single-file path
                         }
                         // === END ADD ===
@@ -2592,6 +2655,10 @@ Summarize the set:\n\n${text}`;
                             UIManager.displayFileContent(this._fileCache.get(cacheKey));
                             this._currentCleanedText = this._fileCache.get(cacheKey);
                             this._updateSummarizeButtonForCurrentSelection();
+                            if (document.querySelector('.card')?.classList.contains('show-chat')) {
+                                Chat.renderThread(Chat.currentKey());
+                            }
+                            Chat.refreshSend();
                             return;
                         }
 
@@ -2611,6 +2678,11 @@ Summarize the set:\n\n${text}`;
                         UIManager.displayFileContent(cleanedText);
                         this._currentCleanedText = cleanedText;
                         this._updateSummarizeButtonForCurrentSelection();
+                        if (document.querySelector('.card')?.classList.contains('show-chat')) {
+                            Chat.renderThread(Chat.currentKey());
+                        }
+                        Chat.refreshSend();
+
                     } catch (error) {
                         Utils.log('APP', 'File loading failed', error);
                         UIManager.displayFileContent(`Error loading file content: ${error.message}`);
