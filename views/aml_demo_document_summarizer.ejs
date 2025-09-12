@@ -1002,6 +1002,12 @@
             const Utils = {
                 escapeHtml(s = '') { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) },
 
+                stripHtml(s = '') {
+                    const div = document.createElement('div');
+                    div.innerHTML = String(s);
+                    return (div.textContent || div.innerText || '').trim();
+                },
+
                 /**
                  * Get parameter value by index from VA parameters array
                  */
@@ -1785,8 +1791,7 @@ Summarize the set:\n\n${text}`;
                     if (!onDelta) {
                         const json = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                        const txt = (API?.extractOpenAIText ? API.extractOpenAIText(json) :
-                            (json.output_text ?? json.choices?.[0]?.message?.content ?? ''));
+                        const txt = (json.output_text ?? json.choices?.[0]?.message?.content ?? '');
                         if (!txt) throw new Error('LLM returned no text payload');
                         return txt;
                     }
@@ -2058,7 +2063,7 @@ Summarize the set:\n\n${text}`;
                 els: {},
 
                 // per-document chat threads 
-                _threads: new Map(),           // key -> [{role:'user'|'bot', html:string}]
+                _threads: new Map(),           // key -> [{ role: 'user'|'bot', html: string, plain?: string }]
                 _lastBotNodeByKey: new Map(),  // key -> DOM node of last bot bubble (for streaming)
 
                 currentKey() {
@@ -2082,10 +2087,10 @@ Summarize the set:\n\n${text}`;
                     this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
                 },
 
-                appendToThread(role, html, key = this.currentKey()) {
+                appendToThread(role, html, key = this.currentKey(), plain = '') {
                     if (!key) return;
                     const arr = this._threads.get(key) ?? [];
-                    arr.push({ role, html });
+                    arr.push({ role, html, plain });
                     this._threads.set(key, arr);
                 },
 
@@ -2157,38 +2162,30 @@ Summarize the set:\n\n${text}`;
 
                 buildPrompt(userText, docText) {
                     let processedText = docText || '';
-
-                    // Check if this is multi-doc content
                     const isMulti = processedText.startsWith('[[MULTI_DOC]]') || processedText.includes('==== [DOC ');
 
                     if (isMulti) {
-                        // Use sophisticated clipping for multi-docs
-                        // Smaller limits for chat context (vs summarization)
-                        const CHARS_PER_DOC_CHAT = 5000;
-                        const MAX_CHARS_CHAT = 50000;
-
-                        processedText = APIService.clipMultiDocuments(
-                            processedText,
-                            CHARS_PER_DOC_CHAT,
-                            MAX_CHARS_CHAT
-                        );
+                        const CHARS_PER_DOC_CHAT = 5000, MAX_CHARS_CHAT = 50000;
+                        processedText = APIService.clipMultiDocuments(processedText, CHARS_PER_DOC_CHAT, MAX_CHARS_CHAT);
                     } else {
-                        // Single document - use a reasonable limit
                         const MAX_SINGLE_DOC_CHAT = 24000;
                         if (processedText.length > MAX_SINGLE_DOC_CHAT) {
-                            // Try to clip at sentence boundary
                             const clipPoint = APIService.findSentenceBoundary(processedText, MAX_SINGLE_DOC_CHAT);
                             processedText = processedText.slice(0, clipPoint) + '\n[...document trimmed for chat context]';
                         }
                     }
 
                     const cleaned = Utils.cleanTextForLLM(processedText, { maxConsecutiveNewlines: 2 });
+                    const history = this.buildHistoryBlock(this.currentKey(), 3);
 
                     return [
                         "SYSTEM:",
                         "You are a concise assistant answering questions ONLY using the provided Document content.",
+                        "Use the Conversation Context only for continuity; if context conflicts with the Document, the Document wins.",
                         "If the answer is not in the Document, say so plainly. Keep answers brief and clear.",
                         "",
+                        history ? history : "",
+                        history ? "" : "",           // keep spacing consistent
                         "DOCUMENT:",
                         cleaned,
                         "",
@@ -2208,7 +2205,7 @@ Summarize the set:\n\n${text}`;
                     // user message (preserve line breaks)
                     const userHtml = Utils.escapeHtml(text).replace(/\n/g, '<br>');
                     this.addMsg('user', userHtml);
-                    this.appendToThread('user', userHtml, key);
+                    this.appendToThread('user', userHtml, key, text);
 
                     this.els.input.value = '';
                     this._busy = true; this.refreshSend();
@@ -2222,7 +2219,7 @@ Summarize the set:\n\n${text}`;
                     let final = ''; // make visible to finally
 
                     // thread slot for the bot reply
-                    this.appendToThread('bot', '', key);
+                    this.appendToThread('bot', '', key, '');
                     const botIdx = this._threads.get(key).length - 1;
 
                     // stream into the typing bubble
@@ -2231,11 +2228,13 @@ Summarize the set:\n\n${text}`;
                         const safe = Utils.escapeHtml(buf).replace(/\n/g, '<br>');
                         botBubble.innerHTML = safe;
                         const arr = this._threads.get(key);
-                        if (arr && arr[botIdx]) arr[botIdx].html = safe;
+                        if (arr && arr[botIdx]) {
+                            arr[botIdx].html = safe;
+                            arr[botIdx].plain = buf; // <-- capture plain text too
+                        }
                         raf = null;
                         this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
                     };
-
                     try {
                         const params = App._currentParams || {};
                         if (!params.openaiKey) throw new Error('Missing OpenAI key');
@@ -2257,6 +2256,38 @@ Summarize the set:\n\n${text}`;
                     } finally {
                         this._busy = false; this.refreshSend();
                     }
+                },
+                buildHistoryBlock(key = this.currentKey(), maxPairs = 3) {
+                    const arr = this._threads.get(key) || [];
+                    if (!arr.length) return '';
+
+                    // Drop the ephemeral empty bot bubble and the newest user message
+                    const filtered = arr.filter((m, i) => !(m.role === 'bot' && !m.html))
+                        .slice(); // shallow copy
+                    if (filtered.length && filtered[filtered.length - 1].role === 'user') {
+                        filtered.pop();
+                    }
+
+                    // Walk backward collecting user->bot pairs
+                    const pairs = [];
+                    for (let i = filtered.length - 1; i >= 1 && pairs.length < maxPairs; i--) {
+                        const b = filtered[i], u = filtered[i - 1];
+                        if (b.role === 'bot' && u.role === 'user') {
+                            pairs.unshift({
+                                uq: u.plain || DocumentSummarizerApp._modules.Utils.stripHtml(u.html),
+                                ar: b.plain || DocumentSummarizerApp._modules.Utils.stripHtml(b.html)
+                            });
+                            i--; // skip the user we just consumed
+                        }
+                    }
+
+                    if (!pairs.length) return '';
+
+                    let out = `CONVERSATION CONTEXT (last ${pairs.length} Q/A turns):\n`;
+                    pairs.forEach((p, idx) => {
+                        out += `Q${idx + 1}: ${p.uq}\nA${idx + 1}: ${p.ar}\n`;
+                    });
+                    return out.trim();
                 }
             };
 
@@ -2318,7 +2349,7 @@ Summarize the set:\n\n${text}`;
                             this._currentCleanedText = null;
                             this._updateSummarizeButtonForCurrentSelection();
                             return; // bail gracefully
-                        } 
+                        }
                         const modal = document.getElementById('contentModal');
                         const pre = document.getElementById('modalFileContent');
                         const title = document.getElementById('contentModalTitle');
