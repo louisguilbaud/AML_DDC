@@ -1873,8 +1873,8 @@ Summarize the set:\n\n${text}`;
                 },
 
                 /**
- * Clip individual documents and total concatenation for multi-doc summaries
- */
+                 * Clip individual documents and total concatenation for multi-doc summaries
+                 */
                 clipMultiDocuments(text, maxPerDoc, maxTotal) {
                     // Parse documents - first collect all matches
                     const docPattern = /==== \[DOC (\d+)\] (.*?) ====/g;
@@ -2151,15 +2151,41 @@ Summarize the set:\n\n${text}`;
                 },
 
                 buildPrompt(userText, docText) {
-                    const DOC = Utils.cleanTextForLLM(docText || '', { maxConsecutiveNewlines: 2 });
-                    const clipped = DOC.length > 12000 ? DOC.slice(0, 12000) + '\n[...trimmed for length]' : DOC;
+                    let processedText = docText || '';
+
+                    // Check if this is multi-doc content
+                    const isMulti = processedText.startsWith('[[MULTI_DOC]]') || processedText.includes('==== [DOC ');
+
+                    if (isMulti) {
+                        // Use sophisticated clipping for multi-docs
+                        // Smaller limits for chat context (vs summarization)
+                        const CHARS_PER_DOC_CHAT = 5000;  
+                        const MAX_CHARS_CHAT = 50000;     
+
+                        processedText = APIService.clipMultiDocuments(
+                            processedText,
+                            CHARS_PER_DOC_CHAT,
+                            MAX_CHARS_CHAT
+                        );
+                    } else {
+                        // Single document - use a reasonable limit
+                        const MAX_SINGLE_DOC_CHAT = 24000;
+                        if (processedText.length > MAX_SINGLE_DOC_CHAT) {
+                            // Try to clip at sentence boundary
+                            const clipPoint = APIService.findSentenceBoundary(processedText, MAX_SINGLE_DOC_CHAT);
+                            processedText = processedText.slice(0, clipPoint) + '\n[...document trimmed for chat context]';
+                        }
+                    }
+
+                    const cleaned = Utils.cleanTextForLLM(processedText, { maxConsecutiveNewlines: 2 });
+
                     return [
                         "SYSTEM:",
                         "You are a concise assistant answering questions ONLY using the provided Document content.",
                         "If the answer is not in the Document, say so plainly. Keep answers brief and clear.",
                         "",
                         "DOCUMENT:",
-                        clipped,
+                        cleaned,
                         "",
                         "USER QUESTION:",
                         userText,
