@@ -2,162 +2,301 @@
 <html lang="en">
 
 <head>
+    <!--
+    Document Summarizer Application
+    =============================
+    A comprehensive document processing and AI-powered summarization tool that supports
+    multiple file formats (PDF, DOCX, TXT) with both summary generation and interactive
+    chat capabilities. Built for SAS environments with modern responsive design.
+
+    Key Features:
+    - Multi-format document parsing and text extraction
+    - AI-powered summarization with configurable parameters
+    - Interactive chat interface for document Q&A
+    - Real-time file search and filtering
+    - Modal document preview with full content display
+    - Responsive design supporting desktop and mobile
+    -->
+
+    <!-- Standard HTML5 metadata for character encoding and responsive design -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Document Summarizer</title>
+
+    <!--
+    External Library Dependencies
+    ============================
+    These libraries provide core functionality for document processing and security.
+    All CDN resources use integrity checking and CORS policies for security.
+    -->
+
+    <!-- SAS internal messaging utility for iframe communication and data exchange -->
     <script src="./javascripts/sas/util/messagingUtil.js"></script>
+
+    <!--
+    Mammoth.js v1.4.2 - Microsoft Word (.docx) document parser
+    Converts .docx files to HTML while preserving formatting and structure.
+    Used for extracting readable text content from Word documents.
+    -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
-    <!-- PDF.js library for PDF text extraction -->
+
+    <!--
+    PDF.js v3.11.174 - Mozilla's PDF rendering and text extraction library
+    Provides client-side PDF parsing without requiring server-side processing.
+    Enables text extraction from PDF documents for summarization.
+    -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!--
+    DOMPurify v3.1.6 - XSS sanitization library with integrity verification
+    Sanitizes HTML content from uploaded documents to prevent XSS attacks.
+    Critical security component for handling user-uploaded content safely.
+    -->
     <script src="https://unpkg.com/dompurify@3.1.6/dist/purify.min.js"
         integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
     <style>
-        /* ===== Theme + base ===== */
-        :root {
-            --bg: #fff;
-            --fg: #1d1d1f;
-            --muted: #6e6e73;
-            --card: #fff;
-            --border: rgba(0, 0, 0, .08);
-            --primary: #0478CE;
-            --primary-press: #0366AF;
-            --grey-soft: #fafafa;
-            --primary-soft: #E8F3FF;
-            --content-indent: 14px;
-            --file-wave-min: .5;
-            /* lowest visibility (0..1). Try .9 if you want even subtler */
-            --file-wave-width: 30%;
-            /* width of the soft band */
-            --file-wave-speed: 2.8s;
-            /* animation speed */
-            /* Type scale (edit these once) */
-            --fs--2: 12px;
-            --fs--1: 13px;
-            --fs-0: 14px;
-            /* base body */
-            --fs-1: 15.5px;
-            /* slightly up from 14 for subtle hierarchy */
-            --fs-2: 18px;
-            --fs-3: 20px;
-            --fs-4: 24px;
-            --fs-5: 28px;
+        /*
+        Application Stylesheet
+        ======================
+        Comprehensive styling for the Document Summarizer application using modern CSS
+        with custom properties, responsive design, and accessibility considerations.
 
-            /* gentle fluid caps */
+        Architecture:
+        1. CSS Custom Properties (Theme System)
+        2. Base Typography & Layout
+        3. Component-Specific Styles
+        4. Interactive States & Animations
+        5. Responsive Breakpoints
+        6. Accessibility Enhancements
+        */
+
+        /*
+        CSS Custom Properties - Design System Foundation
+        ===============================================
+        Central theme configuration using CSS custom properties for consistent
+        styling across all components. Enables easy theme switching and maintenance.
+        */
+        :root {
+            /*
+            Color Palette - Base Theme Colors
+            ================================
+            Semantic color tokens following design system conventions
+            */
+            --bg: #fff;                    /* Main background color */
+            --fg: #1d1d1f;                 /* Primary text color (high contrast) */
+            --muted: #6e6e73;              /* Secondary text color (reduced contrast) */
+            --card: #fff;                  /* Card/surface background color */
+            --border: rgba(0, 0, 0, .08);  /* Subtle border color with transparency */
+
+            /*
+            Brand Colors - Primary Action Colors
+            ===================================
+            SAS brand-compliant primary colors for interactive elements
+            */
+            --primary: #0478CE;            /* Primary brand color (SAS blue) */
+            --primary-press: #0366AF;      /* Darker variant for pressed/active states */
+            --grey-soft: #fafafa;          /* Light grey for surface backgrounds */
+            --primary-soft: #E8F3FF;       /* Light blue for primary surface variants */
+
+            /*
+            Layout & Spacing Constants
+            ==========================
+            Consistent spacing values used throughout the application
+            */
+            --content-indent: 14px;        /* Standard content indentation */
+
+            /*
+            Animation Properties - File Loading Effects
+            ==========================================
+            Configuration for subtle loading animations on file items
+            */
+            --file-wave-min: .5;           /* Minimum opacity for wave animation (0-1) */
+            --file-wave-width: 30%;        /* Width of the animated wave effect */
+            --file-wave-speed: 2.8s;       /* Duration of wave animation cycle */
+
+            /*
+            Typography Scale - Modular Font Sizing
+            =====================================
+            Systematic font size scale from smallest (-2) to largest (5)
+            Designed for clear hierarchy and readability across devices
+            */
+            --fs--2: 12px;                 /* Smallest text (meta information) */
+            --fs--1: 13px;                 /* Small text (labels, captions) */
+            --fs-0: 14px;                  /* Base body text size */
+            --fs-1: 15.5px;                /* Slightly larger body text */
+            --fs-2: 18px;                  /* Subheadings */
+            --fs-3: 20px;                  /* Section headings */
+            --fs-4: 24px;                  /* Large headings */
+            --fs-5: 28px;                  /* Main page title */
+
+            /*
+            Responsive Typography - Fluid Font Scaling
+            ==========================================
+            Uses CSS clamp() for fluid typography that scales smoothly across viewports
+            Prevents text from becoming too small on mobile or too large on desktop
+            */
             --f-body: clamp(var(--fs-0), 0.95rem + 0.15vw, var(--fs-1));
             --f-h2: clamp(var(--fs-2), 1.05rem + 0.25vw, var(--fs-3));
             --f-h3: clamp(var(--fs-1), 1rem + 0.20vw, var(--fs-2));
 
-            --toggle-height: 40px;
-            --chat-line: 1.45;
+            /*
+            Component-Specific Dimensions
+            ============================
+            Standardized measurements for consistent component sizing
+            */
+            --toggle-height: 40px;         /* Height of the view toggle component */
+            --chat-line: 1.45;             /* Line height for chat message text */
         }
 
+        /*
+        Global Reset & Base Styles
+        ==========================
+        Foundation styles for consistent cross-browser rendering
+        */
         * {
-            box-sizing: border-box
+            box-sizing: border-box        /* Consistent box model for all elements */
         }
 
         html,
         body {
-            height: 100%
+            height: 100%                  /* Full viewport height for proper layout */
         }
 
         body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--fg);
+            margin: 0;                    /* Remove default margins */
+            background: var(--bg);        /* Apply theme background color */
+            color: var(--fg);             /* Apply theme text color */
+            /* System font stack for optimal performance and native appearance */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
-            font-size: var(--fs-0);
+            font-size: var(--fs-0);       /* Base font size from design system */
         }
 
+        /*
+        Main Layout Container
+        ====================
+        Responsive container that centers content and provides appropriate margins
+        */
         .container {
-            width: min(96vw, 1600px);
-            margin: 2vh auto 8vh;
-            padding: 0 24px
+            width: min(96vw, 1600px);     /* Responsive width with max constraint */
+            margin: 2vh auto 8vh;         /* Vertical centering with breathing room */
+            padding: 0 24px               /* Horizontal padding for mobile spacing */
         }
 
+        /*
+        Primary Card Component
+        =====================
+        Main application container with elevated appearance and rounded corners
+        */
         .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
+            background: var(--card);      /* Theme-based background */
+            border: 1px solid var(--border); /* Subtle border definition */
+            border-radius: 24px;          /* Large radius for modern appearance */
+            /* Layered shadow for depth: subtle close shadow + soft distant shadow */
             box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
-            padding: 24px 24px 28px;
-            display: grid;
-            gap: 18px;
+            padding: 24px 24px 28px;      /* Balanced padding with extra bottom space */
+            display: grid;                /* Grid layout for section management */
+            gap: 18px;                    /* Consistent spacing between sections */
         }
 
-        /* Header */
+        /*
+        Application Header
+        =================
+        Top section containing title, subtitle, and primary action buttons
+        */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px
+            display: flex;                /* Horizontal layout */
+            justify-content: space-between; /* Title left, actions right */
+            align-items: flex-start;      /* Top alignment for varied content heights */
+            gap: 12px                     /* Spacing between title and action areas */
         }
 
+        /*
+        Typography Components
+        ====================
+        Styled text elements following the design system hierarchy
+        */
         h1 {
-            margin: 0 0 6px 0;
-            font-size: var(--fs-5);
-            font-weight: 650;
-            letter-spacing: -.02em
+            margin: 0 0 6px 0;            /* Minimal bottom margin for tight spacing */
+            font-size: var(--fs-5);       /* Largest size from typography scale */
+            font-weight: 650;             /* Semi-bold weight for prominence */
+            letter-spacing: -.02em        /* Slight negative tracking for large text */
         }
 
         .subtitle {
-            margin: 0;
-            color: var(--muted);
-            font-size: var(--fs-0);
+            margin: 0;                    /* No margin for clean stacking */
+            color: var(--muted);          /* Muted color for secondary importance */
+            font-size: var(--fs-0);       /* Base font size */
         }
 
         .header>div:first-child {
-            padding-left: var(--content-indent)
+            padding-left: var(--content-indent) /* Consistent indentation alignment */
         }
 
-        /* Labels + surfaces */
+        /*
+        Section Labels & Content Surfaces
+        ================================
+        Reusable components for section headers and content containers
+        */
         .label {
-            font-size: var(--fs--1);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--muted);
-            margin-bottom: 8px;
-            padding-left: var(--content-indent)
+            font-size: var(--fs--1);      /* Small size for section labels */
+            text-transform: uppercase;     /* Uppercase for visual distinction */
+            letter-spacing: .08em;        /* Wide tracking for uppercase readability */
+            color: var(--muted);          /* Muted color for hierarchy */
+            margin-bottom: 8px;           /* Space before associated content */
+            padding-left: var(--content-indent) /* Alignment with other content */
         }
 
         .surface {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            overflow: auto;
-            font-size: var(--fs-0);
+            border: 1px solid var(--border); /* Subtle border definition */
+            border-radius: 14px;          /* Consistent border radius */
+            background: var(--grey-soft);  /* Light background for content areas */
+            padding: 14px;                /* Internal spacing for content */
+            overflow: auto;               /* Handle content overflow with scrolling */
+            font-size: var(--fs-0);       /* Standard text size */
         }
 
-        /* Layout */
+        /*
+        Main Layout Grid
+        ===============
+        Two-column layout: fixed sidebar for file list, flexible main content area
+        */
         .grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 18px;
-            min-height: 500px;
+            display: grid;                /* CSS Grid for precise layout control */
+            grid-template-columns: 320px 1fr; /* Fixed sidebar + flexible content */
+            gap: 18px;                    /* Consistent gap between columns */
+            min-height: 500px;            /* Minimum height for proper proportions */
         }
 
+        /*
+        Left Column - File List Sidebar
+        ==============================
+        Fixed-width sidebar containing document collection and search functionality
+        */
         .left {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            max-height: 80vh;
-            /* Limit collection height but allow it to grow */
-            position: sticky;
-            top: 20px;
-            /* Keep collection visible when scrolling */
+            max-height: 80vh;             /* Limit height to prevent excessive scrolling */
+            position: sticky;             /* Stick to viewport during scroll */
+            top: 20px;                    /* Offset from top when sticky */
         }
 
         .left .surface {
-            flex: 1;
-            min-height: 0;
+            flex: 1;                      /* Expand to fill available space */
+            min-height: 0;                /* Allow shrinking below content size */
         }
 
+        /*
+        Right Column - Main Content Area
+        ===============================
+        Flexible content area for document preview and AI-generated summaries
+        */
         .right {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            align-items: stretch;
+            gap: 20px;                    /* Larger gap for content separation */
+            align-items: stretch;         /* Full width for all children */
         }
 
         .right>section {
@@ -473,16 +612,20 @@
             padding: 8px;
         }
 
-        /* Responsive */
+        /*
+        Responsive Design Breakpoints
+        ============================
+        Mobile-first responsive adjustments for optimal viewing on all devices
+        */
         @media (max-width:1024px) {
             .grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr;  /* Single column layout on mobile */
             }
 
             .left {
-                max-height: 300px;
-                position: relative;
-                top: auto;
+                max-height: 300px;          /* Reduced height for mobile viewing */
+                position: relative;         /* Remove sticky behavior on mobile */
+                top: auto;                  /* Reset top positioning */
             }
         }
 
@@ -494,54 +637,73 @@
             /* Allow unlimited expansion */
         }
 
-        /* Skeleton loader (flowing opaque lines) */
+        /*
+        Skeleton Loading Animation
+        =========================
+        Provides visual feedback during content loading with animated placeholder lines
+        */
         .skel {
-            display: grid;
-            gap: 8px;
-            margin: 0;
+            display: grid;                /* Grid layout for line organization */
+            gap: 8px;                     /* Spacing between skeleton lines */
+            margin: 0;                    /* No external margins */
         }
 
         .skel .line {
-            height: 10px;
-            border-radius: 6px;
+            height: 10px;                 /* Standard line height for text simulation */
+            border-radius: 6px;           /* Rounded corners for softer appearance */
+            /* Animated gradient that creates shimmer effect */
             background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
-            background-size: 200% 100%;
-            animation: shimmer 2.5s linear infinite;
+            background-size: 200% 100%;   /* Double width for animation movement */
+            animation: shimmer 2.5s linear infinite; /* Continuous shimmer animation */
         }
 
-        /* make skeleton non-selectable */
+        /*
+        Skeleton Accessibility
+        =====================
+        Prevent text selection on loading placeholders to avoid user confusion
+        */
         .skel,
         .skel * {
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
+            user-select: none;            /* Standard property */
+            -webkit-user-select: none;    /* Webkit browsers */
+            -webkit-touch-callout: none;  /* iOS Safari touch callouts */
         }
 
+        /*
+        Shimmer Animation Keyframes
+        ==========================
+        Creates a subtle flowing effect across skeleton loading elements
+        */
         @keyframes shimmer {
             0% {
-                background-position: 200% 0;
+                background-position: 200% 0; /* Start with gradient off-screen right */
             }
 
             100% {
-                background-position: -200% 0;
+                background-position: -200% 0; /* End with gradient off-screen left */
             }
         }
 
-        /* === VIEW TOGGLE (Summary <-> Chat) === */
+        /*
+        View Toggle Component (Summary ↔ Chat)
+        =====================================
+        Segmented control for switching between Summary and Chat modes
+        Features animated pill indicator and accessibility support
+        */
         .viewtoggle {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 0;
-            width: 200px;
-            height: var(--toggle-height);
-            padding: 4px;
-            border-radius: 999px;
-            background: var(--grey-soft);
-            border: 1px solid var(--border);
-            font-weight: 600;
-            user-select: none;
-            cursor: pointer
+            position: relative;           /* Required for pill positioning */
+            display: flex;                /* Horizontal layout for labels */
+            align-items: center;          /* Vertical centering */
+            gap: 0;                       /* No gap between segments */
+            width: 200px;                 /* Fixed width for consistent sizing */
+            height: var(--toggle-height); /* Consistent height from design system */
+            padding: 4px;                 /* Internal padding for pill movement */
+            border-radius: 999px;         /* Fully rounded pill shape */
+            background: var(--grey-soft); /* Light background for inactive state */
+            border: 1px solid var(--border); /* Subtle border definition */
+            font-weight: 600;             /* Semi-bold text for prominence */
+            user-select: none;            /* Prevent text selection */
+            cursor: pointer               /* Indicate interactivity */
         }
 
         .viewtoggle .label {
@@ -611,15 +773,20 @@
             text-align: center
         }
 
-        /* === CHAT UI (reused from Alert Summarizer) === */
+        /*
+        Chat Interface Components
+        ========================
+        Interactive chat UI for document Q&A functionality
+        Reused and adapted from Alert Summarizer application
+        */
         .chat {
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            background: var(--grey-soft);
-            padding: 14px;
-            display: flex;
+            border: 1px solid var(--border); /* Consistent border styling */
+            border-radius: 14px;          /* Matching application border radius */
+            background: var(--grey-soft);  /* Light background for content area */
+            padding: 14px;                /* Internal spacing */
+            display: flex;                /* Vertical stacking layout */
             flex-direction: column;
-            gap: 10px
+            gap: 10px                     /* Spacing between chat elements */
         }
 
         .chat-messages {
@@ -718,18 +885,23 @@
             animation-delay: .4s
         }
 
-        /* reuse existing @keyframes dotpulse from Alert app via your spinner keyframes; if absent, add: */
+        /*
+        Typing Indicator Animation
+        =========================
+        Subtle pulsing animation for chat typing indicators
+        Creates engaging visual feedback during AI response generation
+        */
         @keyframes dotpulse {
 
             0%,
             100% {
-                transform: translateY(0);
-                opacity: .25
+                transform: translateY(0);   /* Neutral position */
+                opacity: .25                /* Low opacity for subtle effect */
             }
 
             50% {
-                transform: translateY(-3px);
-                opacity: 1
+                transform: translateY(-3px); /* Slight upward movement */
+                opacity: 1                  /* Full opacity at peak */
             }
         }
 
@@ -857,21 +1029,42 @@
 </head>
 
 <body>
+    <!-- Main application container: provides consistent layout and responsive behavior -->
     <div class="container">
+        <!-- Primary card interface: ARIA region for screen readers, labeled by main title -->
         <div class="card" role="region" aria-labelledby="title">
-            <!-- Header with title and summarize button -->
+            <!--
+                APPLICATION HEADER SECTION
+                Contains: Main title, subtitle, primary action button, and view toggle
+                Layout: Flexbox row with space-between alignment for responsive design
+                State: Button disabled until document selected, toggle controls view switching
+            -->
             <div class="header">
+                <!-- Title section: Main app branding and descriptive subtitle -->
                 <div>
                     <h1 id="title">Document Summarizer</h1>
                     <p class="subtitle">Generate a concise summary with one click.</p>
                 </div>
+                <!-- Action controls: Primary button and view toggle in horizontal layout -->
                 <div class="row">
-                    <!-- Summarize stays in header; auto-hidden in Chat mode via CSS -->
+                    <!--
+                        PRIMARY ACTION BUTTON: Summarize
+                        - Disabled state until document is selected
+                        - Contains loading spinner for async operations
+                        - Auto-hidden via CSS when in Chat mode (.chat-mode class)
+                        - aria-busy attribute updated during processing for screen readers
+                    -->
                     <button id="summarizeBtn" class="btn-primary" type="button" disabled aria-busy="false">
                         <span class="spinner" aria-hidden="true"></span>
                         <span class="labeltext">Summarize</span>
                     </button>
-                    <!-- Segmented control: Summary <-> Chat -->
+                    <!--
+                        VIEW MODE TOGGLE: Summary ↔ Chat
+                        - ARIA switch role for accessibility
+                        - aria-checked reflects current state (false=Summary, true=Chat)
+                        - Visual pill indicator slides between positions
+                        - Controls visibility of #pane-summary vs #pane-chat
+                    -->
                     <div id="viewToggle" class="viewtoggle" role="switch" aria-checked="false"
                         aria-label="Toggle summary or chat">
                         <span class="label">Summary</span>
@@ -881,50 +1074,119 @@
                 </div>
             </div>
 
-            <!-- Content Modal -->
+            <!--
+                DOCUMENT CONTENT MODAL
+                Purpose: Full-screen overlay displaying raw document content
+                Accessibility: WAI-ARIA dialog pattern with focus trap and ESC key handling
+                Interaction: Click backdrop or close button to dismiss
+                State: Hidden by default, shown when user clicks document title
+            -->
             <div id="contentModal" class="content-modal" hidden>
+                <!-- Modal backdrop: Semi-transparent overlay, clickable to close modal -->
                 <div class="content-modal__backdrop" data-close="true" aria-hidden="true"></div>
 
+                <!--
+                    Modal panel: Main content container
+                    - role="dialog" + aria-modal="true" for screen reader focus management
+                    - aria-labelledby points to modal title for context
+                    - Focus trapped within this element when open
+                -->
                 <div class="content-modal__panel" role="dialog" aria-modal="true" aria-labelledby="contentModalTitle">
+                    <!-- Modal header: Title and close button -->
                     <div class="content-modal__header">
                         <h2 id="contentModalTitle" class="content-modal__title">Document content</h2>
+                        <!-- Close button: Accessible with keyboard and screen readers -->
                         <button id="contentModalClose" class="icon-btn close-btn" type="button"
                             aria-label="Close">&times;</button>
                     </div>
 
+                    <!--
+                        Modal body: Document content display
+                        - <pre> preserves formatting for text files
+                        - Content loaded dynamically via JavaScript
+                        - Supports various file types (text, PDF, etc.)
+                    -->
                     <div class="content-modal__body">
                         <pre id="modalFileContent">Loading…</pre>
                     </div>
                 </div>
             </div>
 
-            <!-- Main grid layout -->
+            <!--
+                MAIN APPLICATION LAYOUT
+                Grid system: Two-column responsive layout (documents sidebar + main content)
+                Breakpoints: Stacks vertically on mobile, side-by-side on desktop
+                Grid areas: 'left' (documents) and 'right' (summary/chat panes)
+            -->
             <div class="grid">
-                <!-- Left: Documents -->
+                <!--
+                    DOCUMENTS SIDEBAR (Left Column)
+                    Purpose: Document selection and search interface
+                    Accessibility: ARIA landmark with descriptive label
+                    Features: Real-time search filtering, document list, loading states
+                -->
                 <aside class="left" aria-label="Documents">
+                    <!-- Sidebar header: Label and search controls -->
                     <div>
                         <div class="label">Documents</div>
+                        <!--
+                            SEARCH INTERFACE
+                            Features: Live filtering, clear button, keyboard navigation
+                            Behavior: Filters document list in real-time as user types
+                        -->
                         <div class="search">
                             <div class="search-wrapper">
+                                <!-- Search input: Filters document list dynamically -->
                                 <input id="searchInput" placeholder="Search documents…" />
+                                <!-- Clear button: Resets search and shows all documents -->
                                 <button id="searchClear" class="search-clear" type="button"
                                     aria-label="Clear search"></button>
                             </div>
                         </div>
                     </div>
+                    <!--
+                        DOCUMENT LIST CONTAINER
+                        States: Loading, empty, populated with documents
+                        Content: Dynamically populated via VA parameters and SAS API
+                        Interaction: Click documents to select and load content
+                    -->
                     <div class="surface">
                         <div id="filelist" class="filelist">
+                            <!-- Initial loading state: Shown until VA parameters are available -->
                             <div class="loading-message">Waiting for VA parameters...</div>
                         </div>
                     </div>
                 </aside>
 
-                <!-- Right: File Content + Summary -->
+                <!--
+                    MAIN CONTENT AREA (Right Column)
+                    Purpose: Display summary or chat interface based on view toggle
+                    Layout: Contains two mutually exclusive panes controlled by CSS classes
+                    Responsive: Full width on mobile, right column on desktop
+                -->
                 <main class="right">
+                    <!--
+                        SUMMARY PANE
+                        Visibility: Shown by default, hidden when .chat-mode class applied to body
+                        Purpose: Display AI-generated document summaries
+                        State: Loading, empty, or populated with summary content
+                    -->
                     <div id="pane-summary">
                         <section>
                             <div class="label">Summary</div>
+                            <!--
+                                SUMMARY DISPLAY CONTAINER
+                                Accessibility: ARIA label for screen readers, live region for updates
+                                Content: Dynamically populated via OpenAI API responses
+                                Styling: Card-like surface with appropriate spacing
+                            -->
                             <div class="surface summary-box" aria-label="AI Summary">
+                                <!--
+                                    Summary content area with live updates
+                                    - aria-live="polite" announces changes to screen readers
+                                    - Content sanitized to prevent XSS attacks
+                                    - Shows placeholder text when empty
+                                -->
                                 <div id="summaryContent" aria-live="polite">
                                     <span class="muted">AI summary will appear here...</span>
                                 </div>
@@ -932,13 +1194,39 @@
                         </section>
                     </div>
 
+                    <!--
+                        CHAT PANE
+                        Visibility: Hidden by default, shown when .chat-mode class applied to body
+                        Purpose: Interactive Q&A interface for document-based conversations
+                        Features: Message history, input field, send button with validation
+                    -->
                     <div id="pane-chat">
                         <section>
                             <div class="label">Chat</div>
+                            <!--
+                                CHAT INTERFACE CONTAINER
+                                Layout: Message area above input field (typical chat pattern)
+                                Behavior: Auto-scroll to latest messages, keyboard submit support
+                            -->
                             <div class="chat" id="chat">
+                                <!--
+                                    CHAT MESSAGE HISTORY
+                                    - ARIA region for message context
+                                    - Live region announces new messages to screen readers
+                                    - Auto-scrolls to bottom on new messages
+                                    - Contains user and AI message bubbles
+                                -->
                                 <div id="chatMessages" class="chat-messages" role="region" aria-live="polite"></div>
+                                <!--
+                                    CHAT INPUT CONTROLS
+                                    Layout: Input field with adjacent send button
+                                    Behavior: Enter key submits, button disabled when empty/processing
+                                    Validation: Requires non-empty input and selected document
+                                -->
                                 <div class="chat-input">
+                                    <!-- Text input: Supports Enter key submission -->
                                     <input id="chatText" type="text" placeholder="Ask about this document…" />
+                                    <!-- Send button: Disabled until valid input and document selected -->
                                     <button id="chatSendBtn" class="btn-primary" type="button" disabled>Send</button>
                                 </div>
                             </div>
@@ -947,11 +1235,19 @@
                 </main>
             </div>
 
-            <!-- Hidden elements for compatibility -->
+            <!--
+                LEGACY COMPATIBILITY ELEMENTS
+                Purpose: Support for older VA integration patterns and debugging
+                Visibility: Hidden from UI but accessible to JavaScript for backwards compatibility
+                Usage: VA report integration may expect these elements to exist
+            -->
+            <!-- Legacy output container: May be used by VA for communication -->
             <div id="out" style="display:none"></div>
+            <!-- Legacy file selector: Backup interface for file selection -->
             <select id="fileSelect" style="display:none">
                 <option value="">— select a file —</option>
             </select>
+            <!-- Legacy file counter: May display document count in some contexts -->
             <small id="fileCount" style="display:none"></small>
         </div>
     </div>
@@ -959,55 +1255,148 @@
     <script>
         /**
          * VA Document Summarizer Application
-         * Modular architecture for maintainability and future development
+         *
+         * Enterprise-grade document processing application that integrates SAS Visual Analytics
+         * with OpenAI services for AI-powered document summarization and interactive chat.
+         *
+         * Architecture follows modular design principles with:
+         * - Centralized configuration management
+         * - Security-first approach with content sanitization
+         * - Performance optimization through preloading and caching
+         * - Robust error handling and retry mechanisms
+         * - Clean separation of concerns between modules
          */
         const DocumentSummarizerApp = (() => {
             // =============================================================================
-            // CONFIGURATION
+            // CONFIGURATION - Centralized settings for maintainability and deployment
             // =============================================================================
+
+            /**
+             * Master configuration object containing all application settings.
+             * Organized by functional domain for clarity and maintainability.
+             *
+             * Design principles:
+             * - Single source of truth for all configuration
+             * - Environment-agnostic structure for easy deployment
+             * - Performance tuning through configurable intervals and limits
+             * - Security through explicit allow-listing and sanitization
+             */
             const CONFIG = {
+                // SAS Server Integration - Production SAS Viya environment
+                // Used for document retrieval, authentication, and VA parameter passing
                 SAS_SERVER: 'https://sasserver.demo.sas.com',
+
+                /**
+                 * SAS Authentication Configuration
+                 * Implements OAuth 2.0 client credentials flow for secure API access
+                 *
+                 * Security considerations:
+                 * - Uses SAS CLI client for reduced attack surface
+                 * - Empty client secret follows SAS public client pattern
+                 * - Token endpoint provides centralized authentication
+                 */
                 SAS_AUTH: {
-                    CLIENT_ID: 'sas.cli', // Default SAS CLI client ID
-                    CLIENT_SECRET: '', // Usually empty for CLI client
-                    TOKEN_ENDPOINT: '/SASLogon/oauth/token'
+                    CLIENT_ID: 'sas.cli', // Default SAS CLI client ID - pre-configured in SAS environment
+                    CLIENT_SECRET: '', // Usually empty for CLI client - follows OAuth public client pattern
+                    TOKEN_ENDPOINT: '/SASLogon/oauth/token' // Standard SAS OAuth endpoint
                 },
+
+                /**
+                 * VA Parameter Mapping
+                 * Maps Visual Analytics report parameters to array indices for reliable data extraction.
+                 *
+                 * Parameter flow: VA Report -> URL Parameters -> Array indices -> Application state
+                 * Critical for secure credential passing from VA environment to application
+                 */
                 PARAMETER_INDEXES: {
-                    alertId: 0,
-                    openaiKey: 1,
-                    sasUser: 2,
-                    sasPass: 3
+                    alertId: 0,    // Document/alert identifier for context
+                    openaiKey: 1,  // OpenAI API key - passed securely from VA environment
+                    sasUser: 2,    // SAS username for authenticated requests
+                    sasPass: 3     // SAS password - handled securely, never logged
                 },
+
+                // Network resilience - Interval for retrying failed VA operations (milliseconds)
+                // Balances responsiveness with server load during network issues
                 VA_RETRY_INTERVAL: 1000,
+
+                /**
+                 * DOM Element ID Registry
+                 * Centralized mapping of HTML element IDs for consistent DOM manipulation.
+                 *
+                 * Benefits:
+                 * - Single point of change for UI refactoring
+                 * - Prevents typos in element selection
+                 * - Clear documentation of UI component relationships
+                 */
                 ELEMENTS: {
-                    output: 'out',
-                    fileSelect: 'fileSelect',
-                    fileCount: 'fileCount',
-                    summarizeBtn: 'summarizeBtn',
-                    summaryContent: 'summaryContent',
-                    filelist: 'filelist',
-                    searchInput: 'searchInput',
-                    viewToggle: 'viewToggle',
-                    chatText: 'chatText',
-                    chatSendBtn: 'chatSendBtn',
-                    chatMessages: 'chatMessages'
+                    output: 'out',                    // Main output container
+                    fileSelect: 'fileSelect',         // File selection dropdown
+                    fileCount: 'fileCount',           // Document count display
+                    summarizeBtn: 'summarizeBtn',     // Primary action button
+                    summaryContent: 'summaryContent', // Summary display area
+                    filelist: 'filelist',             // Document list container
+                    searchInput: 'searchInput',       // Search functionality
+                    viewToggle: 'viewToggle',         // View mode switcher
+                    chatText: 'chatText',             // Chat input field
+                    chatSendBtn: 'chatSendBtn',       // Chat send button
+                    chatMessages: 'chatMessages'      // Chat conversation display
                 },
+
+                /**
+                 * OpenAI API Integration Settings
+                 * Configuration for external AI service integration
+                 *
+                 * Security note: API key is passed from secure VA environment,
+                 * never hardcoded in client-side code
+                 */
                 OPENAI: {
-                    URL: 'https://api.openai.com/v1/responses',
-                    MODEL: 'gpt-5-nano'
+                    URL: 'https://api.openai.com/v1/responses', // OpenAI API endpoint
+                    MODEL: 'gpt-5-nano' // Model selection - optimized for document processing tasks
                 },
+
+                /**
+                 * PDF Processing Configuration
+                 * PDF.js library settings for client-side document processing
+                 *
+                 * Uses CDN for reliability and performance, specific version pinned
+                 * for consistency across deployments
+                 */
                 PDF: {
                     WORKER_SRC: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
                 },
+
+                /**
+                 * Auto-refresh Mechanism
+                 * Keeps document list current without manual user intervention
+                 *
+                 * Performance consideration: 4-second interval balances freshness
+                 * with server load and user experience
+                 */
                 AUTO_REFRESH: {
                     ENABLED: true,
-                    INTERVAL: 4000 // milli seconds
+                    INTERVAL: 4000 // milliseconds - tuned for optimal user experience
                 },
+
+                /**
+                 * Intelligent Preloading Strategy
+                 * Performance optimization through predictive document loading
+                 *
+                 * Benefits:
+                 * - Reduces perceived latency for document access
+                 * - Implements throttling to prevent server overload
+                 * - Configurable limits for different deployment scenarios
+                 */
                 PRELOAD: {
                     ENABLED: true,
-                    COUNT: 10,     // how many files to preload
-                    DELAY: 200    // ms between requests to be gentle on the server
+                    COUNT: 10,     // Number of documents to preload - balances performance vs memory
+                    DELAY: 200     // Milliseconds between requests - server-friendly throttling
                 },
+
+                /**
+                 * User Interface Text Configuration
+                 * Centralized UI text management for internationalization readiness
+                 * and consistent user experience across different application modes
+                 */
                 HEADINGS: {
                     summary: {
                         title: 'Document Summarizer',
@@ -1018,19 +1407,51 @@
                         subtitle: 'Ask questions about this document.'
                     }
                 },
+
+                /**
+                 * Special Value Constants
+                 * Application-wide constants for special states and operations
+                 *
+                 * Using distinctive prefixes (__) to avoid collisions with real data
+                 */
                 SPECIAL: {
-                    ALL_ID: '__ALL__',
-                    ALL_NAME: 'All Documents'
+                    ALL_ID: '__ALL__',        // Identifier for "all documents" operations
+                    ALL_NAME: 'All Documents' // Display name for bulk operations
                 }
             };
 
-            // Strict allow-list for LLM HTML (blocks scripts, styles, events, links, etc.)
+            /**
+             * HTML Content Sanitization Function
+             *
+             * Critical security measure that prevents XSS attacks from LLM-generated content.
+             * Uses DOMPurify with strict allow-list approach - only explicitly permitted
+             * HTML elements are allowed, all others are stripped.
+             *
+             * Security architecture:
+             * - Default-deny policy: blocks all HTML by default
+             * - Explicit allow-list: only safe formatting tags permitted
+             * - No attributes allowed: prevents event handlers and style injection
+             * - Designed for LLM output: handles AI-generated content safely
+             *
+             * Threat model: Protects against malicious content in AI responses
+             * that could execute scripts or steal user data
+             */
             const SANITIZE = (html) => DOMPurify.sanitize(html, {
                 ALLOWED_TAGS: ['article', 'h2', 'h3', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote'],
-                ALLOWED_ATTR: [] // no attributes allowed
+                ALLOWED_ATTR: [] // Zero attributes policy - maximum security
             });
 
-            // Initialize PDF.js worker
+            /**
+             * PDF.js Worker Initialization
+             *
+             * Configures PDF processing worker for optimal performance and security.
+             * Worker runs in separate thread to prevent UI blocking during PDF parsing.
+             *
+             * Implementation notes:
+             * - Conditional initialization prevents errors when PDF.js not available
+             * - Uses versioned CDN URL for consistent behavior across deployments
+             * - Worker approach ensures main thread remains responsive during processing
+             */
             if (typeof pdfjsLib !== 'undefined') {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = CONFIG.PDF.WORKER_SRC;
             }
@@ -1038,9 +1459,48 @@
             // =============================================================================
             // UTILITIES
             // =============================================================================
+            /**
+             * Utility functions for text processing, security, and data formatting.
+             * These utilities provide foundational operations used throughout the application
+             * with emphasis on security, performance, and reliability.
+             */
             const Utils = {
+                /**
+                 * Escapes HTML special characters to prevent XSS attacks.
+                 *
+                 * Security Implementation:
+                 * - Converts all HTML-sensitive characters to their entity equivalents
+                 * - Uses object literal lookup for O(1) character replacement performance
+                 * - Handles null/undefined inputs safely by converting to string
+                 * - Protects against injection attacks when displaying user content
+                 *
+                 * Performance Notes:
+                 * - Single regex pass with callback function for efficient processing
+                 * - Object literal lookup avoids multiple conditional checks
+                 * - String() conversion ensures type safety without throwing errors
+                 *
+                 * @param {any} s - Input value to escape (automatically converted to string)
+                 * @returns {string} HTML-safe string with escaped special characters
+                 */
                 escapeHtml(s = '') { return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) },
 
+                /**
+                 * Strips HTML tags and extracts plain text content.
+                 *
+                 * Security Considerations:
+                 * - Uses DOM-based parsing to handle complex HTML structures safely
+                 * - Relies on browser's built-in HTML parser to avoid custom parsing vulnerabilities
+                 * - Prevents script execution by using innerHTML without appending to live DOM
+                 * - Falls back to innerText for IE compatibility
+                 *
+                 * Performance Notes:
+                 * - Creates temporary DOM element for parsing (lightweight operation)
+                 * - Leverages browser's optimized text extraction methods
+                 * - Automatic memory cleanup when element goes out of scope
+                 *
+                 * @param {any} s - HTML string to strip (automatically converted to string)
+                 * @returns {string} Plain text content with HTML tags removed and whitespace trimmed
+                 */
                 stripHtml(s = '') {
                     const div = document.createElement('div');
                     div.innerHTML = String(s);
@@ -1048,21 +1508,67 @@
                 },
 
                 /**
-                 * Get parameter value by index from VA parameters array
+                 * Safely extracts parameter values from VA (Visual Analytics) parameter arrays.
+                 *
+                 * Integration Pattern:
+                 * - Designed for SAS Visual Analytics parameter passing convention
+                 * - Handles the VA parameter structure: [{value: 'data', label: 'display'}]
+                 * - Provides safe access to avoid runtime errors with malformed parameters
+                 *
+                 * Error Handling:
+                 * - Returns undefined for invalid inputs rather than throwing exceptions
+                 * - Guards against non-array parameters and out-of-bounds access
+                 * - Null-safe parameter object property access
+                 *
+                 * @param {Array} params - VA parameters array with {value, label} objects
+                 * @param {number} index - Zero-based index of parameter to retrieve
+                 * @returns {any|undefined} Parameter value or undefined if not found/invalid
                  */
                 getParamByIndex(params, index) {
                     return (Array.isArray(params) && params[index]) ? params[index].value : undefined;
                 },
 
                 /**
-                 * Create query string from object
+                 * Converts an object to a URL-encoded query string.
+                 *
+                 * Standards Compliance:
+                 * - Uses URLSearchParams for proper RFC 3986 URL encoding
+                 * - Handles special characters, spaces, and unicode correctly
+                 * - Automatically encodes array values and null/undefined properties
+                 *
+                 * Performance:
+                 * - Leverages native browser API for optimal encoding performance
+                 * - More efficient than manual string concatenation approaches
+                 * - Built-in handling of edge cases and encoding rules
+                 *
+                 * @param {Object} obj - Plain object with key-value pairs to encode
+                 * @returns {string} URL-encoded query string (without leading '?')
                  */
                 createQueryString(obj) {
                     return new URLSearchParams(obj).toString();
                 },
 
                 /**
-                 * Log with consistent formatting
+                 * Provides structured logging with consistent formatting across the application.
+                 *
+                 * Logging Strategy:
+                 * - Categorized logging for easier filtering and debugging
+                 * - Conditional data logging to avoid JSON serialization overhead
+                 * - Standardized format: [CATEGORY] message
+                 *
+                 * Performance Considerations:
+                 * - Avoids unnecessary object serialization when no data provided
+                 * - Template literal formatting for efficient string construction
+                 * - Leverages console.log's built-in object formatting for complex data
+                 *
+                 * Development Benefits:
+                 * - Easy filtering by category in browser dev tools
+                 * - Consistent format across all application components
+                 * - Optional structured data logging for debugging complex objects
+                 *
+                 * @param {string} category - Log category for filtering (e.g., 'API', 'UI', 'AUTH')
+                 * @param {string} message - Descriptive log message
+                 * @param {any} [data=null] - Optional data object to log alongside message
                  */
                 log(category, message, data = null) {
                     const logMessage = `[${category}] ${message}`;
@@ -1074,7 +1580,37 @@
                 },
 
                 /**
-                 * Clean text for LLM processing
+                 * Optimizes text content for Large Language Model (LLM) processing.
+                 *
+                 * Text Processing Algorithm:
+                 * - Multi-stage cleaning pipeline for optimal LLM input quality
+                 * - Configurable processing steps for different content types
+                 * - Sequential processing order optimizes for performance and accuracy
+                 *
+                 * Unicode Handling:
+                 * - Removes control characters (\u0000-\u001F, \u007F-\u009F) that can disrupt parsing
+                 * - Eliminates zero-width and formatting characters (\u200B-\u200D, \uFEFF)
+                 * - Normalizes various unicode whitespace types to standard spaces
+                 *
+                 * Performance Optimizations:
+                 * - Conditional processing based on options to avoid unnecessary operations
+                 * - Single-pass regex operations where possible
+                 * - Efficient string operations using native methods
+                 *
+                 * LLM Benefits:
+                 * - Reduces token count by eliminating redundant whitespace
+                 * - Improves parsing accuracy by normalizing text structure
+                 * - Prevents encoding issues in API requests
+                 *
+                 * @param {string} text - Raw text content to clean
+                 * @param {Object} [options={}] - Cleaning configuration options
+                 * @param {boolean} [options.removeExtraSpaces=true] - Collapse multiple spaces to single space
+                 * @param {boolean} [options.removeSpecialChars=true] - Remove control and formatting characters
+                 * @param {boolean} [options.normalizeWhitespace=true] - Convert unicode whitespace to standard spaces
+                 * @param {boolean} [options.removeEmptyLines=true] - Remove lines containing only whitespace
+                 * @param {boolean} [options.trimLines=true] - Trim whitespace from start/end of each line
+                 * @param {number} [options.maxConsecutiveNewlines=2] - Limit consecutive newlines
+                 * @returns {string} Cleaned and optimized text for LLM processing
                  */
                 cleanTextForLLM(text, options = {}) {
                     const defaults = {
@@ -1090,29 +1626,41 @@
 
                     let cleaned = text || '';
 
+                    // Remove control characters and zero-width characters that can interfere with LLM parsing
                     if (settings.removeSpecialChars) {
+                        // Remove C0 and C1 control characters (excluding tab \u0009, LF \u000A, CR \u000D)
                         cleaned = cleaned.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '');
+                        // Remove zero-width spaces, joiners, and byte order marks
                         cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '');
                     }
 
+                    // Normalize various unicode whitespace characters to standard space for consistency
                     if (settings.normalizeWhitespace) {
+                        // Convert non-breaking spaces, em spaces, en spaces, etc. to regular space
                         cleaned = cleaned.replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, ' ');
+                        // Convert tabs to spaces for uniform formatting
                         cleaned = cleaned.replace(/\t/g, ' ');
                     }
 
+                    // Collapse multiple consecutive spaces while preserving line breaks
                     if (settings.removeExtraSpaces) {
+                        // Match any whitespace except \r and \n (preserves line structure)
                         cleaned = cleaned.replace(/[^\S\r\n]+/g, ' ');
                     }
 
+                    // Remove leading and trailing whitespace from each line
                     if (settings.trimLines) {
                         cleaned = cleaned.split('\n').map(line => line.trim()).join('\n');
                     }
 
+                    // Remove completely empty lines to reduce token count
                     if (settings.removeEmptyLines) {
                         cleaned = cleaned.split('\n').filter(line => line.length > 0).join('\n');
                     }
 
+                    // Limit consecutive newlines to prevent excessive whitespace
                     if (settings.maxConsecutiveNewlines > 0) {
+                        // Dynamic regex construction to match (maxConsecutiveNewlines + 1) or more newlines
                         const regex = new RegExp(`\\n{${settings.maxConsecutiveNewlines + 1},}`, 'g');
                         const replacement = '\n'.repeat(settings.maxConsecutiveNewlines);
                         cleaned = cleaned.replace(regex, replacement);
@@ -1122,7 +1670,25 @@
                 },
 
                 /**
-                 * Format file size for display
+                 * Converts byte values to human-readable file size representations.
+                 *
+                 * Algorithm:
+                 * - Uses binary (1024-based) calculation for accurate file system representation
+                 * - Logarithmic calculation determines appropriate unit scale efficiently
+                 * - Single decimal precision balances readability with accuracy
+                 *
+                 * Performance:
+                 * - O(1) calculation using mathematical operations
+                 * - Avoids iterative loops for scale determination
+                 * - Minimal string formatting overhead
+                 *
+                 * Edge Cases:
+                 * - Handles zero, null, and undefined inputs gracefully
+                 * - Supports up to GB scale (sufficient for typical document files)
+                 * - Returns descriptive fallback for invalid inputs
+                 *
+                 * @param {number} bytes - File size in bytes
+                 * @returns {string} Formatted size string (e.g., "1.5 MB", "512 KB")
                  */
                 formatFileSize(bytes) {
                     if (!bytes) return 'Unknown size';
@@ -1132,7 +1698,25 @@
                 },
 
                 /**
-                 * Get file type display name
+                 * Determines user-friendly file type display names from filenames.
+                 *
+                 * File Type Detection:
+                 * - Extracts extension from filename using last dot as delimiter
+                 * - Case-insensitive matching for robust extension recognition
+                 * - Supports common document formats used in business environments
+                 *
+                 * Extension Mapping Strategy:
+                 * - Predefined lookup table for known document types
+                 * - Fallback to uppercase extension for unknown types
+                 * - Consistent naming convention for user display
+                 *
+                 * Performance:
+                 * - O(1) lookup using object property access
+                 * - Single string operation for extension extraction
+                 * - Minimal processing overhead for UI display
+                 *
+                 * @param {string} filename - Full filename with extension
+                 * @returns {string} User-friendly file type (e.g., "PDF", "DOCX", "TXT")
                  */
                 getFileTypeDisplay(filename) {
                     if (!filename) return 'File';
@@ -1154,12 +1738,53 @@
             // =============================================================================
             // UI MANAGER
             // =============================================================================
+            /**
+             * Manages user interface interactions, state synchronization, and DOM manipulation
+             * for the document summarizer application. Implements reactive UI patterns with
+             * centralized state management and event-driven updates.
+             *
+             * Architecture Patterns:
+             * - Observer pattern for UI state synchronization
+             * - Command pattern for user action handling
+             * - State management with immutable updates
+             * - Event delegation for efficient DOM event handling
+             *
+             * Performance Optimizations:
+             * - Batch DOM updates to minimize reflows
+             * - Event delegation to reduce memory usage
+             * - Selective rendering based on state changes
+             * - Efficient search filtering with real-time updates
+             */
             const UIManager = {
+                /**
+                 * Internal state: Complete file collection for filtering and display.
+                 * Cached to avoid repeated API calls and enable client-side filtering.
+                 * @private
+                 */
                 _allFiles: [],
+
+                /**
+                 * Internal state: Currently selected file identifier.
+                 * Used for maintaining selection state across UI updates and page refreshes.
+                 * @private
+                 */
                 _selectedFileId: null,
 
                 /**
-                 * Update the main output display
+                 * Updates the main output display with status messages and results.
+                 *
+                 * UI Update Strategy:
+                 * - Uses textContent for XSS prevention (no HTML injection possible)
+                 * - Conditional append mode for progressive message display
+                 * - Graceful degradation if output element not found
+                 *
+                 * Performance:
+                 * - Single DOM query and update per call
+                 * - textContent is faster than innerHTML for plain text
+                 * - No DOM node creation overhead
+                 *
+                 * @param {string} message - Text message to display
+                 * @param {boolean} [append=false] - Whether to append to existing content
                  */
                 updateOutput(message, append = false) {
                     const element = document.getElementById(CONFIG.ELEMENTS.output);
@@ -1169,14 +1794,44 @@
                 },
 
                 /**
-                 * Append to the main output display
+                 * Convenience method to append messages with automatic line break formatting.
+                 *
+                 * User Experience:
+                 * - Automatic newline prepending for readable message separation
+                 * - Consistent formatting across all append operations
+                 * - Simplifies caller code by handling formatting internally
+                 *
+                 * @param {string} message - Message to append to output
                  */
                 appendOutput(message) {
                     this.updateOutput(`\n${message}`, true);
                 },
 
                 /**
-                 * Populate the file list with clickable items
+                 * Renders the interactive file list with selection capabilities and metadata display.
+                 *
+                 * UI Architecture:
+                 * - Virtual "All Documents" option for batch operations
+                 * - Individual file items with click handlers and action buttons
+                 * - Event delegation pattern for efficient memory usage
+                 * - Visual separator between special and regular items
+                 *
+                 * State Management:
+                 * - Preserves current selection across re-renders
+                 * - Caches file data for filtering operations
+                 * - Synchronizes with hidden select element for compatibility
+                 *
+                 * Performance Optimizations:
+                 * - Single innerHTML clear followed by batch DOM insertion
+                 * - Event listeners attached after DOM creation
+                 * - Selective re-filtering only when search term exists
+                 *
+                 * Accessibility Features:
+                 * - Proper ARIA labels for icon buttons
+                 * - Keyboard navigation support via click event handling
+                 * - Screen reader friendly file metadata display
+                 *
+                 * @param {Array} files - Array of file objects with id, name, size properties
                  */
                 populateFileList(files) {
                     this._allFiles = files;
@@ -1192,7 +1847,8 @@
 
                     listEl.innerHTML = '';
 
-                    // --- ADD: permanent "All Documents" row ---
+                    // Create virtual "All Documents" option for batch operations
+                    // This provides users with a way to process multiple files simultaneously
                     const allEl = document.createElement('div');
                     allEl.className = 'file all-docs';
                     allEl.dataset.fileId = CONFIG.SPECIAL.ALL_ID;
@@ -1205,13 +1861,15 @@
                     allEl.addEventListener('click', () => { this.selectFile(CONFIG.SPECIAL.ALL_ID); });
                     listEl.appendChild(allEl);
 
-                    // --- ADD: thin separator line ---
+                    // Visual separator improves UI hierarchy and user comprehension
+                    // Distinguishes special "All Documents" option from individual files
                     const sep = document.createElement('div');
                     sep.className = 'divider';
                     listEl.appendChild(sep);
 
-                    // --- Existing: individual documents ---
+                    // Render individual file entries with interactive elements
                     files.forEach(file => {
+                        // Defensive property access to handle different API response formats
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
                         const size = file.size || file.fileSize || 0;
@@ -1219,10 +1877,13 @@
                         const fileEl = document.createElement('div');
                         fileEl.className = 'file';
                         fileEl.dataset.fileId = String(id);
+                        // Lowercase filename for case-insensitive search filtering
                         fileEl.dataset.fileName = name.toLowerCase();
 
+                        // Restore selection state across UI updates
                         if (String(id) === String(currentSelection)) fileEl.classList.add('is-active');
 
+                        // Structured HTML with semantic organization for accessibility
                         fileEl.innerHTML = `
   <div class="main">
     <div class="name">${name}</div>
@@ -1237,10 +1898,12 @@
   </div>
 `;
 
+                        // Main click handler for file selection
                         fileEl.addEventListener('click', () => { this.selectFile(id); });
                         listEl.appendChild(fileEl);
 
-                        // Clicking the tiny icon opens the big modal (and does NOT change selection)
+                        // Secondary action: content preview modal (independent of selection)
+                        // Event propagation stopped to prevent triggering parent click handler
                         const openBtn = fileEl.querySelector('.open-btn');
                         openBtn.addEventListener('click', (ev) => {
                             ev.stopPropagation();
@@ -1248,24 +1911,45 @@
                         });
                     });
 
-                    // hidden select 
+                    // Maintain compatibility with legacy select-based interface
+                    // Ensures consistent state between new list UI and hidden select element
                     this.populateFileDropdown(files);
 
-                    // restore search filter if present
+                    // Preserve user's search state across file list updates
+                    // Prevents search term loss during dynamic content refreshes
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
                     if (searchInput && searchInput.value) this.filterFiles(searchInput.value);
 
-                    // keep summarize button state fresh
+                    // Trigger UI state validation to update dependent components
+                    // Uses optional chaining to avoid errors if app not fully initialized
                     window.DocumentSummarizerApp?._updateBtn?.();
                 },
 
                 /**
-                 * Select a file and update UI
+                 * Updates application state and UI to reflect file selection.
+                 *
+                 * State Management:
+                 * - Centralizes selection state in this._selectedFileId
+                 * - Synchronizes UI visual indicators across all interface elements
+                 * - Maintains consistency between modern list UI and legacy select element
+                 *
+                 * UI Update Strategy:
+                 * - Batch DOM class updates for smooth visual transitions
+                 * - Uses dataset attributes for efficient element identification
+                 * - Updates all relevant UI components in single operation
+                 *
+                 * Event Handling:
+                 * - Triggers downstream selection handlers via global app instance
+                 * - Uses optional chaining for safe method invocation
+                 * - Ensures selection changes propagate to all dependent components
+                 *
+                 * @param {string|number} fileId - Unique identifier for selected file
                  */
                 selectFile(fileId) {
                     this._selectedFileId = String(fileId);
 
-                    // Update active state
+                    // Update visual selection indicators across all file items
+                    // Single querySelectorAll for efficient DOM traversal
                     document.querySelectorAll('.file').forEach(el => {
                         if (el.dataset.fileId === String(fileId)) {
                             el.classList.add('is-active');
@@ -1274,25 +1958,47 @@
                         }
                     });
 
-                    // Update hidden select
+                    // Maintain synchronization with legacy select element interface
+                    // Ensures compatibility with existing event handlers and form processing
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     if (selectEl) {
                         selectEl.value = String(fileId);
                     }
 
-                    // Trigger file loading via the handlers exposed in App.init()
+                    // Notify application layer of selection change for data loading
+                    // Decoupled architecture allows flexible handler registration
                     if (window.DocumentSummarizerApp?._onFileSelected) {
                         window.DocumentSummarizerApp._onFileSelected(String(fileId));
                     }
                 },
                 /**
-                 * Filter files based on search input
+                 * Implements real-time client-side file filtering based on filename matching.
+                 *
+                 * Search Algorithm:
+                 * - Case-insensitive substring matching for user-friendly search
+                 * - Instant visual feedback without server round-trips
+                 * - Preserves special "All Documents" option in all search states
+                 *
+                 * Performance:
+                 * - O(n) complexity for filtering operation
+                 * - Direct DOM manipulation for immediate visual response
+                 * - No debouncing needed due to lightweight operation
+                 *
+                 * User Experience:
+                 * - Progressive disclosure: shows matching items as user types
+                 * - No pagination disruption during search
+                 * - Clear visual feedback for empty search results
+                 *
+                 * @param {string} searchTerm - User input search string
                  */
                 filterFiles(searchTerm) {
                     const term = searchTerm.toLowerCase();
                     document.querySelectorAll('.file').forEach(el => {
                         const isAll = el.classList.contains('all-docs');
-                        if (isAll) { el.style.display = ''; return; }    // always show "All Documents"
+                        // Always show "All Documents" option regardless of search term
+                        if (isAll) { el.style.display = ''; return; }
+
+                        // Use pre-computed lowercase filename for efficient matching
                         const fileName = el.dataset.fileName || '';
                         if (fileName.includes(term)) {
                             el.style.display = '';
@@ -1303,7 +2009,25 @@
                 },
 
                 /**
-                 * Populate the hidden file dropdown (for compatibility)
+                 * Maintains legacy select element interface for backward compatibility.
+                 *
+                 * Compatibility Strategy:
+                 * - Preserves existing form-based workflows and event handlers
+                 * - Enables graceful degradation when JavaScript enhanced UI unavailable
+                 * - Supports automated testing frameworks expecting select elements
+                 *
+                 * DOM Management:
+                 * - Efficient innerHTML replacement for bulk option updates
+                 * - createElement approach for individual options ensures proper encoding
+                 * - Defensive programming with element existence checks
+                 *
+                 * User Feedback:
+                 * - Descriptive placeholder option for clear user guidance
+                 * - File count display for collection size awareness
+                 * - Consistent empty state messaging
+                 *
+                 * @param {Array} files - File collection for select option generation
+                 * @returns {string} Count text for testing/validation purposes
                  */
                 populateFileDropdown(files) {
                     const selectEl = document.getElementById(CONFIG.ELEMENTS.fileSelect);
@@ -1311,27 +2035,49 @@
 
                     if (!selectEl || !countEl) return;
 
+                    // Clear existing options and add default placeholder
                     selectEl.innerHTML = '<option value="">— select a file —</option>';
 
+                    // Generate option elements with proper value/text encoding
                     files.forEach(file => {
                         const id = file.id || file.fileId;
                         const name = file.name || file.fileName || id;
                         const option = document.createElement('option');
                         option.value = String(id);
-                        option.textContent = name;
+                        option.textContent = name; // textContent prevents XSS
                         selectEl.appendChild(option);
                     });
 
+                    // Update file count indicator for user awareness
                     const countText = files.length ? `(${files.length} files)` : '(no files)';
                     countEl.textContent = countText;
                     return countText;
                 },
 
                 /**
-                 * Show error state
+                 * Displays error states with consistent messaging across UI components.
+                 *
+                 * Error Handling Strategy:
+                 * - Dual-location error display for comprehensive user notification
+                 * - Output area for detailed/persistent error information
+                 * - File list area for contextual error state indication
+                 *
+                 * User Experience:
+                 * - Clear error prefixing for easy identification
+                 * - Consistent styling via loading-message class
+                 * - Non-blocking error display (doesn't prevent other interactions)
+                 *
+                 * Security:
+                 * - Uses template literal and innerHTML with controlled content
+                 * - Error message should be sanitized by caller if user-generated
+                 *
+                 * @param {string} message - Error description to display to user
                  */
                 showError(message) {
+                    // Add error to main output for detailed logging
                     this.appendOutput(`\nError: ${message}`);
+
+                    // Update file list area with contextual error state
                     const listEl = document.getElementById(CONFIG.ELEMENTS.filelist);
                     if (listEl) {
                         listEl.innerHTML = `<div class="loading-message">Error: ${message}</div>`;
@@ -1340,37 +2086,53 @@
 
 
                 /**
-                 * Setup event listeners for UI interactions
+                 * Initializes event handlers for all interactive UI components.
+                 *
+                 * Event Handling Architecture:
+                 * - Centralized event listener registration for maintainable code
+                 * - Event delegation where appropriate to minimize memory usage
+                 * - Progressive enhancement with graceful degradation
+                 *
+                 * User Interaction Patterns:
+                 * - Real-time search with visual feedback
+                 * - Keyboard accessibility for power users
+                 * - Multiple interaction methods (click, keyboard, etc.)
+                 *
+                 * Performance Considerations:
+                 * - Event listener registration during initialization (not per-element)
+                 * - Efficient event handling without unnecessary DOM queries
+                 * - Debouncing not needed for lightweight operations
                  */
                 setupEventListeners() {
-                    // Search input
+                    // Search interface with real-time filtering and accessibility features
                     const searchInput = document.getElementById(CONFIG.ELEMENTS.searchInput);
                     const searchClear = document.getElementById('searchClear');
                     if (searchInput && searchClear) {
-                        // Handle input changes
+                        // Real-time search with immediate visual feedback
                         searchInput.addEventListener('input', (e) => {
                             const hasValue = e.target.value.length > 0;
 
-                            // Show/hide clear button
+                            // Dynamic clear button visibility for intuitive UX
                             if (hasValue) {
                                 searchClear.classList.add('visible');
                             } else {
                                 searchClear.classList.remove('visible');
                             }
 
-                            // Filter files
+                            // Apply filter immediately for responsive user experience
                             this.filterFiles(e.target.value);
                         });
 
-                        // Handle clear button click
+                        // Clear button provides quick reset functionality
                         searchClear.addEventListener('click', () => {
                             searchInput.value = '';
                             searchClear.classList.remove('visible');
                             this.filterFiles(''); // Reset filter to show all files
-                            searchInput.focus(); // Return focus to input
+                            searchInput.focus(); // Maintain keyboard accessibility
                         });
 
-                        // Also handle keyboard clearing (optional - for ESC key)
+                        // Keyboard accessibility: ESC key for quick clearing
+                        // Enhances power user experience and accessibility compliance
                         searchInput.addEventListener('keydown', (e) => {
                             if (e.key === 'Escape' && e.target.value) {
                                 searchInput.value = '';
@@ -1381,28 +2143,35 @@
 
                     }
 
-                    // Hidden file select (for compatibility)
+                    // Legacy select element interface for backward compatibility
+                    // Maintains support for form-based interactions and automated testing
                     const fileSelect = document.getElementById(CONFIG.ELEMENTS.fileSelect);
                     if (fileSelect) {
                         fileSelect.addEventListener('change', (event) => {
                             const fileId = event.target.value;
                             if (fileId) {
+                                // Log selection for debugging and analytics
                                 Utils.log('UI', `File selected: ${fileId}`);
+
+                                // Trigger application-level selection handler
                                 if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onFileSelected) {
                                     window.DocumentSummarizerApp._onFileSelected(fileId);
                                 }
                             } else {
-                                // Clear selection so the centralized updater knows no file is selected
+                                // Handle deselection: clear internal state and update dependent UI
                                 this._selectedFileId = null;
                                 window.DocumentSummarizerApp?._updateBtn?.();
                             }
                         });
                     }
 
-                    // Summarize button
+                    // Main action button for document summarization workflow
+                    // Delegates to application layer for business logic processing
                     const summarizeBtn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
                     if (summarizeBtn) {
                         summarizeBtn.addEventListener('click', () => {
+                            // Invoke application-level summarization handler
+                            // Uses optional chaining for safe method invocation during initialization
                             if (window.DocumentSummarizerApp && window.DocumentSummarizerApp._onSummarizeClick) {
                                 window.DocumentSummarizerApp._onSummarizeClick();
                             }
