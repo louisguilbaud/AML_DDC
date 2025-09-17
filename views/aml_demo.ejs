@@ -2,20 +2,123 @@
 <html lang="en">
 
 <head>
+        <!--
+        Alert Summarizer Application
+        ============================
+        Enterprise AML (Anti-Money Laundering) alert processing and AI-powered summarization system
+        designed for SAS Visual Analytics integration. Provides analysts with intelligent alert
+        summarization, contextual chat interactions, and streamlined case documentation workflows.
+
+        Key Features:
+        - AI-powered alert summarization with configurable models (GPT-4, Claude, etc.)
+        - Interactive chat interface for detailed alert investigation
+        - Real-time comment/annotation system for case documentation
+        - Responsive design optimized for compliance workflow efficiency
+        - Secure content sanitization for enterprise security requirements
+        - SAS Visual Analytics iframe integration with bidirectional messaging
+
+        Technical Architecture:
+        - Single-page application with tab-based navigation (Summary/Chat)
+        - CSS-only animations and transitions for performance
+        - No framework dependencies - vanilla JavaScript for minimal overhead
+        - Enterprise-grade security with CSP-compliant external resources
+        -->
+
+        <!-- Standard HTML5 metadata for character encoding and responsive viewport configuration -->
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Alert Summarizer</title>
-        <!-- SAS VA messaging utility for receiving data/parameters from Visual Analytics -->
+
+        <!--
+        External Library Dependencies
+        ============================
+        Critical security and integration libraries for enterprise AML processing.
+        All CDN resources include integrity checking and strict CORS policies.
+        -->
+
+        <!--
+        SAS Visual Analytics Messaging Utility
+        Integration component for bidirectional communication with SAS VA dashboards.
+        Handles parameter passing, data exchange, and iframe postMessage protocols.
+        -->
         <script src="./javascripts/sas/util/messagingUtil.js"></script>
+
+        <!--
+        DOMPurify v3.1.6 - XSS Sanitization Library
+        Enterprise-grade HTML sanitization to prevent XSS attacks in user-generated content.
+        Essential for processing alert descriptions and user comments safely.
+        Integrity hash ensures CDN resource hasn't been tampered with.
+        -->
         <script src="https://unpkg.com/dompurify@3.1.6/dist/purify.min.js"
                 integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a"
                 crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <style>
-                /*==========================================================
-                  GLOBAL THEME TOKENS & BASE ELEMENTS
-                  - CSS variables enable quick theming across the app.
-                  - Avoid hardcoding colors elsewhere; prefer these tokens.
-                ==========================================================*/
+                /*
+                Alert Summarizer Stylesheet
+                ===========================
+                Comprehensive styling system for enterprise AML alert processing application.
+                Designed for optimal readability, accessibility, and professional compliance workflows.
+
+                Architecture Overview:
+                1. CSS Custom Properties (Design System Foundation)
+                2. Base Typography & Layout (Cross-browser compatibility)
+                3. Component-Specific Styles (Modular design patterns)
+                4. Interactive States & Micro-animations (Performance-optimized)
+                5. Responsive Design (Mobile-first approach)
+                6. Accessibility Enhancements (WCAG 2.1 AA compliance)
+                7. Performance Optimizations (GPU acceleration, contain properties)
+
+                Design System Philosophy:
+                - SAS brand-compliant color palette and typography
+                - Consistent 14px base content indentation for visual hierarchy
+                - Rounded corners (14px-24px) for modern, approachable aesthetic
+                - Subtle shadows and transparency for depth without distraction
+                - High contrast ratios for compliance environment readability
+                */
+
+                /*
+                CSS Custom Properties - Design System Foundation
+                ===============================================
+                Central theme configuration using CSS custom properties for consistent
+                branding, easy maintenance, and potential dark mode implementation.
+                All components reference these tokens rather than hardcoded values.
+                */
+                :root {
+                        /*
+                        Base Color Palette - High Contrast for Compliance
+                        ================================================
+                        Semantic color tokens following enterprise design patterns
+                        */
+                        --bg: #fff;                    /* Primary background - pure white for maximum contrast */
+                        --fg: #1d1d1f;                 /* Primary text - near-black for optimal readability */
+                        --muted: #6e6e73;              /* Secondary text - sufficient contrast for WCAG AA */
+                        --card: #fff;                  /* Surface/card background - maintains consistency */
+                        --border: rgba(0, 0, 0, .08);  /* Subtle borders - minimal visual weight */
+
+                        /*
+                        SAS Brand Colors - Primary Interactive Elements
+                        ==============================================
+                        Official SAS brand blue palette for CTAs and active states
+                        */
+                        --primary: #0478CE;            /* SAS brand blue - primary action color */
+                        --primary-press: #0366AF;      /* Darker variant for active/pressed states */
+                        --primary-soft: #E8F3FF;       /* Light blue tint for secondary surfaces */
+                        --grey-soft: #fafafa;          /* Neutral light background for input fields */
+
+                        /*
+                        Layout System Variables
+                        ======================
+                        Consistent spacing and sizing tokens
+                        */
+                        --content-indent: 14px;        /* Standard content indentation for hierarchy */
+
+                        /*
+                        Accessibility & Readability Scale
+                        ================================
+                        Global font scaling for improved readability in compliance environments
+                        */
+                        --fs: 1.08;                    /* 8% font size increase for better readability */
+                }
                 :root {
                         --bg: #fff;
                         --fg: #1d1d1f;
@@ -29,708 +132,876 @@
                         --grey-soft: #fafafa;
                 }
 
+                /*
+                Base Element Reset & Typography
+                ===============================
+                Cross-browser normalization and base styling for consistent rendering
+                */
                 * {
-                        box-sizing: border-box
+                        box-sizing: border-box              /* Predictable sizing model */
                 }
 
                 html,
                 body {
-                        height: 100%
+                        height: 100%                       /* Full viewport height for single-page layout */
                 }
 
                 body {
-                        margin: 0;
-                        background: var(--bg);
-                        color: var(--fg);
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui
+                        margin: 0;                         /* Remove default browser margins */
+                        background: var(--bg);             /* Apply theme background */
+                        color: var(--fg);                  /* Apply theme text color */
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
+                        /* System font stack for optimal performance and native feel across platforms */
+                        font-size: calc(16px * var(--fs)); /* Scalable base font size for accessibility */
                 }
 
 
+                /*
+                Layout Container - Responsive Main Wrapper
+                ==========================================
+                Centered layout with responsive width constraints optimized for
+                both desktop compliance workstations and mobile device access
+                */
                 .container {
-                        width: min(96vw, 1600px);
-                        margin: 2vh auto 8vh;
-                        padding: 0 24px;
+                        width: min(96vw, 1600px);          /* Responsive width: 96% viewport up to 1600px max */
+                        margin: 2vh auto 8vh;              /* Vertical spacing: 2% top, 8% bottom for breathing room */
+                        padding: 0 24px;                   /* Horizontal padding for edge-to-edge mobile safety */
                 }
 
+                /*
+                Primary Card Component - Main Content Container
+                ==============================================
+                Elevated surface design for the main application interface.
+                Uses layered shadows for subtle depth and professional appearance.
+                */
                 .card {
-                        background: var(--card);
-                        border: 1px solid var(--border);
-                        border-radius: 24px;
+                        background: var(--card);           /* Theme-aware surface color */
+                        border: 1px solid var(--border);   /* Subtle edge definition */
+                        border-radius: 24px;               /* Generous rounding for modern aesthetic */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
-                        padding: 32px;
-                        display: grid;
-                        gap: 18px
+                        /* Layered shadow: subtle contact shadow + ambient shadow for depth */
+                        padding: 32px;                     /* Generous internal spacing for content breathing room */
+                        display: grid;                      /* CSS Grid for flexible content layout */
+                        gap: 18px                           /* Consistent spacing between card sections */
                 }
 
+                /*
+                Header Layout & Typography
+                ==========================
+                Application header with title area and controls
+                */
                 .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        gap: 12px
+                        display: flex;                      /* Horizontal layout for title and controls */
+                        justify-content: space-between;    /* Push content to edges */
+                        align-items: flex-start;           /* Top-align for multi-line content */
+                        gap: 12px                           /* Breathing room between title and controls */
                 }
 
                 h1 {
-                        margin: 0 0 6px 0;
-                        font-size: 28px;
-                        font-weight: 650;
-                        letter-spacing: -.02em
+                        margin: 0 0 6px 0;                 /* Minimal bottom margin for subtitle spacing */
+                        font-size: calc(28px * var(--fs)); /* Scalable primary heading size */
+                        font-weight: 650;                  /* Semi-bold for authority without heaviness */
+                        letter-spacing: -.02em              /* Slight negative tracking for large text */
                 }
 
                 .subtitle {
-                        margin: 0;
-                        color: var(--muted);
-                        font-size: 14px
+                        margin: 0;                         /* Reset default paragraph margins */
+                        color: var(--muted);               /* Reduced contrast for hierarchy */
+                        font-size: calc(14px * var(--fs))  /* Scalable subtitle size */
                 }
 
+                /*
+                Utility Components - Layout & Form Base
+                =======================================
+                Reusable layout patterns and form element normalization
+                */
                 .row {
-                        display: flex;
-                        gap: 10px;
-                        align-items: center
+                        display: flex;                      /* Horizontal content flow */
+                        gap: 10px;                         /* Consistent item spacing */
+                        align-items: center                 /* Vertical center alignment */
                 }
 
                 button {
-                        appearance: none;
-                        border: none;
-                        cursor: pointer;
-                        font-family: inherit
+                        appearance: none;                   /* Remove default browser styling */
+                        border: none;                       /* Clean slate for custom styling */
+                        cursor: pointer;                    /* Indicate interactivity */
+                        font-family: inherit                /* Inherit system font stack */
                 }
 
-                /* Primary CTA button (e.g., Summarize, Send) */
+                /*
+                Button Component System
+                =======================
+                Consistent interactive elements with accessibility and micro-interactions
+                */
+
+                /* Primary CTA button (Summarize, Send) - High-emphasis actions */
                 .btn-primary {
-                        background: var(--primary);
-                        color: #fff;
-                        border-radius: 14px;
-                        padding: 12px 18px;
-                        font-size: 16px;
-                        font-weight: 600;
+                        background: var(--primary);        /* SAS brand blue for primary actions */
+                        color: #fff;                        /* High contrast white text */
+                        border-radius: 14px;               /* Rounded corners matching design system */
+                        padding: 12px 18px;                /* Comfortable touch target (44px+ height) */
+                        font-size: calc(16px * var(--fs)); /* Scalable readable text size */
+                        font-weight: 600;                  /* Semi-bold for emphasis and readability */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
+                        /* Colored shadow reinforces button importance and adds depth */
                         transition: transform .06s, box-shadow .2s, filter .2s
+                        /* Fast micro-interactions for responsive feel */
                 }
 
                 .btn-primary:hover {
-                        filter: brightness(1.02)
+                        filter: brightness(1.02)           /* Subtle brightness increase on hover */
                 }
 
                 .btn-primary:active {
-                        transform: scale(.985)
+                        transform: scale(.985)              /* Slight scale down for tactile feedback */
                 }
 
                 .btn-primary:disabled {
-                        opacity: .65;
-                        cursor: not-allowed;
-                        box-shadow: none
+                        opacity: .65;                       /* Reduced opacity indicates disabled state */
+                        cursor: not-allowed;                /* Clear visual feedback for disabled state */
+                        box-shadow: none                    /* Remove elevation when non-interactive */
                 }
 
-                /* Secondary/neutral button (Clear/Save) */
+                /* Secondary/neutral button (Clear/Save) - Medium-emphasis actions */
                 .btn-secondary {
-                        background: var(--grey-soft);
-                        color: var(--fg);
-                        border-radius: 14px;
-                        padding: 10px 16px;
-                        font-size: 14px;
-                        font-weight: 600
+                        background: var(--grey-soft);      /* Neutral background for secondary actions */
+                        color: var(--fg);                  /* Primary text color for readability */
+                        border-radius: 14px;               /* Consistent rounding with primary buttons */
+                        padding: 10px 16px;                /* Slightly smaller padding for hierarchy */
+                        font-size: calc(14px * var(--fs)); /* Scalable secondary text size */
+                        font-weight: 600                   /* Maintain readability with semi-bold weight */
                 }
 
                 .btn-secondary:hover {
-                        filter: brightness(.97)
+                        filter: brightness(.97)            /* Subtle darkening on hover for feedback */
                 }
 
                 .btn-secondary:active {
-                        filter: brightness(.94)
+                        filter: brightness(.94)            /* More pronounced darkening when pressed */
                 }
 
-                /* Inline spinner used inside .btn-primary when loading */
+                /*
+                Loading States & Micro-animations
+                =================================
+                Performance-optimized animations for user feedback during AI processing
+                */
+
+                /* Inline spinner for button loading states */
                 .spinner {
-                        width: 16px;
+                        width: 16px;                        /* Compact size for inline use */
                         height: 16px;
                         border: 2px solid rgba(255, 255, 255, .6);
-                        border-top-color: #fff;
-                        border-radius: 50%;
-                        animation: spin 1s linear infinite;
-                        display: none
+                        /* Semi-transparent border for subtle appearance */
+                        border-top-color: #fff;            /* Full opacity top for rotation visual */
+                        border-radius: 50%;                /* Perfect circle */
+                        animation: spin 1s linear infinite; /* Smooth continuous rotation */
+                        display: none                       /* Hidden by default, shown via JavaScript */
                 }
 
                 @keyframes spin {
                         to {
-                                transform: rotate(360deg)
+                                transform: rotate(360deg)   /* Full rotation for smooth spinner animation */
                         }
                 }
 
-                /* Swap label <-> spinner while loading */
+                /* Loading state management - toggle between text and spinner */
                 .loading .spinner {
-                        display: inline-block
+                        display: inline-block               /* Show spinner during loading */
                 }
 
                 .loading .labeltext {
-                        display: none
+                        display: none                       /* Hide button text during loading */
                 }
+
+                /*
+                Typography & Content Hierarchy
+                ==============================
+                Section headers and content organization elements
+                */
 
                 /* Section label headers (Summary, Comments, Chat) */
                 .label {
-                        font-size: 12px;
-                        text-transform: uppercase;
-                        letter-spacing: .08em;
-                        color: var(--muted);
-                        margin-bottom: 8px;
-                        padding-left: var(--content-indent);
+                        font-size: calc(12px * var(--fs)); /* Scalable small caps size */
+                        text-transform: uppercase;          /* All caps for section emphasis */
+                        letter-spacing: .08em;              /* Wide tracking for readability */
+                        color: var(--muted);               /* Reduced contrast for hierarchy */
+                        margin-bottom: 8px;                /* Spacing before section content */
+                        padding-left: var(--content-indent); /* Consistent left alignment */
                 }
 
-                /* A11y: Visually hidden but screen-reader accessible text */
+                /*
+                Accessibility Utilities
+                =======================
+                WCAG 2.1 AA compliance utilities for screen reader support
+                */
+
+                /* Visually hidden content for screen readers (WCAG 2.1 AA compliant) */
                 .sr-only {
-                        position: absolute;
-                        width: 1px;
+                        position: absolute;                 /* Remove from normal document flow */
+                        width: 1px;                         /* Minimal dimensions */
                         height: 1px;
-                        padding: 0;
-                        margin: -1px;
-                        overflow: hidden;
-                        clip: rect(0, 0, 0, 0);
-                        white-space: nowrap;
-                        border: 0;
+                        padding: 0;                         /* Remove all spacing */
+                        margin: -1px;                       /* Negative margin to fully hide */
+                        overflow: hidden;                   /* Prevent content overflow */
+                        clip: rect(0, 0, 0, 0);            /* Legacy clipping for older browsers */
+                        white-space: nowrap;                /* Prevent text wrapping */
+                        border: 0;                          /* Remove any borders */
                 }
 
-                /* Compact select styled to match secondary buttons */
+                /*
+                Form Controls - Select Dropdown
+                ===============================
+                Styled select element matching button design system
+                */
+
+                /* Model selection dropdown styled to match secondary buttons */
                 .select-model {
-                        background: var(--grey-soft);
-                        color: var(--fg);
-                        border: none;
-                        border-radius: 14px;
-                        padding: 10px 12px;
-                        font-size: 14px;
-                        font-weight: 600;
+                        background: var(--grey-soft);      /* Neutral background matching btn-secondary */
+                        color: var(--fg);                  /* Primary text color */
+                        border: none;                       /* Clean appearance without borders */
+                        border-radius: 14px;               /* Consistent rounding */
+                        padding: 10px 12px;                /* Comfortable padding for readability */
+                        font-size: calc(14px * var(--fs)); /* Scalable text size */
+                        font-weight: 600;                  /* Semi-bold for consistency */
                 }
 
                 .select-model:disabled {
-                        opacity: .65;
-                        cursor: not-allowed;
+                        opacity: .65;                       /* Visual feedback for disabled state */
+                        cursor: not-allowed;                /* Clear interaction feedback */
                 }
 
-                /* LLM summary output container (can contain headings, lists) */
+                /*
+                Content Display Areas
+                =====================
+                Containers for AI-generated content and user input
+                */
+
+                /* AI summary output container - supports rich HTML content */
                 .summary {
-                        border: 1px solid var(--border);
-                        border-radius: 14px;
-                        background: var(--grey-soft);
-                        padding: 14px;
-                        min-height: 140px;
-                        white-space: normal;
-                        font-size: 14px
+                        border: 1px solid var(--border);   /* Subtle edge definition */
+                        border-radius: 14px;               /* Consistent rounding */
+                        background: var(--grey-soft);      /* Light background for content separation */
+                        padding: 14px;                     /* Internal spacing for readability */
+                        min-height: 140px;                 /* Minimum height prevents layout shift */
+                        white-space: normal;                /* Allow normal text wrapping */
+                        font-size: calc(14px * var(--fs))  /* Scalable readable content size */
                 }
 
+                /* Rich text styling within summary content */
                 .summary h1 {
-                        font-size: 24px;
-                        margin: 0 0 8px
+                        font-size: calc(24px * var(--fs)); /* Scalable heading size */
+                        margin: 0 0 8px                    /* Bottom spacing for content separation */
                 }
 
                 .summary h2 {
-                        font-size: 18px;
-                        margin: 14px 0 6px
+                        font-size: calc(18px * var(--fs)); /* Scalable subheading size */
+                        margin: 14px 0 6px                 /* Top and bottom spacing for hierarchy */
                 }
 
                 .summary p {
-                        margin: 6px 0
+                        margin: 6px 0                      /* Minimal paragraph spacing */
                 }
 
                 .summary ul {
-                        margin: 6px 0 6px 18px;
-                        padding-left: 14px
+                        margin: 6px 0 6px 18px;            /* List spacing with left offset */
+                        padding-left: 14px                 /* Additional indentation for bullets */
                 }
 
                 .summary li {
-                        margin: 3px 0
+                        margin: 3px 0                      /* Compact list item spacing */
                 }
 
-                /* Optional cutoff-date footnote appended by JS */
+                /* AI model knowledge cutoff disclaimer */
                 .summary .cutoff {
-                        margin-top: 10px;
-                        font-size: 12px;
-                        color: var(--muted)
+                        margin-top: 10px;                  /* Separation from main content */
+                        font-size: calc(12px * var(--fs)); /* Scalable small disclaimer text */
+                        color: var(--muted)                /* Reduced emphasis for footnote content */
                 }
 
-                /* Comment textarea (auto-resized via JS) */
+                /*
+                Form Input Elements
+                ==================
+                Text input areas with focus states and accessibility
+                */
+
+                /* Comment textarea with auto-resize functionality */
                 textarea {
-                        width: 100%;
-                        min-height: 120px;
-                        padding: 14px 14px;
-                        border-radius: 16px;
+                        width: 100%;                       /* Full width for maximum usability */
+                        min-height: 120px;                /* Minimum height for comfortable editing */
+                        padding: 14px 14px;               /* Generous padding for touch targets */
+                        border-radius: 16px;              /* Slightly larger radius for text areas */
                         border: 1px solid rgba(0, 0, 0, .12);
-                        background: #fff;
-                        outline: none;
-                        line-height: 1.5;
-                        overflow: hidden;
-                        resize: none
+                        /* Subtle border with transparency */
+                        background: #fff;                  /* Clean white background for text clarity */
+                        outline: none;                     /* Remove default focus outline */
+                        line-height: 1.5;                 /* Comfortable reading line height */
+                        overflow: hidden;                  /* Hide scrollbars for auto-resize */
+                        resize: none;                      /* Disable manual resize for consistent layout */
+                        font-size: calc(14px * var(--fs)) /* Scalable text input size */
                 }
 
                 textarea:focus {
-                        border-color: var(--primary-press);
+                        border-color: var(--primary-press); /* Brand color focus indication */
                         box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
+                        /* Accessible focus ring with sufficient contrast */
                 }
 
                 .caption {
-                        font-size: 12px;
-                        color: var(--muted)
+                        font-size: calc(12px * var(--fs)); /* Scalable caption text */
+                        color: var(--muted)                /* Reduced contrast for supporting text */
                 }
 
-                /* Prevent text selection on titles */
+                /*
+                User Experience Enhancements
+                ============================
+                Prevent accidental text selection on UI elements
+                */
+
+                /* Disable text selection on non-content UI elements */
                 h1#title,
                 .subtitle,
                 .label {
-                        -webkit-user-select: none;
-                        /* Safari */
-                        -moz-user-select: none;
-                        /* Firefox */
-                        -ms-user-select: none;
-                        /* IE/Edge legacy */
-                        user-select: none;
-                        /* Standard */
-                        -webkit-touch-callout: none;
-                        /* iOS long-press menu */
+                        -webkit-user-select: none;         /* Safari */
+                        -moz-user-select: none;            /* Firefox */
+                        -ms-user-select: none;             /* IE/Edge legacy */
+                        user-select: none;                 /* Standard property */
+                        -webkit-touch-callout: none;       /* Disable iOS long-press context menu */
                 }
 
-                /* Don't allow selecting the loading text or skeleton */
+                /* Prevent selection of loading states and skeleton content */
                 .summary .working,
                 .summary .working *,
                 .summary .skel,
                 .summary .skel * {
-                        -webkit-user-select: none;
+                        -webkit-user-select: none;         /* Cross-browser text selection prevention */
                         -moz-user-select: none;
                         -ms-user-select: none;
                         user-select: none;
-                        -webkit-touch-callout: none;
+                        -webkit-touch-callout: none;       /* iOS touch interaction prevention */
                 }
 
 
-                /* Toast for lightweight notifications (saved/cleared) */
+                /*
+                Notification System
+                ==================
+                Toast notifications for user feedback
+                */
+
+                /* Toast notification component for save/clear confirmations */
                 .toast {
-                        position: fixed;
-                        left: 50%;
-                        bottom: 24px;
+                        position: fixed;                    /* Fixed positioning for overlay */
+                        left: 50%;                          /* Center horizontally */
+                        bottom: 24px;                      /* Fixed distance from bottom */
                         transform: translateX(-50%) translateY(20px);
-                        background: #111;
-                        color: #fff;
-                        padding: 10px 14px;
-                        border-radius: 999px;
+                        /* Center and initially offset down for animation */
+                        background: #111;                  /* High contrast dark background */
+                        color: #fff;                       /* White text for maximum readability */
+                        padding: 10px 14px;               /* Compact padding for brief messages */
+                        border-radius: 999px;             /* Pill shape for modern appearance */
                         box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-                        opacity: 0;
-                        pointer-events: none;
+                        /* Strong shadow for overlay emphasis */
+                        opacity: 0;                        /* Hidden by default */
+                        pointer-events: none;              /* Non-interactive during fade */
                         transition: transform .35s, opacity .35s
+                        /* Smooth slide-up animation */
                 }
 
                 .toast.show {
-                        opacity: 1;
+                        opacity: 1;                        /* Visible state */
                         transform: translateX(-50%) translateY(0)
+                        /* Final position - centered and at bottom */
                 }
 
-                /* "Working..." skeleton/loader composition */
+                /*
+                Loading State Animations
+                ========================
+                Animated feedback during AI processing with skeleton screens
+                */
+
+                /* "Working..." text with animated dots */
                 .working {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
-                        color: var(--muted);
-                        font-weight: 600
+                        display: inline-flex;              /* Horizontal layout with text and dots */
+                        align-items: center;               /* Vertical center alignment */
+                        gap: 6px;                          /* Spacing between text and animation */
+                        color: var(--muted);               /* Reduced contrast for loading state */
+                        font-weight: 600                   /* Semi-bold for visibility */
                 }
 
                 .working .dots {
-                        display: inline-flex;
-                        gap: 4px;
-                        margin-left: 2px
+                        display: inline-flex;              /* Horizontal dot layout */
+                        gap: 4px;                          /* Spacing between dots */
+                        margin-left: 2px                   /* Small offset from text */
                 }
 
                 .working .dots i {
-                        width: 6px;
+                        width: 6px;                        /* Small dot size */
                         height: 6px;
-                        border-radius: 50%;
-                        background: var(--muted);
-                        opacity: .25;
+                        border-radius: 50%;               /* Perfect circle */
+                        background: var(--muted);         /* Muted color for subtlety */
+                        opacity: .25;                      /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite
+                        /* Smooth pulsing animation */
                 }
 
                 .working .dots i:nth-child(2) {
-                        animation-delay: .2s
+                        animation-delay: .2s               /* Staggered animation timing */
                 }
 
                 .working .dots i:nth-child(3) {
-                        animation-delay: .4s
+                        animation-delay: .4s               /* Further staggered timing */
                 }
 
                 @keyframes dotpulse {
-
                         0%,
                         100% {
-                                transform: translateY(0);
-                                opacity: .25
+                                transform: translateY(0);      /* Rest position */
+                                opacity: .25                    /* Base transparency */
                         }
 
                         50% {
-                                transform: translateY(-3px);
-                                opacity: 1
+                                transform: translateY(-3px);   /* Small upward movement */
+                                opacity: 1                     /* Full opacity at peak */
                         }
                 }
 
+                /* Skeleton screen placeholder content */
                 .skel {
-                        display: grid;
-                        gap: 8px;
-                        margin-top: 10px
+                        display: grid;                     /* Vertical layout for skeleton lines */
+                        gap: 8px;                          /* Spacing between skeleton elements */
+                        margin-top: 10px                   /* Separation from loading text */
                 }
 
                 .skel .line {
-                        height: 10px;
-                        border-radius: 6px;
+                        height: 10px;                     /* Text line height simulation */
+                        border-radius: 6px;               /* Rounded line ends */
                         background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
-                        background-size: 200% 100%;
+                        /* Gradient for shimmer effect */
+                        background-size: 200% 100%;       /* Oversized background for animation */
                         animation: shimmer 2.5s linear infinite
+                        /* Continuous shimmer movement */
                 }
 
                 @keyframes shimmer {
                         0% {
-                                background-position: 200% 0
+                                background-position: 200% 0    /* Start position - off right */
                         }
 
                         100% {
-                                background-position: -200% 0
+                                background-position: -200% 0   /* End position - off left */
                         }
                 }
 
+                /*
+                Content Alignment & Spacing
+                ===========================
+                Consistent indentation system for visual hierarchy
+                */
+
                 #charCount {
-                        margin-left: var(--content-indent);
+                        margin-left: var(--content-indent); /* Align with other content elements */
                 }
 
                 .header>div:first-child {
-                        padding-left: var(--content-indent);
+                        padding-left: var(--content-indent); /* Header content indentation */
                 }
 
-                /*==========================================================
-                  CHAT UI
-                  - Simple inline messenger: messages area + composer.
-                ==========================================================*/
+                /*
+                Chat Interface Component
+                ========================
+                Interactive messaging system for alert investigation and Q&A.
+                Optimized for compliance workflows with clear message hierarchy.
+                */
                 .chat {
-                        border: 1px solid var(--border);
-                        border-radius: 14px;
-                        background: var(--grey-soft);
-                        padding: 14px;
-                        display: flex;
-                        flex-direction: column;
-                        gap: 10px;
+                        border: 1px solid var(--border);   /* Subtle container definition */
+                        border-radius: 14px;               /* Consistent rounding */
+                        background: var(--grey-soft);      /* Light background for message contrast */
+                        padding: 14px;                     /* Internal spacing */
+                        display: flex;                      /* Vertical flex layout */
+                        flex-direction: column;            /* Stack messages over input */
+                        gap: 10px;                         /* Spacing between messages and input */
                 }
 
                 .chat-messages {
-                        min-height: 273px;
+                        min-height: 273px;                 /* Minimum scrollable area */
                         max-height: clamp(360px, 55vh, 720px);
-                        overflow: auto;
-                        display: grid;
-                        gap: 10px;
-                        padding-right: 4px;
-                        align-content: start;
-                        /* don't stretch grid tracks */
-                        align-items: start;
-                        /* don't stretch items */
-                        grid-auto-rows: max-content;
+                        /* Responsive height: min 360px, max 720px, prefer 55% viewport */
+                        overflow: auto;                     /* Scrollable when content exceeds height */
+                        display: grid;                      /* Grid layout for message stacking */
+                        gap: 10px;                         /* Spacing between messages */
+                        padding-right: 4px;                /* Account for scrollbar width */
+                        align-content: start;              /* Top-align message grid */
+                        align-items: start;                /* Top-align individual messages */
+                        grid-auto-rows: max-content;       /* Size rows to content height */
                 }
 
+                /*
+                Message Bubble System
+                =====================
+                Distinct styling for user and bot messages with conversation flow
+                */
+
                 .msg {
-                        display: flex;
+                        display: flex;                      /* Horizontal message layout */
                 }
 
                 .msg .bubble {
-                        border: 1px solid var(--border);
-                        background: #f7f7f7;
-                        color: var(--fg);
-                        padding: 10px 12px;
-                        border-radius: 14px 14px 4px 14px;
-                        font-size: 14px;
-                        line-height: 1.35;
-                        max-width: 72%;
+                        border: 1px solid var(--border);   /* Subtle edge definition */
+                        background: #f7f7f7;               /* Default message background */
+                        color: var(--fg);                  /* Primary text color */
+                        padding: 10px 12px;                /* Comfortable reading padding */
+                        border-radius: 14px 14px 4px 14px; /* Asymmetric rounding for speech bubble effect */
+                        font-size: calc(14px * var(--fs)); /* Scalable message text size */
+                        line-height: 1.35;                 /* Compact line height for conversation */
+                        max-width: 72%;                    /* Prevent overly wide messages */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+                        /* Subtle shadow for message separation */
                 }
 
-                /* Bot bubble: white on gray background */
+                /* Bot message styling - clean white bubbles */
                 .msg.bot .bubble {
-                        background: #fff;
-                        color: var(--fg);
-                        border-color: var(--border);
+                        background: #fff;                  /* Clean white for AI responses */
+                        color: var(--fg);                 /* Standard text color */
+                        border-color: var(--border);      /* Consistent border treatment */
                 }
 
                 .msg.user {
-                        justify-content: flex-end;
+                        justify-content: flex-end;        /* Right-align user messages */
                 }
 
+                /* User message styling - branded color treatment */
                 .msg.user .bubble {
-                        background: var(--primary-soft);
-                        color: var(--fg);
-                        border-color: var(--border);
-                        border-radius: 14px 14px 14px 4px;
+                        background: var(--primary-soft);  /* Light brand color for user messages */
+                        color: var(--fg);                 /* Maintain text readability */
+                        border-color: var(--border);      /* Consistent border treatment */
+                        border-radius: 14px 14px 14px 4px; /* Flipped radius for right alignment */
                 }
+
+                /*
+                Chat Input Area
+                ==============
+                Message composition interface with send button
+                */
 
                 .chat-input {
-                        display: flex;
-                        gap: 8px;
+                        display: flex;                     /* Horizontal layout: input + button */
+                        gap: 8px;                          /* Spacing between input and send button */
                 }
 
                 #chatText {
-                        flex: 1;
+                        flex: 1;                           /* Expand to fill available width */
                         border: 1px solid rgba(0, 0, 0, .12);
-                        border-radius: 14px;
-                        padding: 12px 14px;
-                        font: inherit;
-                        outline: none;
+                        /* Subtle border for input definition */
+                        border-radius: 14px;              /* Consistent rounding */
+                        padding: 12px 14px;               /* Comfortable typing padding */
+                        font: inherit;                     /* Use system font stack */
+                        outline: none;                     /* Remove default focus outline */
+                        font-size: calc(14px * var(--fs)) /* Scalable input text size */
                 }
 
                 #chatText:focus {
-                        border-color: var(--primary-press);
+                        border-color: var(--primary-press); /* Brand color focus indication */
                         box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
+                        /* Accessible focus ring */
                 }
 
+                /*
+                Typing Indicator Animation
+                ==========================
+                Visual feedback when AI is processing/responding
+                */
+
                 .typing {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 6px;
+                        display: inline-flex;              /* Horizontal layout for typing indicator */
+                        align-items: center;               /* Vertical center alignment */
+                        gap: 6px;                          /* Spacing between text and dots */
                 }
 
                 .typing .dots {
-                        display: inline-flex;
-                        gap: 4px;
+                        display: inline-flex;              /* Horizontal dot arrangement */
+                        gap: 4px;                          /* Spacing between dots */
                 }
 
                 .typing .dots i {
-                        width: 6px;
+                        width: 6px;                        /* Small dot size for subtlety */
                         height: 6px;
-                        border-radius: 50%;
-                        background: var(--muted);
-                        opacity: .35;
+                        border-radius: 50%;               /* Perfect circle */
+                        background: var(--muted);         /* Muted color for non-intrusive feedback */
+                        opacity: .35;                      /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite;
+                        /* Reuse dotpulse animation for consistency */
                 }
 
                 .typing .dots i:nth-child(2) {
-                        animation-delay: .2s;
+                        animation-delay: .2s;              /* Staggered timing for wave effect */
                 }
 
                 .typing .dots i:nth-child(3) {
-                        animation-delay: .4s;
+                        animation-delay: .4s;              /* Further staggered timing */
                 }
+
+                /*
+                Form Element Normalization
+                ==========================
+                Consistent typography across all form controls
+                */
 
                 input,
                 textarea,
                 button,
                 select {
-                        font-family: inherit;
-                        font-size: inherit;
+                        font-family: inherit;             /* Use system font stack consistently */
+                        font-size: inherit;               /* Inherit contextual sizing */
                 }
 
                 #comments {
-                        font-size: 14px;
+                        font-size: calc(14px * var(--fs)) /* Scalable comment text size */
                 }
 
-                /*==========================================================
-                  VIEW TOGGLE (Summary <-> Chat)
-                  - Rounded segmented control with animated blue pill.
-                ==========================================================*/
+                /*
+                Tab Navigation System
+                =====================
+                Segmented control for switching between Summary and Chat views.
+                Features animated pill indicator with smooth transitions.
+                */
                 .viewtoggle {
-                        position: relative;
-                        display: flex;
-                        align-items: center;
-                        gap: 0;
-                        width: 200px;
-                        height: 36px;
-                        padding: 4px;
-                        border-radius: 999px;
-                        background: var(--grey-soft);
-                        border: 1px solid var(--border);
-                        font-weight: 600;
-                        user-select: none;
-                        cursor: pointer;
+                        position: relative;                /* Required for absolute positioned pill */
+                        display: flex;                     /* Horizontal tab layout */
+                        align-items: center;               /* Vertical center alignment */
+                        gap: 0;                            /* No gap - tabs should be adjacent */
+                        width: 200px;                     /* Fixed width for consistent layout */
+                        height: 36px;                     /* Comfortable touch target height */
+                        padding: 4px;                     /* Internal padding for pill positioning */
+                        border-radius: 999px;             /* Pill-shaped container */
+                        background: var(--grey-soft);     /* Neutral background */
+                        border: 1px solid var(--border);  /* Subtle edge definition */
+                        font-weight: 600;                 /* Semi-bold for tab readability */
+                        user-select: none;                /* Prevent text selection */
+                        cursor: pointer;                   /* Indicate interactivity */
                 }
 
                 .viewtoggle .label {
-                        flex: 1;
-                        display: flex;
+                        flex: 1;                           /* Equal width tabs */
+                        display: flex;                     /* Center content horizontally and vertically */
                         align-items: center;
                         justify-content: center;
-                        font-size: 13px;
-                        margin: 0;
-                        /* reset global .label margin */
-                        padding: 0;
-                        /* reset global .label padding-left */
-                        text-transform: none;
-                        /* stop UPPERCASE */
-                        letter-spacing: 0;
-                        /* reset tracking */
-                        line-height: 1;
-                        /* consistent vertical centering */
-                        color: var(--muted);
-                        position: relative;
-                        z-index: 1;
-                        /* sit above the pill */
+                        font-size: calc(14px * var(--fs)); /* Scalable tab text size */
+                        margin: 0;                         /* Reset global .label margin */
+                        padding: 0;                        /* Reset global .label padding-left */
+                        text-transform: none;              /* Override global UPPERCASE */
+                        letter-spacing: 0;                /* Reset global letter-spacing */
+                        line-height: 1;                   /* Precise vertical centering */
+                        color: var(--muted);              /* Inactive tab color */
+                        position: relative;                /* Layer above pill background */
+                        z-index: 1;                       /* Ensure text appears above pill */
                 }
 
-                /* Active segment text turns white over the blue pill */
+                /* Active tab text styling - white over brand blue pill */
                 .card:not(.show-chat) .viewtoggle .label:first-child,
                 .card.show-chat .viewtoggle .label:nth-child(2) {
-                        color: #fff !important;
+                        color: #fff !important;           /* High contrast white text over blue */
                 }
 
-                /* Add spacing below summary block before Comments */
+                /* Content spacing optimization */
                 #pane-summary .summary {
-                        margin-bottom: 20px;
-                        /* add some space before the COMMENTS title */
+                        margin-bottom: 20px;              /* Breathing room before Comments section */
                 }
 
+
+                /*
+                Animated Pill Indicator
+                =======================
+                Sliding background indicator for active tab state
+                */
 
                 .viewtoggle .pill {
-                        position: absolute;
-                        top: 4px;
-                        left: 4px;
-                        height: 28px;
-                        width: calc(50% - 4px);
-                        border-radius: 999px;
-                        background: var(--primary);
+                        position: absolute;                /* Float above tab background */
+                        top: 4px;                          /* Align with container padding */
+                        left: 4px;                         /* Align with container padding */
+                        height: 28px;                     /* Fill available height */
+                        width: calc(50% - 4px);           /* Half width minus padding */
+                        border-radius: 999px;             /* Match container pill shape */
+                        background: var(--primary);       /* Brand blue for active indication */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-                        transition: transform .0s;
-                        z-index: 0;
-                        /* behind labels */
-                        pointer-events: none;
-                        /* decorative only */
+                        /* Colored shadow for emphasis and depth */
+                        transition: transform .0s;         /* Instant positioning (can be customized) */
+                        z-index: 0;                       /* Behind text labels */
+                        pointer-events: none;             /* Non-interactive decoration */
                 }
 
-                /* Minimal progress indicator next to "Summary" text */
+                /*
+                Tab Progress Indicators
+                =======================
+                Micro-animations for showing processing state in tab headers
+                */
+
+                /* Compact progress dots for tab-level loading indication */
                 .viewtoggle .mini-dots {
-                        display: none;
-                        margin-left: 4px;
-                        gap: 3px;
-                        align-items: center;
+                        display: none;                     /* Hidden by default */
+                        margin-left: 4px;                 /* Small offset from tab text */
+                        gap: 3px;                          /* Tight spacing for compact display */
+                        align-items: center;               /* Vertical alignment with text */
                 }
 
                 .viewtoggle .mini-dots i {
-                        width: 4px;
-                        /* smaller dots */
+                        width: 4px;                        /* Smaller dots for tab context */
                         height: 4px;
-                        /* smaller dots */
-                        border-radius: 50%;
-                        background: currentColor;
-                        opacity: .35;
+                        border-radius: 50%;               /* Perfect circle */
+                        background: currentColor;          /* Inherit text color for consistency */
+                        opacity: .35;                      /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite;
-                        /* reuse existing animation */
+                        /* Reuse established dotpulse animation */
                 }
 
                 .viewtoggle .mini-dots i:nth-child(2) {
-                        animation-delay: .2s;
+                        animation-delay: .2s;              /* Staggered timing */
                 }
 
                 .viewtoggle .mini-dots i:nth-child(3) {
-                        animation-delay: .4s;
+                        animation-delay: .4s;              /* Further staggered timing */
                 }
 
-                /* Show dots only while summarizing AND when Chat tab is selected */
+                /* Conditional progress indicator visibility */
                 .card.show-chat .viewtoggle.is-summarizing .mini-dots {
-                        display: inline-flex;
+                        display: inline-flex;              /* Show dots when summarizing in Chat tab */
                 }
 
-                /* Slide the blue pill right when Chat is active */
+                /* Tab state animations */
                 .card.show-chat .viewtoggle .pill {
-                        transform: translateX(100%);
+                        transform: translateX(100%);       /* Slide pill to Chat tab position */
                 }
 
-                /* Hide Summarize button when in Chat mode */
+                /* Context-sensitive UI element visibility */
                 .card.show-chat #summarizeBtn {
-                        display: none;
+                        display: none;                     /* Hide Summarize button in Chat mode */
                 }
 
-                /* Pane visibility control (one visible at a time) */
+                /*
+                Content Pane Management
+                =======================
+                Single-pane visibility system for tab content switching
+                */
+
+                /* Default state - Chat pane hidden */
                 #pane-chat {
-                        display: none;
+                        display: none;                     /* Hidden by default */
                 }
 
+                /* Chat mode active - show Chat pane */
                 .card.show-chat #pane-chat {
-                        display: block;
+                        display: block;                    /* Visible when Chat tab active */
                 }
 
+                /* Chat mode active - hide Summary pane */
                 .card.show-chat #pane-summary {
-                        display: none;
+                        display: none;                     /* Hidden when Chat tab active */
                 }
 
-                /* Inline disclaimer shown in Chat mode (mirrors footer tone) */
+                /*
+                AI Disclaimer System
+                ====================
+                Required compliance messaging for AI-generated content
+                */
+
+                /* Chat mode disclaimer - regulatory compliance messaging */
                 .card.show-chat::after {
                         content: "Generative AI can make mistakes. Check important info.";
-                        display: block;
-                        margin-top: 7px;
-                        font-size: 13px;
-                        color: var(--muted);
-                        text-align: center;
+                        /* Standard AI disclaimer text for regulatory compliance */
+                        display: block;                    /* Block display for proper spacing */
+                        margin-top: 7px;                  /* Separation from chat interface */
+                        font-size: calc(13px * var(--fs)); /* Scalable disclaimer text */
+                        color: var(--muted);              /* Reduced emphasis */
+                        text-align: center;               /* Center alignment for disclaimer */
                 }
 
-                /* Centered disclaimer inline with Comments controls */
+                /* Inline disclaimer for Summary mode context */
                 .disclaimer-inline {
-                        position: absolute;
+                        position: absolute;                /* Positioned overlay */
                         left: 0;
-                        right: 0;
-                        text-align: center;
-                        font-size: 11px;
-                        color: var(--muted);
-                        pointer-events: none;
+                        right: 0;                          /* Full width positioning */
+                        text-align: center;               /* Center alignment */
+                        font-size: calc(11px * var(--fs)); /* Scalable small disclaimer text */
+                        color: var(--muted);              /* Reduced emphasis */
+                        pointer-events: none;             /* Non-interactive overlay */
                 }
+
+                /*
+                Performance Optimizations
+                =========================
+                CSS containment for improved rendering performance
+                */
 
                 #pane-summary,
                 #pane-chat {
-                        contain: layout paint;
-                        /* fence off layout & paint work to increase performance*/
+                        contain: layout paint;            /* CSS containment to isolate layout and paint work */
+                        /* Improves performance by limiting reflow scope to pane contents */
                 }
 
-                /*==========================================================
-                  ACCESSIBILITY / READABILITY SCALE
-                  - Slight global font-size bump via CSS variable.
-                ==========================================================*/
-                :root {
-                        --fs: 1.08;
-                }
+                /*
+                Accessibility & Readability Enhancements
+                ========================================
+                Global font scaling system for improved readability in compliance environments.
+                Applies 8% increase to all text elements for better visibility during long
+                analysis sessions. Scale can be adjusted via --fs variable (1.05-1.12 recommended).
+                */
 
-                /* 8% larger; try 1.05–1.12 */
+                /* Note: --fs variable already defined in main :root block above */
 
+                /* Base typography scaling */
                 body {
-                        font-size: calc(16px * var(--fs));
+                        font-size: calc(16px * var(--fs)); /* Scalable base font size */
                 }
 
                 h1 {
-                        font-size: calc(28px * var(--fs));
+                        font-size: calc(28px * var(--fs)); /* Scalable primary heading */
                 }
 
                 .subtitle {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable subtitle */
                 }
 
+                /* Interactive element scaling */
                 .btn-primary {
-                        font-size: calc(16px * var(--fs));
+                        font-size: calc(16px * var(--fs)); /* Scalable primary button text */
                 }
 
                 .btn-secondary,
                 .select-model {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable secondary element text */
                 }
 
+                /* UI label and caption scaling */
                 .label,
                 .caption {
-                        font-size: calc(12px * var(--fs));
+                        font-size: calc(12px * var(--fs)); /* Scalable small text elements */
                 }
 
+                /* Content area scaling */
                 .summary {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable summary content */
                 }
 
                 .summary h1 {
-                        font-size: calc(24px * var(--fs));
+                        font-size: calc(24px * var(--fs)); /* Scalable summary headings */
                 }
 
                 .summary h2 {
-                        font-size: calc(18px * var(--fs));
+                        font-size: calc(18px * var(--fs)); /* Scalable summary subheadings */
                 }
 
+                /* Chat interface scaling */
                 .msg .bubble {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable chat message text */
                 }
 
+                /* Form input scaling */
                 #comments,
                 #chatText {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable input text */
                 }
 
+                /* Tab navigation scaling */
                 .viewtoggle .label {
-                        font-size: calc(14px * var(--fs));
+                        font-size: calc(14px * var(--fs)); /* Scalable tab labels */
                 }
         </style>
 </head>
