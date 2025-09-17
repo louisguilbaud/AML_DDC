@@ -2183,18 +2183,29 @@
             // =============================================================================
             // API SERVICE
             // =============================================================================
+            /**
+             * Handles all external network requests, including SAS authentication,
+             * data fetching from SAS servers, and communication with the OpenAI API.
+             * It encapsulates authentication, data parsing, and text extraction logic.
+             */
             const APIService = {
-                // Store token for reuse
+                // In-memory cache for the SAS OAuth2 access token to avoid re-authentication.
                 _accessToken: null,
 
                 /**
-                 * Get SAS access token using OAuth2 password grant
+                 * Acquires a SAS access token using the OAuth2 password grant type.
+                 * This is the primary authentication mechanism against the SAS server.
+                 * @param {string} username - The user's SAS username.
+                 * @param {string} password - The user's SAS password.
+                 * @returns {Promise<string>} A promise that resolves with the access token.
+                 * @throws {Error} If authentication fails due to network issues or invalid credentials.
                  */
                 async getSASToken(username, password) {
                     const url = `${CONFIG.SAS_SERVER}${CONFIG.SAS_AUTH.TOKEN_ENDPOINT}`;
                     Utils.log('AUTH', `Getting SAS token from: ${url}`);
 
                     try {
+                        // Credentials for the client application itself, base64 encoded.
                         const credentials = btoa(`${CONFIG.SAS_AUTH.CLIENT_ID}:${CONFIG.SAS_AUTH.CLIENT_SECRET}`);
 
                         const formData = new URLSearchParams({
@@ -2229,7 +2240,11 @@
                 },
 
                 /**
-                 * Get current access token (cached or fetch new one)
+                 * Retrieves the current access token, using the cached token if available
+                 * or fetching a new one if not.
+                 * @param {string} username - SAS username, required if a new token is needed.
+                 * @param {string} password - SAS password, required if a new token is needed.
+                 * @returns {Promise<string>} A promise that resolves with the access token.
                  */
                 async getAccessToken(username, password) {
                     if (!this._accessToken) {
@@ -2239,7 +2254,8 @@
                 },
 
                 /**
-                 * Clear cached token (useful for re-authentication)
+                 * Clears the cached access token, forcing re-authentication on the next API call.
+                 * Useful for handling authentication errors or user logouts.
                  */
                 clearToken() {
                     this._accessToken = null;
@@ -2247,7 +2263,15 @@
                 },
 
                 /**
-                 * Fetch files for a given alert ID
+                 * Fetches the list of files associated with a specific alert ID from the SAS server.
+                 * It attempts an authenticated request first and falls back to an unauthenticated
+                 * request if authentication fails.
+                 * @param {string} alertId - The unique identifier for the alert.
+                 * @param {string|null} [username=null] - Optional SAS username for authentication.
+                 * @param {string|null} [password=null] - Optional SAS password for authentication.
+                 * @returns {Promise<Array<Object>>} A promise that resolves to an array of file objects.
+                 *   Each object typically contains `id`, `name`, and `size`.
+                 * @throws {Error} If the network request fails and does not return a 2xx status.
                  */
                 async fetchAlertFiles(alertId, username = null, password = null) {
                     const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files`;
@@ -2259,12 +2283,15 @@
                             'Accept': 'application/json'
                         };
 
+                        // If credentials are provided, attempt to get a token and use it.
                         if (username && password) {
                             try {
                                 const token = await this.getAccessToken(username, password);
                                 headers['Authorization'] = `Bearer ${token}`;
                                 Utils.log('API', 'Using authenticated request');
                             } catch (authError) {
+                                // Fallback: If auth fails, proceed with an unauthenticated request.
+                                // This might be useful for public-facing data hubs.
                                 Utils.log('API', 'Authentication failed, trying unauthenticated request', authError);
                                 UIManager.appendOutput('\nAuthentication failed, trying without auth...');
                             }
@@ -2284,6 +2311,7 @@
                         const data = await response.json();
                         Utils.log('API', 'Full response received', data);
 
+                        // Normalize the response structure to get the array of files.
                         const files = Array.isArray(data) ? data : (data.items || data.files || []);
 
                         Utils.log('FILES', `Parsed ${files.length} files`, files[0]);
@@ -2295,7 +2323,14 @@
                 },
 
                 /**
-                 * Get raw file content from SAS
+                 * Retrieves the raw binary content of a specific file from the SAS server.
+                 * @param {string} alertId - The identifier for the parent alert.
+                 * @param {string} fileId - The identifier for the file.
+                 * @param {string} username - SAS username for authentication.
+                 * @param {string} password - SAS password for authentication.
+                 * @returns {Promise<{contentType: string, arrayBuffer: ArrayBuffer}>} A promise resolving
+                 *   to an object containing the file's MIME type and its content as an ArrayBuffer.
+                 * @throws {Error} If the authenticated request fails.
                  */
                 async getFileContent(alertId, fileId, username, password) {
                     const url = `${CONFIG.SAS_SERVER}/svi-datahub/documents/alerts/${encodeURIComponent(alertId)}/files/${encodeURIComponent(fileId)}/content`;
@@ -2332,7 +2367,13 @@
                 },
 
                 /**
-                 * Extract text from PDF using PDF.js
+                 * Extracts text from a PDF file's binary content using the PDF.js library.
+                 * Processes the PDF page by page to build a complete text representation.
+                 * @param {ArrayBuffer} arrayBuffer - The binary content of the PDF file.
+                 * @param {function(string):void|null} [onProgress=null] - An optional callback to report
+                 *   progress (e.g., "Processing page 1 of 5").
+                 * @returns {Promise<string>} A promise that resolves with the extracted plain text.
+                 * @throws {Error} If PDF.js is not loaded or if parsing fails.
                  */
                 async extractTextFromPDF(arrayBuffer, onProgress = null) {
                     if (typeof pdfjsLib === 'undefined') {
@@ -2347,6 +2388,7 @@
 
                         const textBuilder = [];
 
+                        // Iterate through each page to extract text content.
                         for (let pageNum = 1; pageNum <= numPages; pageNum++) {
                             if (onProgress) {
                                 onProgress(`Processing page ${pageNum} of ${numPages}`);
@@ -2365,12 +2407,14 @@
                                     textBuilder.push(pageText);
                                 }
 
+                                // Clean up page resources to free memory.
                                 page.cleanup();
                             } catch (pageError) {
                                 Utils.log('PDF', `Error processing page ${pageNum}`, pageError);
                             }
                         }
 
+                        // Clean up document resources.
                         pdf.destroy();
 
                         const fullText = textBuilder.join(' ').trim();
@@ -2382,16 +2426,23 @@
                 },
 
                 /**
-                 * Extract text from file based on content type
+                 * Extracts text from a file's binary data based on its MIME type.
+                 * This acts as a factory, dispatching to the correct parsing library (PDF.js, Mammoth.js)
+                 * or using a simple text decoder.
+                 * @param {{contentType: string, arrayBuffer: ArrayBuffer}} fileData - The file's data.
+                 * @param {function(string):void|null} [onProgress=null] - Optional progress callback.
+                 * @returns {Promise<string>} A promise resolving with the extracted plain text.
                  */
                 async extractTextFromFile(fileData, onProgress = null) {
                     const { contentType, arrayBuffer } = fileData;
 
                     try {
+                        // Route to the correct parser based on the Content-Type header.
                         if (contentType.includes('pdf')) {
                             Utils.log('EXTRACT', 'Processing PDF document');
                             return await this.extractTextFromPDF(arrayBuffer, onProgress);
                         }
+                        // Handles .docx (and older .doc) formats.
                         else if (contentType.includes('wordprocessingml.document') ||
                             contentType.includes('msword') ||
                             contentType.includes('word')) {
@@ -2403,9 +2454,11 @@
                                 const result = await mammoth.extractRawText({ arrayBuffer });
                                 return result.value;
                             } else {
+                                // Fallback if the required library isn't loaded.
                                 return `[WORD DOCUMENT DETECTED]\nContent type: ${contentType}\nFile size: ${arrayBuffer.byteLength} bytes\nMammoth.js not loaded - cannot extract text`;
                             }
                         }
+                        // Handles all 'text/*' subtypes like 'text/plain', 'text/csv', etc.
                         else if (contentType.includes('text/plain') || contentType.includes('text/')) {
                             Utils.log('EXTRACT', 'Processing text file');
                             if (onProgress) {
@@ -2414,6 +2467,7 @@
                             const decoder = new TextDecoder('utf-8');
                             return decoder.decode(arrayBuffer);
                         }
+                        // Fallback for unknown binary types: attempt to decode as UTF-8 text.
                         else {
                             Utils.log('EXTRACT', `Unknown content type: ${contentType}, trying text decode`);
                             if (onProgress) {
@@ -2429,26 +2483,39 @@
                 },
 
                 /**
-                 * Call OpenAI API for summarization
+                 * Calls the OpenAI API to generate a summary for one or more documents.
+                 * It dynamically constructs the system prompt based on whether single or multiple
+                 * documents are provided. It also handles token limits and streaming responses.
+                 * @param {string} text - The document text. For multiple documents, a special
+                 *   format with "==== [DOC n] ..." separators is expected.
+                 * @param {string} apiKey - The OpenAI API key.
+                 * @param {string} [model=CONFIG.OPENAI.MODEL] - The AI model to use.
+                 * @param {function(string, string, Object):void|null} [onDelta=null] - If provided, enables
+                 *   streaming. This callback receives `(delta, fullText, event)`.
+                 * @returns {Promise<string>} A promise that resolves to the full summary text.
+                 * @throws {Error} If the API call fails.
                  */
                 async callOpenAI(text, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
                     const isMulti = text.startsWith('[[MULTI_DOC]]') || text.includes('==== [DOC ');
 
-                    // Character limits based on page estimates
+                    // Define character limits to prevent excessive token usage and cost.
+                    // These are heuristics based on average characters per page.
                     const CHARS_PER_PAGE = 2000;
-                    const MAX_CHARS_PER_DOC = 20 * CHARS_PER_PAGE;  // 40,000 chars (~20 pages)
-                    const MAX_CHARS_TOTAL = 120 * CHARS_PER_PAGE;   // 240,000 chars (~120 pages)
+                    const MAX_CHARS_PER_DOC = 20 * CHARS_PER_PAGE;  // ~20 pages
+                    const MAX_CHARS_TOTAL = 120 * CHARS_PER_PAGE;   // ~120 pages
 
-                    // Process multi-document text
+                    // Pre-process and clip text to fit within model context window constraints.
                     if (isMulti) {
                         text = this.clipMultiDocuments(text, MAX_CHARS_PER_DOC, MAX_CHARS_TOTAL);
                     } else {
-                        // Single document clipping
+                        // Simple clipping for a single large document.
                         if (text.length > MAX_CHARS_TOTAL) {
                             text = text.slice(0, MAX_CHARS_TOTAL) + '\n[...document trimmed]';
                         }
                     }
 
+                    // Rationale: Use a specific, structured prompt for single documents to ensure
+                    // consistent HTML output and summary format.
                     const singlePrompt = `You are a helpful assistant that creates concise, clear summaries in English.
 Rules:
 - Length: ≤ 1/4 of the input, and never more than 500 words.
@@ -2467,6 +2534,8 @@ Structure:
 
 Summarize this document:\n\n${text}`;
 
+                    // Rationale: Use a different prompt for multiple documents to instruct the model
+                    // to synthesize information, deduplicate, and highlight unique points from each.
                     const multiPrompt = `You are a helpful assistant that summarizes a set of documents (marked by "==== [DOC n] <name> ====").
 Rules:
 - One cohesive HTML5 summary for ALL documents, ≤ 800 words total.
@@ -2498,7 +2567,7 @@ Summarize the set:\n\n${text}`;
                         input: systemPrompt,
                         reasoning: { effort: "low" },
                         text: { verbosity: "low" },
-                        stream: !!onDelta
+                        stream: !!onDelta // Enable streaming if a callback is provided.
                     };
                     const res = await fetch(CONFIG.OPENAI.URL, {
                         method: 'POST',
@@ -2510,7 +2579,7 @@ Summarize the set:\n\n${text}`;
                         body: JSON.stringify(body)
                     });
 
-                    // Non-streaming path
+                    // Standard non-streaming response handling.
                     if (!onDelta) {
                         const json = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
@@ -2519,7 +2588,7 @@ Summarize the set:\n\n${text}`;
                         return txt;
                     }
 
-                    // Streaming path (SSE)
+                    // Streaming response handling using Server-Sent Events (SSE).
                     if (!res.ok || !res.body) {
                         const text = await res.text().catch(() => '');
                         throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
@@ -2527,8 +2596,8 @@ Summarize the set:\n\n${text}`;
 
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder();
-                    let carry = '';
-                    let full = '';
+                    let carry = ''; // Buffer for incomplete event frames.
+                    let full = '';  // The complete response text.
 
                     while (true) {
                         const { value, done } = await reader.read();
@@ -2536,8 +2605,9 @@ Summarize the set:\n\n${text}`;
 
                         carry += decoder.decode(value, { stream: true });
 
+                        // SSE frames are separated by double newlines.
                         const frames = carry.split('\n\n');
-                        carry = frames.pop() || '';
+                        carry = frames.pop() || ''; // The last part might be an incomplete frame.
 
                         for (const frame of frames) {
                             const dataLines = frame
@@ -2552,17 +2622,19 @@ Summarize the set:\n\n${text}`;
                             try {
                                 evt = JSON.parse(dataLines);
                             } catch {
-                                continue;
+                                continue; // Ignore malformed JSON frames.
                             }
 
+                            // Process the text delta from the event.
                             if (evt.type === 'response.output_text.delta') {
                                 const delta = evt.delta || '';
                                 if (delta) {
                                     full += delta;
                                     try {
+                                        // Call the user-provided callback with the new chunk.
                                         onDelta(delta, full, evt);
                                     } catch {
-                                        /* ignore handler errors */
+                                        /* ignore handler errors to not break the stream */
                                     }
                                 }
                             } else if (evt.type === 'error') {
@@ -2574,12 +2646,21 @@ Summarize the set:\n\n${text}`;
                     return full.trim();
                 },
                 /**
-                 * Call OpenAI for document-grounded Q&A (no summary system prompt)
+                 * Calls the OpenAI API for document-grounded Q&A.
+                 * This is a lightweight wrapper that passes a pre-constructed prompt directly
+                 * to the API, supporting both streaming and non-streaming modes.
+                 * @param {string} prompt - The complete, pre-formatted system prompt including
+                 *   instructions, document context, and the user's question.
+                 * @param {string} apiKey - The OpenAI API key.
+                 * @param {string} [model=CONFIG.OPENAI.MODEL] - The AI model to use.
+                 * @param {function(string, string, Object):void|null} [onDelta=null] - If provided, enables
+                 *   streaming. This callback receives `(delta, fullText, event)`.
+                 * @returns {Promise<string>} A promise that resolves to the full chat reply.
                  */
                 async callOpenAIChat(prompt, apiKey, model = CONFIG.OPENAI.MODEL, onDelta) {
                     const body = {
                         model,
-                        input: prompt,                 // <-- use the prompt exactly as built by Chat.buildPrompt
+                        input: prompt, // Use the prompt exactly as built by the caller (e.g., Chat.buildPrompt).
                         reasoning: { effort: "low" },
                         text: { verbosity: "low" },
                         stream: !!onDelta
@@ -2604,7 +2685,7 @@ Summarize the set:\n\n${text}`;
                         return txt;
                     }
 
-                    // Streaming path (SSE)
+                    // Streaming path (SSE) - logic is identical to callOpenAI.
                     if (!res.ok || !res.body) {
                         const text = await res.text().catch(() => '');
                         throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
@@ -2644,7 +2725,7 @@ Summarize the set:\n\n${text}`;
                                 const delta = evt.delta || '';
                                 if (delta) {
                                     full += delta;
-                                    try { onDelta(delta, full, evt); } catch { }
+                                    try { onDelta(delta, full, evt); } catch { /* ignore handler errors */ }
                                 }
                             } else if (evt.type === 'error') {
                                 throw new Error(evt.error?.message || 'Streaming error');
@@ -2656,15 +2737,23 @@ Summarize the set:\n\n${text}`;
                 },
 
                 /**
-                 * Clip individual documents and total concatenation for multi-doc summaries
+                 * Pre-processes and clips text from multiple documents to fit within a total
+                 * character limit, applying a per-document cap first, then proportionally
+                 * reducing all documents if the total is still exceeded.
+                 * @param {string} text - The combined text of all documents, with separators.
+                 * @param {number} maxPerDoc - The maximum number of characters for any single document.
+                 * @param {number} maxTotal - The maximum total characters for the entire payload.
+                 * @returns {string} The processed and clipped text.
                  */
                 clipMultiDocuments(text, maxPerDoc, maxTotal) {
-                    // Parse documents - first collect all matches
+                    // This function parses a string containing multiple documents, identified by
+                    // "==== [DOC n] <name> ====" headers, and intelligently truncates them.
+
                     const docPattern = /==== \[DOC (\d+)\] (.*?) ====/g;
                     const matches = [];
                     let match;
 
-                    // Collect all document headers first
+                    // 1. Collect all document headers to understand the structure.
                     while ((match = docPattern.exec(text)) !== null) {
                         matches.push({
                             index: match.index,
@@ -2674,10 +2763,9 @@ Summarize the set:\n\n${text}`;
                         });
                     }
 
-                    // Extract preamble
                     const preamble = matches.length > 0 ? text.slice(0, matches[0].index) : '';
 
-                    // Extract document contents
+                    // 2. Extract the content of each document.
                     const documents = matches.map((match, i) => {
                         const docStart = match.index + match.header.length;
                         const docEnd = i < matches.length - 1 ? matches[i + 1].index : text.length;
@@ -2692,12 +2780,11 @@ Summarize the set:\n\n${text}`;
                         };
                     });
 
-                    // Clip individual documents if needed
+                    // 3. First pass: clip individual documents that exceed the per-document limit.
                     let totalChars = preamble.length;
                     const clippedDocs = documents.map(doc => {
                         let content = doc.content;
                         if (content.length > maxPerDoc) {
-                            // Try to clip at a sentence boundary
                             const clipPoint = this.findSentenceBoundary(content, maxPerDoc);
                             content = content.slice(0, clipPoint) + '\n[...document trimmed from ' +
                                 Math.round(doc.originalLength / 1000) + 'k to ' +
@@ -2713,7 +2800,7 @@ Summarize the set:\n\n${text}`;
                         };
                     });
 
-                    // If still too long, proportionally reduce all documents
+                    // 4. Second pass: if total is still too long, reduce all docs proportionally.
                     if (totalChars > maxTotal) {
                         const reductionRatio = (maxTotal - preamble.length) / (totalChars - preamble.length);
 
@@ -2727,22 +2814,25 @@ Summarize the set:\n\n${text}`;
                         }).join('\n\n');
                     }
 
-                    // Reconstruct text
+                    // 5. Reconstruct the final text if no proportional reduction was needed.
                     return preamble + clippedDocs.map(doc =>
                         doc.header + '\n' + doc.content
                     ).join('\n\n');
                 },
                 /**
-                 * Find a good sentence boundary near the target length
+                 * Finds a "natural" boundary (sentence, paragraph, or word) to trim text,
+                 * avoiding mid-word or mid-sentence cuts for better LLM comprehension.
+                 * @param {string} text - The text to search within.
+                 * @param {number} targetLength - The desired maximum length.
+                 * @returns {number} The index at which to clip the text.
                  */
                 findSentenceBoundary(text, targetLength) {
                     if (text.length <= targetLength) return text.length;
 
-                    // Look for sentence end within 200 chars before target
+                    // Search for a sentence end near the target length to make the cut less abrupt.
                     const searchStart = Math.max(0, targetLength - 200);
                     const searchText = text.slice(searchStart, targetLength);
 
-                    // Find last sentence ending
                     const sentenceEnds = ['. ', '.\n', '! ', '!\n', '? ', '?\n'];
                     let lastEnd = -1;
                     let endChar = '';
@@ -2759,36 +2849,49 @@ Summarize the set:\n\n${text}`;
                         return searchStart + lastEnd + endChar.length;
                     }
 
-                    // No sentence boundary found, look for paragraph break
+                    // Fallback to a paragraph break if no sentence end is found.
                     const lastNewline = searchText.lastIndexOf('\n');
                     if (lastNewline > -1) {
                         return searchStart + lastNewline + 1;
                     }
 
-                    // Fall back to word boundary
+                    // Fallback to a word boundary.
                     const lastSpace = searchText.lastIndexOf(' ');
                     if (lastSpace > -1) {
                         return searchStart + lastSpace + 1;
                     }
 
-                    // Last resort: hard cut
+                    // Last resort: a hard cut if no other boundary is found.
                     return targetLength;
                 }
             };
 
 
 
+
             // =============================================================================
             // VA INTEGRATION
             // =============================================================================
+            /**
+             * Manages the application's lifecycle and communication with the hosting
+             * SAS Visual Analytics (VA) environment. It handles initializing the connection,
+             * receiving parameters from the VA report, and triggering data-fetching operations.
+             */
             const VAIntegration = {
                 /**
-                 * Extract parameters from VA message object
+                 * Extracts and maps known parameters from the VA message object into a
+                 * structured object for easier access throughout the application.
+                 * @param {object} vaMsgObj - The message object received from VA, which contains
+                 *   a `parameters` array.
+                 * @returns {{alertId: string, openaiKey: string, sasUser: string, sasPass: string}}
+                 *   An object containing the extracted parameters by name.
                  */
                 extractParameters(vaMsgObj) {
                     const params = vaMsgObj?.parameters || [];
                     const indexes = CONFIG.PARAMETER_INDEXES;
 
+                    // This mapping provides a stable, named interface to the ordered array of
+                    // parameters sent by VA, making the code more readable and less fragile.
                     return {
                         alertId: Utils.getParamByIndex(params, indexes.alertId),
                         openaiKey: Utils.getParamByIndex(params, indexes.openaiKey),
@@ -2798,11 +2901,15 @@ Summarize the set:\n\n${text}`;
                 },
 
                 /**
-                 * Handle incoming VA parameters
+                 * The primary callback function that processes messages from VA.
+                 * It extracts parameters, updates the application state, and initiates the
+                 * main workflow of fetching and displaying files if all required parameters are present.
+                 * @param {object} vaMsgObj - The message object received from the VA host.
                  */
                 async handleVAMessage(vaMsgObj) {
                     const params = this.extractParameters(vaMsgObj);
 
+                    // Security: Log parameter presence, but not the values of secrets like keys or passwords.
                     Utils.log('VA', 'Parameters received', {
                         alertId: params.alertId,
                         hasOpenAI: !!params.openaiKey,
@@ -2821,6 +2928,8 @@ Summarize the set:\n\n${text}`;
 
                     App.setCurrentParams(params);
 
+                    // Invariant: All parameters must be present to proceed with fetching data.
+                    // This prevents unnecessary API calls that are guaranteed to fail.
                     if (params.alertId && params.openaiKey && params.sasUser && params.sasPass) {
                         try {
                             const files = await APIService.fetchAlertFiles(
@@ -2833,26 +2942,34 @@ Summarize the set:\n\n${text}`;
                             UIManager.appendOutput(`\nAPI Response: (${files.length} files)`);
                             App.preloadFirstFiles(files);
 
+                            // Start polling for file updates now that we have a valid context.
                             App.startAutoRefresh();
                         } catch (error) {
                             UIManager.showError(error.message);
                         }
                     } else {
                         UIManager.appendOutput('\nMissing required parameters - cannot fetch files');
+                        // Ensure any previous auto-refresh process is stopped.
                         App.stopAutoRefresh();
                     }
                 },
 
                 /**
-                 * Initialize VA integration with retry logic
+                 * Initializes the connection to the VA environment.
+                 * It sets up the data receive callback and includes a retry mechanism to handle
+                 * cases where the application loads before the VA messaging framework is ready.
                  */
                 initialize() {
                     const tryConnect = () => {
+                        // Rationale: The `va.messagingUtil` object is injected into the window by the
+                        // SAS VA environment. It may not be available immediately on page load.
+                        // This check ensures we don't try to attach the listener before the host is ready.
                         if (window.va && va.messagingUtil && typeof va.messagingUtil.setOnDataReceivedCallback === 'function') {
                             va.messagingUtil.setOnDataReceivedCallback(this.handleVAMessage.bind(this));
                             Utils.log('VA', 'Listener attached successfully');
                             UIManager.updateOutput('VA listener attached, waiting for data...');
                         } else {
+                            // If the VA framework is not ready, poll again after a configured interval.
                             Utils.log('VA', 'Not ready, retrying...');
                             UIManager.updateOutput('VA not ready, retrying...');
                             setTimeout(tryConnect, CONFIG.VA_RETRY_INTERVAL);
@@ -2863,23 +2980,51 @@ Summarize the set:\n\n${text}`;
                 }
             };
 
+
             // =============================================================================
             // CHAT (document-grounded Q&A)
             // =============================================================================
+            /**
+             * Manages the interactive chat feature for document-grounded question and answer.
+             * It handles the chat UI, maintains separate conversation threads for each document,
+             * constructs prompts for the AI, and processes streaming responses.
+             */
             const Chat = {
+                // State flag to prevent concurrent API requests.
                 _busy: false,
+                // A cache for frequently accessed DOM elements.
                 els: {},
 
-                // per-document chat threads 
-                _threads: new Map(),           // key -> [{ role: 'user'|'bot', html: string, plain?: string }]
-                _lastBotNodeByKey: new Map(),  // key -> DOM node of last bot bubble (for streaming)
+                /**
+                 * Stores separate chat histories (threads) for each document context.
+                 * @type {Map<string, Array<{role: 'user'|'bot', html: string, plain?: string}>>}
+                 * Key: A unique identifier for the document context (e.g., "alertId:fileId").
+                 * Value: An array of message objects representing the conversation.
+                 */
+                _threads: new Map(),
+                /**
+                 * REVIEW: This property appears to be unused. The streaming logic in `handleSend`
+                 * uses a temporary `botBubble` variable instead of this map. This could be
+                 * a remnant of a previous implementation.
+                 */
+                _lastBotNodeByKey: new Map(),
 
+                /**
+                 * Generates a unique key for the current chat context.
+                 * The key is a combination of the alert ID and the selected file ID.
+                 * @returns {string|null} The unique key, or null if no context is available.
+                 */
                 currentKey() {
                     const a = App._currentParams?.alertId ?? 'GLOBAL';
                     const f = App.getSelectedFileId?.() ?? null;
                     return f ? `${a}:${f}` : null;
                 },
 
+                /**
+                 * Renders the chat history for a given context key into the message display area.
+                 * If no thread exists for the key, it seeds a new one with a welcome message.
+                 * @param {string} [key=this.currentKey()] - The context key for the thread to render.
+                 */
                 renderThread(key = this.currentKey()) {
                     if (!this.els.msgs) return;
                     this.els.msgs.innerHTML = '';
@@ -2887,7 +3032,7 @@ Summarize the set:\n\n${text}`;
 
                     let arr = this._threads.get(key);
                     if (!arr) {
-                        // seed a per-doc welcome message
+                        // Seed a new thread with a default welcome message for a better user experience.
                         arr = [{ role: 'bot', html: "Hi! Ask me anything about the currently selected document." }];
                         this._threads.set(key, arr);
                     }
@@ -2895,6 +3040,13 @@ Summarize the set:\n\n${text}`;
                     this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
                 },
 
+                /**
+                 * Appends a new message to a specific chat thread's history.
+                 * @param {'user'|'bot'} role - The role of the message author.
+                 * @param {string} html - The HTML content of the message.
+                 * @param {string} [key=this.currentKey()] - The context key for the thread.
+                 * @param {string} [plain=''] - The plain text version of the content, for prompt history.
+                 */
                 appendToThread(role, html, key = this.currentKey(), plain = '') {
                     if (!key) return;
                     const arr = this._threads.get(key) ?? [];
@@ -2902,6 +3054,9 @@ Summarize the set:\n\n${text}`;
                     this._threads.set(key, arr);
                 },
 
+                /**
+                 * Initializes the Chat module: caches DOM elements and sets up all event listeners.
+                 */
                 init() {
                     this.els = {
                         toggle: document.getElementById(CONFIG.ELEMENTS.viewToggle),
@@ -2913,11 +3068,12 @@ Summarize the set:\n\n${text}`;
                         subtitle: document.querySelector('.subtitle')
                     };
 
+                    // Helper to update the main card header based on the current view (Summary or Chat).
                     this.setHeader = (showChat) => {
                         const h = CONFIG.HEADINGS[showChat ? 'chat' : 'summary'];
                         if (this.els.title) this.els.title.textContent = h.title;
                         if (this.els.subtitle) this.els.subtitle.textContent = h.subtitle;
-                        document.title = h.title; // optional: page <title>
+                        document.title = h.title; // Also update the browser tab title.
                     };
 
                     this.refreshSend();
@@ -2928,29 +3084,41 @@ Summarize the set:\n\n${text}`;
                     }
 
 
-                    // Events
+                    // --- Event Listeners ---
                     this.els.send.addEventListener('click', () => this.handleSend());
                     this.els.input.addEventListener('input', () => this.refreshSend());
                     this.els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleSend(); } });
 
-                    // Toggle Summary <-> Chat
+                    // Handles toggling between the "Summary" and "Chat" views.
                     this.els.toggle.addEventListener('click', () => {
                         const showChat = !this.els.card.classList.contains('show-chat');
                         this.els.card.classList.toggle('show-chat', showChat);
                         this.els.toggle.setAttribute('aria-checked', showChat ? 'true' : 'false');
                         this.setHeader(showChat);
+                        // When switching to chat view, render the appropriate conversation thread.
                         if (showChat) this.renderThread(this.currentKey());
 
                     });
                 },
 
+                /**
+                 * Updates the enabled/disabled state of the "Send" button based on application state.
+                 */
                 refreshSend() {
+                    // Invariants: To send a message, the API must not be busy, an API key must be
+                    // present, a document must be loaded, and the input field must have text.
                     const hasKey = !!App._currentParams?.openaiKey;
                     const hasDoc = !!App._currentCleanedText;
                     const hasText = (this.els.input?.value.trim().length > 0);
                     if (this.els.send) this.els.send.disabled = this._busy || !(hasKey && hasDoc && hasText);
                 },
 
+                /**
+                 * Creates a message bubble element and appends it to the chat display.
+                 * @param {'user'|'bot'} role - The role of the message author.
+                 * @param {string} html - The HTML content to render inside the bubble.
+                 * @returns {HTMLElement} The created bubble element.
+                 */
                 addMsg(role, html) {
                     const wrap = document.createElement('div');
                     wrap.className = 'msg ' + role;
@@ -2963,15 +3131,30 @@ Summarize the set:\n\n${text}`;
                     return bubble;
                 },
 
+                /**
+                 * Displays a "Thinking..." indicator and returns a function to remove it.
+                 * @returns {{bubble: HTMLElement, stop: function():void}}
+                 *   An object containing the
+                 *   indicator's DOM element and a function to remove it.
+                 */
                 thinking() {
                     const bubble = this.addMsg('bot', '<span class="typing">Thinking<span class="dots"><i></i><i></i><i></i></span></span>');
                     return { bubble, stop: () => { bubble.parentElement?.remove(); } };
                 },
 
+                /**
+                 * Constructs the full system prompt for the AI based on the user's question,
+                 * the document content, and the recent conversation history.
+                 * @param {string} userText - The user's latest question.
+                 * @param {string} docText - The text content of the current document.
+                 * @returns {string} The fully-formed prompt to be sent to the AI.
+                 */
                 buildPrompt(userText, docText) {
                     let processedText = docText || '';
                     const isMulti = processedText.startsWith('[[MULTI_DOC]]') || processedText.includes('==== [DOC ');
 
+                    // Rationale: Apply character limits to the document context to avoid exceeding
+                    // the AI model's context window, which would result in an error.
                     if (isMulti) {
                         const CHARS_PER_DOC_CHAT = 5000, MAX_CHARS_CHAT = 50000;
                         processedText = APIService.clipMultiDocuments(processedText, CHARS_PER_DOC_CHAT, MAX_CHARS_CHAT);
@@ -2986,6 +3169,9 @@ Summarize the set:\n\n${text}`;
                     const cleaned = Utils.cleanTextForLLM(processedText, { maxConsecutiveNewlines: 2 });
                     const history = this.buildHistoryBlock(this.currentKey(), 3);
 
+                    // This structure is a form of "prompt engineering" designed to guide the AI.
+                    // It clearly separates the system instructions, conversation history, the
+                    // grounding document, and the user's current question.
                     return [
                         "SYSTEM:",
                         "You are a concise assistant answering questions ONLY using the provided Document content.",
@@ -3004,41 +3190,50 @@ Summarize the set:\n\n${text}`;
                     ].join("\n");
                 },
 
+                /**
+                 * Handles the entire process of sending a user's message, including updating the UI,
+                 * calling the AI service with a streaming response, and rendering the reply.
+                 */
                 async handleSend() {
                     const text = this.els.input.value.trim();
                     if (!text) return;
 
                     const key = this.currentKey();
 
-                    // user message (preserve line breaks)
+                    // 1. Add the user's message to the UI and the conversation history.
                     const userHtml = Utils.escapeHtml(text).replace(/\n/g, '<br>');
                     this.addMsg('user', userHtml);
                     this.appendToThread('user', userHtml, key, text);
 
+                    // 2. Reset UI and enter busy state.
                     this.els.input.value = '';
                     this._busy = true; this.refreshSend();
 
-                    // show typing bubble and REUSE it for streaming
+                    // 3. Show a "Thinking..." indicator, which will be replaced by the streamed response.
                     const think = this.thinking();
                     await new Promise(r => requestAnimationFrame(r));
 
-                    let buf = '';
-                    let raf = null;
-                    let final = ''; // make visible to finally
+                    let buf = ''; // Buffer for the streaming response text.
+                    let raf = null; // requestAnimationFrame handle for performance.
+                    let final = ''; // Stores the final, non-streamed result if needed.
 
-                    // thread slot for the bot reply
+                    // 4. Create an empty placeholder in the history for the bot's reply.
+                    // This will be filled as the response streams in.
                     this.appendToThread('bot', '', key, '');
                     const botIdx = this._threads.get(key).length - 1;
 
-                    // stream into the typing bubble
-                    const botBubble = think.bubble;
+                    // 5. Set up the streaming handler.
+                    const botBubble = think.bubble; // The "Thinking..." bubble DOM node.
                     const flush = () => {
+                        // This function updates the bot's bubble with the latest buffered text.
+                        // It's wrapped in requestAnimationFrame to prevent UI thrashing.
                         const safe = Utils.escapeHtml(buf).replace(/\n/g, '<br>');
                         botBubble.innerHTML = safe;
+                        // Update the history array with the latest content.
                         const arr = this._threads.get(key);
                         if (arr && arr[botIdx]) {
                             arr[botIdx].html = safe;
-                            arr[botIdx].plain = buf; // <-- capture plain text too
+                            arr[botIdx].plain = buf; // Also store plain text for future prompts.
                         }
                         raf = null;
                         this.els.msgs.scrollTop = this.els.msgs.scrollHeight;
@@ -3048,35 +3243,48 @@ Summarize the set:\n\n${text}`;
                         if (!params.openaiKey) throw new Error('Missing OpenAI key');
                         if (!App._currentCleanedText) throw new Error('Select a file first; no document loaded');
 
+                        // 6. Build the prompt and call the API with the streaming callback.
                         const prompt = this.buildPrompt(text, App._currentCleanedText);
                         final = await APIService.callOpenAIChat(
                             prompt, params.openaiKey, CONFIG.OPENAI.MODEL,
+                            // This `onDelta` callback is the heart of the streaming logic.
+                            // It appends chunks to the buffer and schedules a UI update.
                             (_d, full) => { buf = full; if (!raf) raf = requestAnimationFrame(flush); }
                         );
 
+                        // Final flush to ensure the last chunk is rendered.
                         if (raf) { cancelAnimationFrame(raf); raf = null; }
-                        if (!buf.trim()) { buf = final; flush(); } // non-stream edge case
+                        if (!buf.trim()) { buf = final; flush(); } // Handle non-streaming edge case.
                     } catch (e) {
-                        // show error in the same bubble and in the thread
+                        // Display errors directly in the chat bubble for user visibility.
                         buf = `Sorry, I couldn't complete that: ${e.message}`;
                         flush();
                         console.error('[chat]', e);
                     } finally {
+                        // 7. Clean up and exit busy state.
                         this._busy = false; this.refreshSend();
                     }
                 },
+                /**
+                 * Constructs the conversation history block for the system prompt.
+                 * It retrieves the last few user/bot exchanges from the thread history.
+                 * @param {string} [key=this.currentKey()] - The context key for the thread.
+                 * @param {number} [maxPairs=3] - The maximum number of Q&A pairs to include.
+                 * @returns {string} A formatted string of the recent conversation history.
+                 */
                 buildHistoryBlock(key = this.currentKey(), maxPairs = 3) {
                     const arr = this._threads.get(key) || [];
                     if (!arr.length) return '';
 
-                    // Drop the ephemeral empty bot bubble and the newest user message
+                    // Prepare the history array: remove the ephemeral empty bot bubble that was
+                    // just added, and the user message we are currently processing.
                     const filtered = arr.filter((m, i) => !(m.role === 'bot' && !m.html))
                         .slice(); // shallow copy
                     if (filtered.length && filtered[filtered.length - 1].role === 'user') {
                         filtered.pop();
                     }
 
-                    // Walk backward collecting user->bot pairs
+                    // Walk backward through the history, collecting user/bot message pairs.
                     const pairs = [];
                     for (let i = filtered.length - 1; i >= 1 && pairs.length < maxPairs; i--) {
                         const b = filtered[i], u = filtered[i - 1];
@@ -3085,7 +3293,7 @@ Summarize the set:\n\n${text}`;
                                 uq: u.plain || DocumentSummarizerApp._modules.Utils.stripHtml(u.html),
                                 ar: b.plain || DocumentSummarizerApp._modules.Utils.stripHtml(b.html)
                             });
-                            i--; // skip the user we just consumed
+                            i--; // Decrement again to skip the user message we just consumed.
                         }
                     }
 
@@ -3099,27 +3307,42 @@ Summarize the set:\n\n${text}`;
                 }
             };
 
+
             // =============================================================================
             // MAIN APPLICATION
             // =============================================================================
+            /**
+             * The main application controller. It orchestrates the different modules (UI, API, VA),
+             * manages the central application state (caches, current selections), and handles
+             * the core business logic for file selection, preloading, and summarization.
+             */
             const App = {
-                // Store current parameters for file operations
+                // Caches parameters received from VA for use in subsequent API calls.
                 _currentParams: null,
+                // In-memory cache for cleaned text content of files. { key: content }
                 _fileCache: new Map(),
+                // In-memory cache for generated summaries. { key: summaryHtml }
                 _summaryCache: new Map(),
+                // Holds the cleaned text content of the currently selected file/document set.
                 _currentCleanedText: null,
+                // Holds the interval ID for the file list auto-refresh timer.
                 _refreshInterval: null,
-                _inflightLoads: new Set(),   // de-dupe concurrent loads
-                _preloadToken: null,         // lets us abort an older preload wave
-                _activeSummaries: new Set(), // set of "<alertId>:<fileId>" currently summarizing
+                // A set of cache keys for files currently being fetched to prevent duplicate requests.
+                _inflightLoads: new Set(),
+                // A unique symbol to identify and abort outdated preloading operations.
+                _preloadToken: null,
+                // A set of keys for files currently being summarized to manage UI state.
+                _activeSummaries: new Set(),
 
                 /**
-                 * Initialize the entire application
+                 * Initializes all application modules, sets up global event listeners,
+                 * and establishes the connection with the VA environment.
                  */
                 init() {
                     Utils.log('APP', 'Initializing Document Summarizer App');
 
                     try {
+                        // Check for presence of external libraries and log status.
                         if (typeof pdfjsLib !== 'undefined') {
                             Utils.log('APP', 'PDF.js loaded successfully');
                         } else {
@@ -3130,6 +3353,7 @@ Summarize the set:\n\n${text}`;
                         VAIntegration.initialize();
                         Chat.init();
 
+                        // Expose methods to the global scope for legacy or cross-module communication.
                         window.DocumentSummarizerApp = window.DocumentSummarizerApp || {};
                         window.DocumentSummarizerApp._onFileSelected = this.handleFileSelection.bind(this);
                         window.DocumentSummarizerApp._onSummarizeClick = this.handleSummarize.bind(this);
@@ -3137,7 +3361,8 @@ Summarize the set:\n\n${text}`;
                         window.DocumentSummarizerApp._updateBtn =
                             this._updateSummarizeButtonForCurrentSelection.bind(this);
 
-                        // Add cleanup on page unload
+                        // Rationale: Perform cleanup on page exit to clear timers and cached tokens,
+                        // preventing memory leaks and unnecessary open connections.
                         window.addEventListener('beforeunload', () => {
                             this.stopAutoRefresh();
                             APIService.clearToken();
@@ -3150,13 +3375,19 @@ Summarize the set:\n\n${text}`;
                     }
                 },
 
+                /**
+                 * Fetches document content and displays it in a modal dialog.
+                 * Handles both single documents and the special "All Documents" case.
+                 * @param {string} fileId - The ID of the file to display, or the special ID for all documents.
+                 * @param {string} [fileName='Document'] - The name of the document for the modal title.
+                 */
                 async openContentModal(fileId, fileName = 'Document') {
                     try {
                         const { alertId, sasUser, sasPass } = this._currentParams || {};
                         if (!alertId || !sasUser || !sasPass) {
                             this._currentCleanedText = null;
                             this._updateSummarizeButtonForCurrentSelection();
-                            return; // bail gracefully
+                            return; // Bail gracefully if essential parameters are missing.
                         }
                         const modal = document.getElementById('contentModal');
                         const pre = document.getElementById('modalFileContent');
@@ -3164,18 +3395,17 @@ Summarize the set:\n\n${text}`;
 
                         if (!modal || !pre) return;
 
-                        // Title
                         if (title) title.textContent = fileName;
 
-                        // Resolve content (single doc or "All Documents")
                         let text = '';
+                        // Special path: If "All Documents" is selected, concatenate the text of all files.
                         if (String(fileId) === DocumentSummarizerApp._modules.CONFIG.SPECIAL.ALL_ID) {
-                            // Reuse the same combined builder as handleFileSelection does
                             const parts = [];
                             for (const f of UIManager._allFiles) {
                                 const fid = String(f.id || f.fileId || '');
                                 if (!fid) continue;
                                 const key = `${String(alertId)}:${fid}`;
+                                // Use cached content if available, otherwise fetch, clean, and cache it.
                                 if (this._fileCache.has(key)) {
                                     parts.push(this._fileCache.get(key));
                                 } else {
@@ -3188,6 +3418,7 @@ Summarize the set:\n\n${text}`;
                             }
                             text = parts.join('\n\n');
                         } else {
+                            // Standard path for a single document.
                             const cacheKey = `${String(alertId)}:${String(fileId)}`;
                             if (this._fileCache.has(cacheKey)) {
                                 text = this._fileCache.get(cacheKey);
@@ -3196,17 +3427,17 @@ Summarize the set:\n\n${text}`;
                                 const extracted = await DocumentSummarizerApp._modules.APIService.extractTextFromFile(fileData);
                                 text = DocumentSummarizerApp._modules.Utils.cleanTextForLLM(extracted, { maxConsecutiveNewlines: 2 });
                                 this._fileCache.set(cacheKey, text);
+                                // Simple FIFO cache eviction policy.
                                 if (this._fileCache.size > 10) this._fileCache.delete(this._fileCache.keys().next().value);
                             }
                         }
 
                         pre.textContent = text || '[No text content]';
 
-                        // Show modal
                         modal.hidden = false;
                         document.body.classList.add('modal-open');
 
-                        // Wire close handlers (once)
+                        // Wire up modal closing events only once for efficiency.
                         if (!this._modalWired) {
                             this._modalWired = true;
                             modal.addEventListener('click', (e) => {
@@ -3227,16 +3458,28 @@ Summarize the set:\n\n${text}`;
                     }
                 },
 
+                /**
+                 * Closes the content preview modal.
+                 */
                 closeContentModal() {
                     const modal = document.getElementById('contentModal');
                     if (modal) modal.hidden = true;
                     document.body.classList.remove('modal-open');
                 },
 
+                /**
+                 * Creates a consistent key for state management (caches, active summaries).
+                 * @private
+                 */
                 _key(alertId, fileId) {
                     return `${String(alertId ?? 'GLOBAL')}:${String(fileId ?? '')}`;
                 },
 
+                /**
+                 * Manages the UI state of the "Summarize" button based on the current selection
+                 * and whether a summary for that selection is already in progress.
+                 * @private
+                 */
                 _updateSummarizeButtonForCurrentSelection() {
                     const btn = document.getElementById(CONFIG.ELEMENTS.summarizeBtn);
                     if (!btn) return;
@@ -3250,12 +3493,12 @@ Summarize the set:\n\n${text}`;
                     const canSummarizeThisFile =
                         !!this._currentCleanedText && !!this._currentParams?.openaiKey && !!fileId;
 
-                    // Drive the button purely from the *current file* state
+                    // The button's state is driven purely by the state of the currently selected file.
                     btn.disabled = !canSummarizeThisFile || isSummarizingThisFile;
                     btn.classList.toggle('loading', isSummarizingThisFile);
                     btn.setAttribute('aria-busy', isSummarizingThisFile ? 'true' : 'false');
 
-                    // keep the documents list in sync (show flowing fade on items being summarized)
+                    // Also update the file list to show a loading indicator on items being summarized.
                     if (alertId) {
                         document.querySelectorAll('.file').forEach(el => {
                             const fid = el.dataset.fileId;
@@ -3265,6 +3508,9 @@ Summarize the set:\n\n${text}`;
                     }
                 },
 
+                /**
+                 * Starts a periodic auto-refresh to fetch the latest list of files.
+                 */
                 startAutoRefresh() {
                     if (!CONFIG.AUTO_REFRESH.ENABLED || this._refreshInterval) return;
 
@@ -3283,13 +3529,13 @@ Summarize the set:\n\n${text}`;
                                     sasPass
                                 );
 
-                                // Update file list while preserving selection
                                 UIManager.populateFileList(files);
 
                                 Utils.log('AUTO_REFRESH', `Updated file list: ${files.length} files`);
                             } catch (error) {
                                 Utils.log('AUTO_REFRESH', 'Refresh failed', error);
-                                // Don't show error to user on auto-refresh failures
+                                // Rationale: Auto-refresh failures should be silent to avoid bothering the user
+                                // with transient network errors.
                             }
                         }
                     }, CONFIG.AUTO_REFRESH.INTERVAL);
@@ -3297,6 +3543,9 @@ Summarize the set:\n\n${text}`;
                     Utils.log('AUTO_REFRESH', `Started auto-refresh every ${CONFIG.AUTO_REFRESH.INTERVAL}ms`);
                 },
 
+                /**
+                 * Stops the auto-refresh timer.
+                 */
                 stopAutoRefresh() {
                     if (this._refreshInterval) {
                         clearInterval(this._refreshInterval);
@@ -3305,6 +3554,11 @@ Summarize the set:\n\n${text}`;
                     }
                 },
 
+                /**
+                 * Proactively fetches and caches the content of the first few files in the list
+                 * to improve perceived performance when a user selects them.
+                 * @param {Array<Object>} files - The list of files to consider for preloading.
+                 */
                 async preloadFirstFiles(files) {
                     if (!CONFIG.PRELOAD.ENABLED) return;
                     if (!this._currentParams) return;
@@ -3315,13 +3569,14 @@ Summarize the set:\n\n${text}`;
                     const list = (files && files.length ? files : UIManager._allFiles) || [];
                     if (!list.length) return;
 
+                    // Rationale: The token is used to gracefully abort an ongoing preload operation
+                    // if a new one is triggered (e.g., by a file list refresh), preventing race conditions.
                     const token = Symbol('preload');
                     this._preloadToken = token;
 
                     const toPreload = list.slice(0, CONFIG.PRELOAD.COUNT);
 
                     for (const f of toPreload) {
-                        // Abort if a newer preload started (e.g., alert switched / list refreshed)
                         if (this._preloadToken !== token) {
                             Utils.log('PRELOAD', 'Aborted previous preload wave');
                             return;
@@ -3332,7 +3587,6 @@ Summarize the set:\n\n${text}`;
 
                         const cacheKey = `${String(alertId)}:${fileId}`;
 
-                        // Skip if already cached or currently being fetched
                         if (this._fileCache.has(cacheKey) || this._inflightLoads.has(cacheKey)) {
                             continue;
                         }
@@ -3340,7 +3594,6 @@ Summarize the set:\n\n${text}`;
                         try {
                             this._inflightLoads.add(cacheKey);
 
-                            // Fetch & extract, same pipeline as handleFileSelection (but no UI updates)
                             const fileData = await APIService.getFileContent(alertId, fileId, sasUser, sasPass);
                             const extracted = await APIService.extractTextFromFile(fileData);
                             const cleaned = Utils.cleanTextForLLM(extracted, {
@@ -3352,7 +3605,6 @@ Summarize the set:\n\n${text}`;
                                 maxConsecutiveNewlines: 2
                             });
 
-                            // Put into cache (respect your existing size limit logic)
                             this._fileCache.set(cacheKey, cleaned);
                             if (this._fileCache.size > 10) {
                                 const firstKey = this._fileCache.keys().next().value;
@@ -3362,12 +3614,12 @@ Summarize the set:\n\n${text}`;
                             Utils.log('PRELOAD', `Cached file ${fileId}`);
                         } catch (e) {
                             Utils.log('PRELOAD', `Failed to preload ${fileId}`, e);
-                            // swallow — preloading must be silent
+                            // Rationale: Preloading failures should be silent as they are a non-critical
+                            // background optimization.
                         } finally {
                             this._inflightLoads.delete(cacheKey);
                         }
 
-                        // Small gap between requests (optional)
                         if (CONFIG.PRELOAD.DELAY) {
                             await new Promise(r => setTimeout(r, CONFIG.PRELOAD.DELAY));
                         }
@@ -3377,14 +3629,17 @@ Summarize the set:\n\n${text}`;
                 },
 
                 /**
-                 * Store current parameters for later use
+                 * Updates the application's state with the current parameters from VA.
+                 * @param {object} params - The structured parameter object.
                  */
                 setCurrentParams(params) {
                     this._currentParams = params;
                 },
 
                 /**
-                 * Handle file selection from dropdown
+                 * Handles the logic for when a user selects a file from the list.
+                 * This function is the main entry point for loading and processing document content.
+                 * @param {string} fileId - The ID of the selected file.
                  */
                 async handleFileSelection(fileId) {
                     const { alertId, sasUser, sasPass } = this._currentParams;
@@ -3392,8 +3647,8 @@ Summarize the set:\n\n${text}`;
                     this._currentCleanedText = null;
                     this._updateSummarizeButtonForCurrentSelection();
 
-                    // keep cached summary display logic (unchanged) ...
-                    const baseKey = `${String(alertId)}:${String(fileId)}:`;
+                    // If a summary for the selected file exists in the cache, display it.
+                    const baseKey = `${String(alertId)}:${String(fileId)}:`
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
                     if (this._summaryCache) {
                         const matchKey = [...this._summaryCache.keys()].find(k => k.startsWith(baseKey));
@@ -3402,10 +3657,8 @@ Summarize the set:\n\n${text}`;
                     }
 
                     try {
-                        // === ADD: special "All Documents" concatenation path ===
+                        // Special Path: Handle the "All Documents" selection.
                         if (String(fileId) === CONFIG.SPECIAL.ALL_ID) {
-
-
                             const parts = [];
                             for (const f of UIManager._allFiles) {
                                 const fid = String(f.id || f.fileId || '');
@@ -3426,42 +3679,43 @@ Summarize the set:\n\n${text}`;
                                     if (this._fileCache.size > 10) this._fileCache.delete(this._fileCache.keys().next().value);
                                 }
 
-                                // Append content; keep it simple: just a blank line between docs
                                 if (cleaned) parts.push(cleaned);
                             }
 
-                            // add a header + per-doc delimiters the LLM can detect
+                            // Rationale: Construct a special combined text payload with markers and a table
+                            // of contents that the AI can use to understand the multi-document structure.
                             const lines = UIManager._allFiles.map((f, i) => {
                                 const name = (f.name || f.fileName || f.id || `Document ${i + 1}`).toString();
                                 return `- [DOC ${i + 1}] ${name}`;
                             });
                             const combined = [
-                                '[[MULTI_DOC]]',                         // <— marker the LLM can key on
+                                '[[MULTI_DOC]]', // Marker for the API service to select the multi-document prompt.
                                 'INPUT CONTAINS MULTIPLE DOCUMENTS',
                                 'TABLE OF CONTENTS:',
                                 ...lines,
-                                '',                                      // blank line
+                                '',
                                 ...UIManager._allFiles.map((f, i) => {
                                     const name = (f.name || f.fileName || f.id || `Document ${i + 1}`).toString();
                                     const fid = String(f.id || f.fileId || '');
                                     const cacheKey = `${alertId}:${fid}`;
-                                    const text = this._fileCache.get(cacheKey) || ''; // already filled above
-                                    return `==== [DOC ${i + 1}] ${name} ====\n${text}`;
+                                    const text = this._fileCache.get(cacheKey) || '';
+                                    return `==== [DOC ${i + 1}] ${name} ====
+${text}`;
                                 })
                             ].join('\n');
 
                             this._currentCleanedText = combined;
                             this._updateSummarizeButtonForCurrentSelection();
 
+                            // If in chat mode, switch the chat context to the new selection.
                             if (document.querySelector('.card')?.classList.contains('show-chat')) {
-                                Chat.renderThread(Chat.currentKey());  //  swap chat to this doc's thread
+                                Chat.renderThread(Chat.currentKey());
                             }
                             Chat.refreshSend();
-                            return; // IMPORTANT: stop here; skip single-file path
+                            return; // Stop here to avoid falling through to the single-file path.
                         }
-                        // === END ADD ===
 
-                        // --- existing single-file path (unchanged) ---
+                        // Standard Path: Handle a single file selection.
                         const cacheKey = `${alertId}:${fileId}`;
                         if (this._fileCache && this._fileCache.has(cacheKey)) {
                             this._currentCleanedText = this._fileCache.get(cacheKey);
@@ -3500,17 +3754,18 @@ Summarize the set:\n\n${text}`;
 
 
                 /**
-                 * Get selected file ID from dropdown
+                 * Retrieves the ID of the currently selected file from the UIManager.
+                 * @returns {string|null} The selected file ID.
                  */
                 getSelectedFileId() {
-                    // Single source of truth from UIManager
+                    // Defers to the UIManager as the single source of truth for UI state.
                     return UIManager._selectedFileId || null;
                 },
                 /**
-                 * Handle summarize button click
+                 * Handles the click event for the "Summarize" button.
+                 * Manages caching, UI state, and calls the API to get a summary.
                  */
                 async handleSummarize() {
-                    // Allow parallel, but only one per file
                     if (!this._currentCleanedText) {
                         alert('No document content to summarize');
                         return;
@@ -3528,7 +3783,8 @@ Summarize the set:\n\n${text}`;
                     const alertId = String(this._currentParams?.alertId ?? 'GLOBAL');
                     const key = this._key(alertId, fileId);
 
-                    // Build cache key first and return early on cache hit (NO activeSummaries change)
+                    // Create a cache key that includes the text length as a fingerprint.
+                    // This invalidates the cache if the document content changes.
                     const fp = String(this._currentCleanedText.length);
                     const summaryCacheKey = `${alertId}:${fileId}:${fp}`;
                     const summaryEl = document.getElementById(CONFIG.ELEMENTS.summaryContent);
@@ -3540,18 +3796,17 @@ Summarize the set:\n\n${text}`;
                         return;
                     }
 
-                    // De-dupe only the same file; allow parallel across other files
+                    // De-duplication: Prevent starting a new summary if one for the same file is already running.
                     if (this._activeSummaries.has(key)) {
                         Utils.log('APP', `Already summarizing ${key}`);
                         return;
                     }
 
-                    // Mark this file as summarizing and update the button for the *current* selection
                     this._activeSummaries.add(key);
                     this._updateSummarizeButtonForCurrentSelection();
 
                     try {
-                        // Show skeleton only if this file is still the one being viewed
+                        // Show a skeleton loader, but only if the user is still viewing the file being summarized.
                         const isStillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
                         if (summaryEl && isStillSelected) {
                             summaryEl.innerHTML =
@@ -3574,7 +3829,8 @@ Summarize the set:\n\n${text}`;
                             this._currentParams.openaiKey,
                             CONFIG.OPENAI.MODEL,
                             (delta, full) => {
-                                // Live-stream ONLY to the currently viewed file
+                                // Rationale: Live-stream the summary text, but only update the UI
+                                // if the user hasn't navigated away to a different file.
                                 const selectedKey = this._key(this._currentParams?.alertId, this.getSelectedFileId());
                                 if (summaryEl && selectedKey === key) {
                                     summaryEl.innerHTML = SANITIZE(full);
@@ -3582,12 +3838,10 @@ Summarize the set:\n\n${text}`;
                             }
                         );
 
-                        // Final render (only if user is still on this file)
                         const stillSelected = this._key(this._currentParams?.alertId, this.getSelectedFileId()) === key;
                         if (summaryEl && stillSelected) {
                             const safeFinal = SANITIZE(summary);
                             summaryEl.innerHTML = safeFinal;
-                            // Cache the sanitized version
                             this._summaryCache.set(summaryCacheKey, safeFinal);
                         }
 
@@ -3604,7 +3858,7 @@ Summarize the set:\n\n${text}`;
                             summaryEl.textContent = `Error generating summary: ${error.message}`;
                         }
                     } finally {
-                        // Always clear the per-file busy flag, then refresh the button for what's currently shown
+                        // Always clear the busy flag for this file and refresh the UI state.
                         this._activeSummaries.delete(key);
                         this._updateSummarizeButtonForCurrentSelection();
                     }
@@ -3612,31 +3866,49 @@ Summarize the set:\n\n${text}`;
                 }
             };
 
+
             // =============================================================================
             // PUBLIC API
             // =============================================================================
+            /**
+             * Exposes a public interface for the DocumentSummarizerApp module.
+             * This allows external scripts to interact with the application in a controlled way,
+             * for instance, to initiate it or use its utility functions.
+             */
             return {
+                /** Kicks off the entire application. */
                 init: App.init.bind(App),
+                /** Returns the ID of the currently selected file. */
                 getSelectedFileId: App.getSelectedFileId.bind(App),
 
+                /** Programmatically retrieves a SAS access token. */
                 async getSASToken(username, password) {
                     return APIService.getSASToken(username, password);
                 },
+                /** Clears the cached SAS access token. */
                 clearToken() {
                     return APIService.clearToken();
                 },
+                /** Fetches the raw content of a specific file. */
                 async getFileContent(alertId, fileId, username, password) {
                     return APIService.getFileContent(alertId, fileId, username, password);
                 },
+                /** Extracts text from a file based on its content type. */
                 async extractTextFromFile(fileData) {
                     return APIService.extractTextFromFile(fileData);
                 },
+                /** Extracts text from a PDF ArrayBuffer. */
                 async extractTextFromPDF(arrayBuffer, onProgress = null) {
                     return APIService.extractTextFromPDF(arrayBuffer, onProgress);
                 },
+                /** Cleans and prepares text for optimal LLM processing. */
                 cleanTextForLLM(text, options = {}) {
                     return Utils.cleanTextForLLM(text, options);
                 },
+                /**
+                 * Internal modules exposed for debugging, testing, or advanced integration.
+                 * @private
+                 */
                 _modules: {
                     Utils,
                     UIManager,
@@ -3650,6 +3922,11 @@ Summarize the set:\n\n${text}`;
         // =============================================================================
         // APPLICATION STARTUP
         // =============================================================================
+        /**
+         * This is the main entry point of the application.
+         * Calling `init()` starts the application, sets up listeners, and prepares it
+         * to receive data from the SAS Visual Analytics environment.
+         */
         DocumentSummarizerApp.init();
     </script>
 </body>
