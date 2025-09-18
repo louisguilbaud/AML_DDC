@@ -118,25 +118,6 @@ anton.johansson@sas.com
                         Consistent spacing and sizing tokens
                         */
                         --content-indent: 14px;        /* Standard content indentation for hierarchy */
-
-                        /*
-                        Accessibility & Readability Scale
-                        ================================
-                        Global font scaling for improved readability in compliance environments
-                        */
-                        --fs: 1.08;                    /* 8% font size increase for better readability */
-                }
-                :root {
-                        --bg: #fff;
-                        --fg: #1d1d1f;
-                        --muted: #6e6e73;
-                        --card: #fff;
-                        --border: rgba(0, 0, 0, .08);
-                        --primary: #0478CE;
-                        --primary-press: #0366AF;
-                        --content-indent: 14px;
-                        --primary-soft: #E8F3FF;
-                        --grey-soft: #fafafa;
                 }
 
                 /*
@@ -159,7 +140,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Apply theme text color */
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
                         /* System font stack for optimal performance and native feel across platforms */
-                        font-size: calc(16px * var(--fs)); /* Scalable base font size for accessibility */
+                        font-size: 17px; 
                 }
 
 
@@ -206,7 +187,7 @@ anton.johansson@sas.com
 
                 h1 {
                         margin: 0 0 6px 0;                 /* Minimal bottom margin for subtitle spacing */
-                        font-size: calc(28px * var(--fs)); /* Scalable primary heading size */
+                        font-size: 30px; 
                         font-weight: 650;                  /* Semi-bold for authority without heaviness */
                         letter-spacing: -.02em              /* Slight negative tracking for large text */
                 }
@@ -214,7 +195,7 @@ anton.johansson@sas.com
                 .subtitle {
                         margin: 0;                         /* Reset default paragraph margins */
                         color: var(--muted);               /* Reduced contrast for hierarchy */
-                        font-size: calc(14px * var(--fs))  /* Scalable subtitle size */
+                        font-size: 15px;  
                 }
 
                 /*
@@ -247,7 +228,7 @@ anton.johansson@sas.com
                         color: #fff;                        /* High contrast white text */
                         border-radius: 14px;               /* Rounded corners matching design system */
                         padding: 12px 18px;                /* Comfortable touch target (44px+ height) */
-                        font-size: calc(16px * var(--fs)); /* Scalable readable text size */
+                        font-size: 17px; /* Scalable readable text size */
                         font-weight: 600;                  /* Semi-bold for emphasis and readability */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
                         /* Colored shadow reinforces button importance and adds depth */
@@ -275,7 +256,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Primary text color for readability */
                         border-radius: 14px;               /* Consistent rounding with primary buttons */
                         padding: 10px 16px;                /* Slightly smaller padding for hierarchy */
-                        font-size: calc(14px * var(--fs)); /* Scalable secondary text size */
+                        font-size: 15px; /* Scalable secondary text size */
                         font-weight: 600                   /* Maintain readability with semi-bold weight */
                 }
 
@@ -328,7 +309,7 @@ anton.johansson@sas.com
 
                 /* Section label headers (Summary, Comments, Chat) */
                 .label {
-                        font-size: calc(12px * var(--fs)); /* Scalable small caps size */
+                        font-size: 13px; 
                         text-transform: uppercase;          /* All caps for section emphasis */
                         letter-spacing: .08em;              /* Wide tracking for readability */
                         color: var(--muted);               /* Reduced contrast for hierarchy */
@@ -368,7 +349,7 @@ anton.johansson@sas.com
                         border: none;                       /* Clean appearance without borders */
                         border-radius: 14px;               /* Consistent rounding */
                         padding: 10px 12px;                /* Comfortable padding for readability */
-                        font-size: calc(14px * var(--fs)); /* Scalable text size */
+                        font-size: 15px; /* Scalable text size */
                         font-weight: 600;                  /* Semi-bold for consistency */
                 }
 
@@ -391,17 +372,17 @@ anton.johansson@sas.com
                         padding: 14px;                     /* Internal spacing for readability */
                         min-height: 140px;                 /* Minimum height prevents layout shift */
                         white-space: normal;                /* Allow normal text wrapping */
-                        font-size: calc(14px * var(--fs))  /* Scalable readable content size */
+                        font-size: 16px;  
                 }
 
                 /* Rich text styling within summary content */
                 .summary h1 {
-                        font-size: calc(24px * var(--fs)); /* Scalable heading size */
+                        font-size: 26px; 
                         margin: 0 0 8px                    /* Bottom spacing for content separation */
                 }
 
                 .summary h2 {
-                        font-size: calc(18px * var(--fs)); /* Scalable subheading size */
+                        font-size: 19px; 
                         margin: 14px 0 6px                 /* Top and bottom spacing for hierarchy */
                 }
 
@@ -421,7 +402,7 @@ anton.johansson@sas.com
                 /* AI model knowledge cutoff disclaimer */
                 .summary .cutoff {
                         margin-top: 10px;                  /* Separation from main content */
-                        font-size: calc(12px * var(--fs)); /* Scalable small disclaimer text */
+                        font-size: 13px; 
                         color: var(--muted)                /* Reduced emphasis for footnote content */
                 }
 
@@ -444,7 +425,7 @@ anton.johansson@sas.com
                         line-height: 1.5;                 /* Comfortable reading line height */
                         overflow: hidden;                  /* Hide scrollbars for auto-resize */
                         resize: none;                      /* Disable manual resize for consistent layout */
-                        font-size: calc(14px * var(--fs)) /* Scalable text input size */
+                        font-size: 16px; 
                 }
 
                 textarea:focus {
@@ -454,7 +435,7 @@ anton.johansson@sas.com
                 }
 
                 .caption {
-                        font-size: calc(12px * var(--fs)); /* Scalable caption text */
+                        font-size: 13px;
                         color: var(--muted)                /* Reduced contrast for supporting text */
                 }
 
@@ -657,7 +638,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Primary text color */
                         padding: 10px 12px;                /* Comfortable reading padding */
                         border-radius: 14px 14px 4px 14px; /* Asymmetric rounding for speech bubble effect */
-                        font-size: calc(14px * var(--fs)); /* Scalable message text size */
+                        font-size: 16px; 
                         line-height: 1.35;                 /* Compact line height for conversation */
                         max-width: 72%;                    /* Prevent overly wide messages */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
@@ -702,7 +683,7 @@ anton.johansson@sas.com
                         padding: 12px 14px;               /* Comfortable typing padding */
                         font: inherit;                     /* Use system font stack */
                         outline: none;                     /* Remove default focus outline */
-                        font-size: calc(14px * var(--fs)) /* Scalable input text size */
+                        font-size: 16px; 
                 }
 
                 #chatText:focus {
@@ -753,7 +734,6 @@ anton.johansson@sas.com
                 */
 
                 input,
-                textarea,
                 button,
                 select {
                         font-family: inherit;             /* Use system font stack consistently */
@@ -761,7 +741,7 @@ anton.johansson@sas.com
                 }
 
                 #comments {
-                        font-size: calc(14px * var(--fs)) /* Scalable comment text size */
+                        font-size: 16px; 
                 }
 
                 /*
@@ -791,7 +771,7 @@ anton.johansson@sas.com
                         display: flex;                     /* Center content horizontally and vertically */
                         align-items: center;
                         justify-content: center;
-                        font-size: calc(14px * var(--fs)); /* Scalable tab text size */
+                        font-size: 15px; /* Scalable tab text size */
                         margin: 0;                         /* Reset global .label margin */
                         padding: 0;                        /* Reset global .label padding-left */
                         text-transform: none;              /* Override global UPPERCASE */
@@ -915,7 +895,7 @@ anton.johansson@sas.com
                         /* Standard AI disclaimer text for regulatory compliance */
                         display: block;                    /* Block display for proper spacing */
                         margin-top: 7px;                  /* Separation from chat interface */
-                        font-size: calc(13px * var(--fs)); /* Scalable disclaimer text */
+                        font-size: 14px; 
                         color: var(--muted);              /* Reduced emphasis */
                         text-align: center;               /* Center alignment for disclaimer */
                 }
@@ -926,7 +906,7 @@ anton.johansson@sas.com
                         left: 0;
                         right: 0;                          /* Full width positioning */
                         text-align: center;               /* Center alignment */
-                        font-size: calc(11px * var(--fs)); /* Scalable small disclaimer text */
+                        font-size: 12px; /* Scalable small disclaimer text */
                         color: var(--muted);              /* Reduced emphasis */
                         pointer-events: none;             /* Non-interactive overlay */
                 }
@@ -941,74 +921,6 @@ anton.johansson@sas.com
                 #pane-chat {
                         contain: layout paint;            /* CSS containment to isolate layout and paint work */
                         /* Improves performance by limiting reflow scope to pane contents */
-                }
-
-                /*
-                Accessibility & Readability Enhancements
-                ========================================
-                Global font scaling system for improved readability in compliance environments.
-                Applies 8% increase to all text elements for better visibility during long
-                analysis sessions. Scale can be adjusted via --fs variable (1.05-1.12 recommended).
-                */
-
-                /* Note: --fs variable already defined in main :root block above */
-
-                /* Base typography scaling */
-                body {
-                        font-size: calc(16px * var(--fs)); /* Scalable base font size */
-                }
-
-                h1 {
-                        font-size: calc(28px * var(--fs)); /* Scalable primary heading */
-                }
-
-                .subtitle {
-                        font-size: calc(14px * var(--fs)); /* Scalable subtitle */
-                }
-
-                /* Interactive element scaling */
-                .btn-primary {
-                        font-size: calc(16px * var(--fs)); /* Scalable primary button text */
-                }
-
-                .btn-secondary,
-                .select-model {
-                        font-size: calc(14px * var(--fs)); /* Scalable secondary element text */
-                }
-
-                /* UI label and caption scaling */
-                .label,
-                .caption {
-                        font-size: calc(12px * var(--fs)); /* Scalable small text elements */
-                }
-
-                /* Content area scaling */
-                .summary {
-                        font-size: calc(14px * var(--fs)); /* Scalable summary content */
-                }
-
-                .summary h1 {
-                        font-size: calc(24px * var(--fs)); /* Scalable summary headings */
-                }
-
-                .summary h2 {
-                        font-size: calc(18px * var(--fs)); /* Scalable summary subheadings */
-                }
-
-                /* Chat interface scaling */
-                .msg .bubble {
-                        font-size: calc(14px * var(--fs)); /* Scalable chat message text */
-                }
-
-                /* Form input scaling */
-                #comments,
-                #chatText {
-                        font-size: calc(14px * var(--fs)); /* Scalable input text */
-                }
-
-                /* Tab navigation scaling */
-                .viewtoggle .label {
-                        font-size: calc(14px * var(--fs)); /* Scalable tab labels */
                 }
         </style>
 </head>
