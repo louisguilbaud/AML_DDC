@@ -1,10 +1,9 @@
 <!--
 Written by Tsun Wai Wong, Anton Johansson & ChatGPT
 Date: September 2025
-tsunWai.wong@sas.com
+tsunwai.wong@sas.com
 anton.johansson@sas.com
 -->
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -123,29 +122,20 @@ anton.johansson@sas.com
             --file-wave-speed: 2.8s;       /* Duration of wave animation cycle */
 
             /*
-            Typography Scale - Modular Font Sizing
-            =====================================
-            Systematic font size scale from smallest (-2) to largest (5)
-            Designed for clear hierarchy and readability across devices
+            Typography Scale - Font Size System
+            ==================================
+            Semantic font size tokens for consistent typography hierarchy
+            Matches AML demo test final font size system exactly
             */
-            --fs--2: 13px;                 /* Smallest text (meta information) */
-            --fs--1: 14px;                 /* Small text (labels, captions) - matches alert summarizer */
-            --fs-0: 16px;                  /* Base body text size - matches alert summarizer */
-            --fs-1: 16px;                  /* Slightly larger body text - consolidated with fs-0 */
-            --fs-2: 18px;                  /* Subheadings - matches alert summarizer */
-            --fs-3: 20px;                  /* Section headings - matches alert summarizer */
-            --fs-4: 22px;                  /* Large headings - matches alert summarizer */
-            --fs-5: 30px;                  /* Main page title - matches alert summarizer */
-
-            /*
-            Responsive Typography - Fluid Font Scaling
-            ==========================================
-            Uses CSS clamp() for fluid typography that scales smoothly across viewports
-            Prevents text from becoming too small on mobile or too large on desktop
-            */
-            --f-body: clamp(var(--fs-0), 0.95rem + 0.15vw, var(--fs-1));
-            --f-h2: clamp(var(--fs-2), 1.05rem + 0.25vw, var(--fs-3));
-            --f-h3: clamp(var(--fs-1), 1rem + 0.20vw, var(--fs-2));
+            --fs-1: 12px;                  /* Smallest text - model disclaimers */
+            --fs-2: 13px;                  /* Small text - labels, captions, summary cutoff */
+            --fs-3: 14px;                  /* Small+ text - general disclaimers */
+            --fs-4: 15px;                  /* Medium-small - subtitles, secondary buttons, selects, tab labels */
+            --fs-5: 16px;                  /* Base text - summary content, textareas, messages, inputs, comments */
+            --fs-6: 17px;                  /* Base+ text - body text, primary buttons */
+            --fs-7: 19px;                  /* Medium heading - summary h2 subheadings */
+            --fs-8: 26px;                  /* Large heading - summary h1 headings */
+            --fs-9: 30px;                  /* Largest heading - main page title */
 
             /*
             Component-Specific Dimensions
@@ -176,7 +166,7 @@ anton.johansson@sas.com
             color: var(--fg);             /* Apply theme text color */
             /* System font stack for optimal performance and native appearance */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
-            font-size: var(--fs-0);       /* Base font size from design system */
+            font-size: var(--fs-5);       /* Base font size from design system */
         }
 
         /*
@@ -225,7 +215,7 @@ anton.johansson@sas.com
         */
         h1 {
             margin: 0 0 6px 0;            /* Minimal bottom margin for tight spacing */
-            font-size: var(--fs-5);       /* Largest size from typography scale */
+            font-size: var(--fs-9);       /* Largest size from typography scale */
             font-weight: 650;             /* Semi-bold weight for prominence */
             letter-spacing: -.02em        /* Slight negative tracking for large text */
         }
@@ -233,7 +223,7 @@ anton.johansson@sas.com
         .subtitle {
             margin: 0;                    /* No margin for clean stacking */
             color: var(--muted);          /* Muted color for secondary importance */
-            font-size: var(--fs-0);       /* Base font size */
+            font-size: var(--fs-5);       /* Base font size */
         }
 
         .header>div:first-child {
@@ -246,7 +236,7 @@ anton.johansson@sas.com
         Reusable components for section headers and content containers
         */
         .label {
-            font-size: var(--fs--1);      /* Small size for section labels */
+            font-size: var(--fs-8);      /* Small size for section labels */
             text-transform: uppercase;     /* Uppercase for visual distinction */
             letter-spacing: .08em;        /* Wide tracking for uppercase readability */
             color: var(--muted);          /* Muted color for hierarchy */
@@ -260,7 +250,7 @@ anton.johansson@sas.com
             background: var(--grey-soft);  /* Light background for content areas */
             padding: 14px;                /* Internal spacing for content */
             overflow: auto;               /* Handle content overflow with scrolling */
-            font-size: var(--fs-0);       /* Standard text size */
+            font-size: var(--fs-5);       /* Standard text size */
         }
 
         /*
@@ -431,11 +421,11 @@ anton.johansson@sas.com
 
         .file .name {
             font-weight: 600;
-            font-size: var(--fs--1);
+            font-size: var(--fs-8);
         }
 
         .file .meta {
-            font-size: var(--fs--1);
+            font-size: var(--fs-8);
             color: var(--muted);
         }
 
@@ -466,10 +456,10 @@ anton.johansson@sas.com
             color: #fff;
             border-radius: 14px;
             padding: 12px 18px;
-            font-size: var(--fs-0);
+            font-size: var(--fs-5);
             font-weight: 600;
             box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
-            font-size: var(--fs-2);
+            font-size: var(--fs-7);
         }
 
         .btn-primary:hover {
@@ -572,17 +562,17 @@ anton.johansson@sas.com
             word-wrap: break-word;
             font-family: inherit;
             margin: 0;
-            font-size: var(--f(h));
+            font-size: var(--fs-8);
             line-height: 1.6;
         }
 
         #summaryContent h2 {
-            font-size: var(--f(h2));
+            font-size: var(--fs-7);
             margin: 0 0 6px;
         }
 
         #summaryContent h3 {
-            font-size: var(--f(h3));
+            font-size: var(--fs-6);
             margin: 12px 0 6px;
         }
 
@@ -717,7 +707,7 @@ anton.johansson@sas.com
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: var(--fs-0);
+            font-size: var(--fs-5);
             margin: 0;
             padding: 0;
             text-transform: none;
@@ -774,7 +764,7 @@ anton.johansson@sas.com
             content: "Generative AI can make mistakes. Check important info.";
             display: block;
             margin-top: 7px;
-            font-size: var(--fs--2);
+            font-size: var(--fs-7);
             color: var(--muted);
             text-align: center
         }
@@ -817,7 +807,7 @@ anton.johansson@sas.com
             color: var(--fg);
             padding: 10px 12px;
             border-radius: 14px 14px 4px 14px;
-            font-size: var(--fs-0);
+            font-size: var(--fs-5);
             line-height: var(--chat-line);
             line-height: var(--chat-line);
             max-width: 72%;
@@ -852,7 +842,7 @@ anton.johansson@sas.com
             border-radius: 14px;
             font: inherit;
             outline: none;
-            font-size: var(--fs-0);
+            font-size: var(--fs-5);
             padding: 14px 16px;
             /* a little extra padding for bigger text */
         }
@@ -1000,7 +990,7 @@ anton.johansson@sas.com
 
         .content-modal__title {
             margin: 0;
-            font-size: var(--fs-1);
+            font-size: var(--fs-5);
             font-weight: 650;
         }
 
@@ -1016,13 +1006,13 @@ anton.johansson@sas.com
             white-space: pre-wrap;
             word-wrap: break-word;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
-            font-size: var(--fs-2);
+            font-size: var(--fs-5);
             line-height: 1.5;
         }
 
         /* Close button inherits .icon-btn; make it a bit larger */
         .close-btn {
-            font-size: var(--fs-3);
+            font-size: var(--fs-8);
             padding: 2px 8px;
             line-height: 1;
         }
