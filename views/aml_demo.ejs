@@ -118,6 +118,21 @@ anton.johansson@sas.com
                         Consistent spacing and sizing tokens
                         */
                         --content-indent: 14px;        /* Standard content indentation for hierarchy */
+
+                        /*
+                        Typography Scale - Font Size System
+                        ==================================
+                        Semantic font size tokens for consistent typography hierarchy
+                        */
+                        --fs-1: 12px;                  /* Smallest text - model disclaimers */
+                        --fs-2: 13px;                  /* Small text - labels, captions, summary cutoff */
+                        --fs-3: 14px;                  /* Small+ text - general disclaimers */
+                        --fs-4: 15px;                  /* Medium-small - subtitles, secondary buttons, selects, tab labels */
+                        --fs-5: 16px;                  /* Base text - summary content, textareas, messages, inputs, comments */
+                        --fs-6: 17px;                  /* Base+ text - body text, primary buttons */
+                        --fs-7: 19px;                  /* Medium heading - summary h2 subheadings */
+                        --fs-8: 26px;                  /* Large heading - summary h1 headings */
+                        --fs-9: 30px;                  /* Largest heading - main page title */
                 }
 
                 /*
@@ -140,7 +155,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Apply theme text color */
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
                         /* System font stack for optimal performance and native feel across platforms */
-                        font-size: 17px; 
+                        font-size: var(--fs-6); 
                 }
 
 
@@ -187,7 +202,7 @@ anton.johansson@sas.com
 
                 h1 {
                         margin: 0 0 6px 0;                 /* Minimal bottom margin for subtitle spacing */
-                        font-size: 30px; 
+                        font-size: var(--fs-9); 
                         font-weight: 650;                  /* Semi-bold for authority without heaviness */
                         letter-spacing: -.02em              /* Slight negative tracking for large text */
                 }
@@ -195,7 +210,7 @@ anton.johansson@sas.com
                 .subtitle {
                         margin: 0;                         /* Reset default paragraph margins */
                         color: var(--muted);               /* Reduced contrast for hierarchy */
-                        font-size: 15px;  
+                        font-size: var(--fs-4);  
                 }
 
                 /*
@@ -228,7 +243,7 @@ anton.johansson@sas.com
                         color: #fff;                        /* High contrast white text */
                         border-radius: 14px;               /* Rounded corners matching design system */
                         padding: 12px 18px;                /* Comfortable touch target (44px+ height) */
-                        font-size: 17px; /* Scalable readable text size */
+                        font-size: var(--fs-6); 
                         font-weight: 600;                  /* Semi-bold for emphasis and readability */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
                         /* Colored shadow reinforces button importance and adds depth */
@@ -256,7 +271,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Primary text color for readability */
                         border-radius: 14px;               /* Consistent rounding with primary buttons */
                         padding: 10px 16px;                /* Slightly smaller padding for hierarchy */
-                        font-size: 15px; /* Scalable secondary text size */
+                        font-size: var(--fs-4); /* Scalable secondary text size */
                         font-weight: 600                   /* Maintain readability with semi-bold weight */
                 }
 
@@ -309,7 +324,7 @@ anton.johansson@sas.com
 
                 /* Section label headers (Summary, Comments, Chat) */
                 .label {
-                        font-size: 13px; 
+                        font-size: var(--fs-2); 
                         text-transform: uppercase;          /* All caps for section emphasis */
                         letter-spacing: .08em;              /* Wide tracking for readability */
                         color: var(--muted);               /* Reduced contrast for hierarchy */
@@ -349,7 +364,7 @@ anton.johansson@sas.com
                         border: none;                       /* Clean appearance without borders */
                         border-radius: 14px;               /* Consistent rounding */
                         padding: 10px 12px;                /* Comfortable padding for readability */
-                        font-size: 15px; /* Scalable text size */
+                        font-size: var(--fs-4); 
                         font-weight: 600;                  /* Semi-bold for consistency */
                 }
 
@@ -372,17 +387,17 @@ anton.johansson@sas.com
                         padding: 14px;                     /* Internal spacing for readability */
                         min-height: 140px;                 /* Minimum height prevents layout shift */
                         white-space: normal;                /* Allow normal text wrapping */
-                        font-size: 16px;  
+                        font-size: var(--fs-5);  
                 }
 
                 /* Rich text styling within summary content */
                 .summary h1 {
-                        font-size: 26px; 
+                        font-size: var(--fs-8); 
                         margin: 0 0 8px                    /* Bottom spacing for content separation */
                 }
 
                 .summary h2 {
-                        font-size: 19px; 
+                        font-size: var(--fs-7); 
                         margin: 14px 0 6px                 /* Top and bottom spacing for hierarchy */
                 }
 
@@ -402,7 +417,7 @@ anton.johansson@sas.com
                 /* AI model knowledge cutoff disclaimer */
                 .summary .cutoff {
                         margin-top: 10px;                  /* Separation from main content */
-                        font-size: 13px; 
+                        font-size: var(--fs-2); 
                         color: var(--muted)                /* Reduced emphasis for footnote content */
                 }
 
@@ -425,7 +440,7 @@ anton.johansson@sas.com
                         line-height: 1.5;                 /* Comfortable reading line height */
                         overflow: hidden;                  /* Hide scrollbars for auto-resize */
                         resize: none;                      /* Disable manual resize for consistent layout */
-                        font-size: 16px; 
+                        font-size: var(--fs-5); 
                 }
 
                 textarea:focus {
@@ -435,7 +450,7 @@ anton.johansson@sas.com
                 }
 
                 .caption {
-                        font-size: 13px;
+                        font-size: var(--fs-2);
                         color: var(--muted)                /* Reduced contrast for supporting text */
                 }
 
@@ -638,7 +653,7 @@ anton.johansson@sas.com
                         color: var(--fg);                  /* Primary text color */
                         padding: 10px 12px;                /* Comfortable reading padding */
                         border-radius: 14px 14px 4px 14px; /* Asymmetric rounding for speech bubble effect */
-                        font-size: 16px; 
+                        font-size: var(--fs-5); 
                         line-height: 1.35;                 /* Compact line height for conversation */
                         max-width: 72%;                    /* Prevent overly wide messages */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
@@ -683,7 +698,7 @@ anton.johansson@sas.com
                         padding: 12px 14px;               /* Comfortable typing padding */
                         font: inherit;                     /* Use system font stack */
                         outline: none;                     /* Remove default focus outline */
-                        font-size: 16px; 
+                        font-size: var(--fs-5); 
                 }
 
                 #chatText:focus {
@@ -742,7 +757,7 @@ anton.johansson@sas.com
                 }
 
                 #comments {
-                        font-size: 16px; 
+                        font-size: var(--fs-5); 
                 }
 
                 /*
@@ -772,7 +787,7 @@ anton.johansson@sas.com
                         display: flex;                     /* Center content horizontally and vertically */
                         align-items: center;
                         justify-content: center;
-                        font-size: 15px; /* Scalable tab text size */
+                        font-size: var(--fs-4); /* Scalable tab text size */
                         margin: 0;                         /* Reset global .label margin */
                         padding: 0;                        /* Reset global .label padding-left */
                         text-transform: none;              /* Override global UPPERCASE */
@@ -896,7 +911,7 @@ anton.johansson@sas.com
                         /* Standard AI disclaimer text for regulatory compliance */
                         display: block;                    /* Block display for proper spacing */
                         margin-top: 7px;                  /* Separation from chat interface */
-                        font-size: 14px; 
+                        font-size: var(--fs-3); 
                         color: var(--muted);              /* Reduced emphasis */
                         text-align: center;               /* Center alignment for disclaimer */
                 }
@@ -907,7 +922,7 @@ anton.johansson@sas.com
                         left: 0;
                         right: 0;                          /* Full width positioning */
                         text-align: center;               /* Center alignment */
-                        font-size: 12px; /* Scalable small disclaimer text */
+                        font-size: var(--fs-1); /* Scalable small disclaimer text */
                         color: var(--muted);              /* Reduced emphasis */
                         pointer-events: none;             /* Non-interactive overlay */
                 }
