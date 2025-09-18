@@ -120,4 +120,8 @@ router.get("/aml_demo_document_summarizer.html", function (req, res, next) {
   res.render("aml_demo_document_summarizer", { title: "AML Document Summarizer" });
 });
 
+router.get("/aml_demo_test.html", function (req, res, next) {
+	res.render("aml_demo_test", { title: "AML demo test" });
+});
+
 module.exports = router;
