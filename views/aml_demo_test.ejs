@@ -1376,9 +1376,9 @@ AML ALERT SUMMARIZER APPLICATION BODY
                 // - State: runtime state shared across modules (IDs, caches, promises)
                 // - UI: DOM caching + view helpers (no business logic)
                 // - Utils: small pure helpers (escapeHtml, autoResize, etc.)
-                // - API: network helpers (CSRF priming, OpenAI Responses call + SSE parsing)
-                // - Summary: MAS prefetch (summary/chat) + summary generation/streaming
-                // - Chat: prompt builder + chat send/stream UI
+                // - API: network helpers (CSRF priming, MAS calling with postMas helper)
+                // - Summary: MAS prefetch (summary/chat) + summary generation via ID
+                // - Chat: chat UI with single response rendering
                 // - Comments: localStorage persistence for analyst notes
                 // - Init: wiring (alert ID resolution, listeners, boot)
 
@@ -1390,7 +1390,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         // - MODULE_URI/CSRF_PRIMER_URL: SAS MAS endpoints for scoring & CSRF
                         // - ALERT_ID: set by URL (?alertId=) or SAS VA message
                         // - alertIdReady: Promise used to defer actions until ALERT_ID exists
-                        // - OPENAI_*: OpenAI Responses endpoint + default models
+                        // - MODULE_URI_LLM: SAS ID endpoint for LLM processing
                         // ==========================================================
 
                         /*
@@ -1405,18 +1405,13 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                 MODULE_URI: '/microanalyticScore/modules/aml_demo_prompt_building1_1/steps/execute',
                                 // Primary execution endpoint for AML prompt building microanalytic module
 
+                                MODULE_URI_LLM: '/microanalyticScore/modules/document_aml_demo1_0/steps/execute',
+                                // Secondary execution endpoint for LLM processing via SAS Intelligent Decisioning
+
                                 CSRF_PRIMER_URL: '/microanalyticScore/modules',
                                 // CSRF token acquisition endpoint - required for secure SAS API communication
 
-                                // OpenAI API Configuration
-                                OPENAI_URL: 'https://api.openai.com/v1/responses',
-                                // OpenAI streaming completion endpoint for real-time AI responses
-
-                                OPENAI_SUMMARY_MODEL: 'gpt-5-mini',
-                                // AI model for alert summarization - optimized for concise, structured output
-
-                                OPENAI_CHAT_MODEL: 'gpt-5-mini',
-                                // AI model for conversational interactions - optimized for context retention
+                                // OpenAI config no longer used (calls are server-side in MAS)
 
                                 // User Experience Parameters
                                 COMMENT_LIMIT: 2000,
@@ -1473,11 +1468,11 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         /*
                         Content Security Configuration
                         ==============================
-                        DOMPurify sanitization rules for OpenAI API responses to prevent XSS attacks
+                        DOMPurify sanitization rules for SAS ID LLM responses to prevent XSS attacks
                         while preserving essential formatting for readability in AML analysis reports.
                         */
                         const SANITIZE_CFG = {
-                                ALLOWED_TAGS: ['b', 'i', 'h1', 'h2', 'p', 'ul', 'li'],
+                                ALLOWED_TAGS: ['article','h2','h3','p','ul','ol','li','strong','em','blockquote'],
                                 // Whitelist of safe HTML tags for AI-generated content formatting
                                 // Limited to basic text formatting and structure elements
 
@@ -1809,136 +1804,29 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                 },
 
                                 /*
-                                OpenAI Response Format Normalizer
-                                ================================
-                                Handles multiple OpenAI API response formats to extract text content reliably.
-                                Essential for compatibility across different OpenAI API versions and response types
-                                in enterprise environments where API formats may evolve over time.
+                                Generic MAS Module Caller
+                                ========================
+                                Unified helper for calling any SAS Microanalytic Service module endpoint.
+                                Handles CSRF security, input/output formatting, and error handling for
+                                enterprise-grade reliability in financial compliance environments.
                                 */
-                                extractOpenAIText(j) {
-                                        // OpenAI Responses API format variations:
-
-                                        // 1. Direct output_text field (most common)
-                                        if (j && typeof j.output_text === 'string' && j.output_text.trim()) return j.output_text;
-
-                                        // 2. Nested output structure: output[].content[].text
-                                        if (Array.isArray(j?.output)) {
-                                                for (const item of j.output) {
-                                                        const content = item?.content;
-                                                        if (Array.isArray(content)) {
-                                                                for (const c of content) {
-                                                                        if (typeof c?.text === 'string' && c.text.trim()) return c.text;
-                                                                        if (c?.type === 'output_text' && c?.text) return c.text;
-                                                                }
-                                                        }
-                                                }
-                                        }
-
-                                        // 3. Chat completion format: choices[0].message.content
-                                        if (j?.choices?.[0]?.message?.content) return j.choices[0].message.content;
-
-                                        return null; // No valid text content found
+                                async postMas(moduleUri, inputObj) {
+                                        const csrf = await this.getCsrfToken();
+                                        const res = await fetch(moduleUri, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                                credentials: 'include',
+                                                body: JSON.stringify({
+                                                        inputs: Object.entries(inputObj).map(([name, value]) => ({ name, value }))
+                                                })
+                                        });
+                                        const json = await res.json().catch(() => ({}));
+                                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0,500)}`);
+                                        const out = (json.outputs || []).reduce((m, {name, value}) => (m[name]=value, m), {});
+                                        return out.response || '';
                                 },
 
-                                /*
-                                OpenAI API Communication with Streaming Support
-                                ==============================================
-                                Unified function for both streaming and non-streaming OpenAI API calls.
-                                Implements enterprise-grade error handling, proper authentication,
-                                and optimized streaming for real-time chat experiences in AML workflows.
-                                */
-                                async callOpenAI(systemPrompt, apiKey, chosen_model = Config.OPENAI_CHAT_MODEL, onDelta /* optional */) {
-                                        // Configure request body for OpenAI Responses API
-                                        const body = {
-                                                model: chosen_model,              // AI model selection (gpt-4, gpt-3.5-turbo, etc.)
-                                                input: systemPrompt,              // System prompt with AML context and instructions
-                                                reasoning: { effort: "medium" },  // Balanced reasoning effort for enterprise use
-                                                text: { verbosity: "low" },       // Concise responses for analyst efficiency
-                                                stream: !!onDelta                 // Enable streaming if onDelta callback provided
-                                        };
-
-                                        const res = await fetch(Config.OPENAI_URL, {
-                                                method: 'POST',
-                                                headers: {
-                                                        'Authorization': `Bearer ${apiKey}`,   // SAS-provided OpenAI API key
-                                                        'Content-Type': 'application/json',
-                                                        'Accept': onDelta ? 'text/event-stream' : 'application/json'
-                                                        // Conditional Accept header for streaming vs. standard requests
-                                                },
-                                                body: JSON.stringify(body)
-                                        });
-
-                                        /*
-                                        Non-Streaming Response Path
-                                        ==========================
-                                        Standard JSON response processing for summary generation.
-                                        Provides complete responses with comprehensive error handling.
-                                        */
-                                        if (!onDelta) {
-                                                const json = await res.json().catch(() => ({}));
-                                                if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
-                                                const txt = API.extractOpenAIText(json);
-                                                if (!txt) throw new Error('LLM returned no text payload');
-                                                return txt;
-                                        }
-
-                                        /*
-                                        Server-Sent Events (SSE) Streaming Path
-                                        ======================================
-                                        Real-time streaming for chat interface with progressive text rendering.
-                                        Implements robust SSE parsing with error recovery and frame buffering.
-                                        */
-                                        if (!res.ok || !res.body) {
-                                                const text = await res.text().catch(() => '');
-                                                throw new Error(`${res.status} ${res.statusText}\n${text.slice(0, 500)}`);
-                                        }
-
-                                        const reader = res.body.getReader();
-                                        const decoder = new TextDecoder();
-                                        let carry = '';     // Buffer for incomplete SSE frames
-                                        let full = '';      // Accumulated complete response text
-
-                                        while (true) {
-                                                const { value, done } = await reader.read();
-                                                if (done) break;
-                                                carry += decoder.decode(value, { stream: true });
-
-                                                // Parse Server-Sent-Event frames (separated by double newlines)
-                                                const frames = carry.split('\n\n');
-                                                carry = frames.pop() || ''; // Keep incomplete frame for next iteration
-
-                                                for (const frame of frames) {
-                                                        // Extract data: lines from SSE frame
-                                                        const dataLines = frame
-                                                                .split('\n')
-                                                                .filter(l => l.startsWith('data:'))
-                                                                .map(l => l.slice(5).trim())
-                                                                .join('\n');
-
-                                                        if (!dataLines || dataLines === '[DONE]') continue;
-
-                                                        let evt;
-                                                        try { evt = JSON.parse(dataLines); } catch { continue; }
-
-                                                        // Process text delta events for progressive rendering
-                                                        if (evt.type === 'response.output_text.delta') {
-                                                                const delta = evt.delta || '';
-                                                                if (delta) {
-                                                                        full += delta;
-                                                                        try {
-                                                                                onDelta(delta, full, evt);
-                                                                        } catch {
-                                                                                /* Prevent callback errors from breaking stream */
-                                                                        }
-                                                                }
-                                                        } else if (evt.type === 'error') {
-                                                                throw new Error(evt.error?.message || 'Streaming error');
-                                                        }
-                                                        // Other event types (created/completed) are ignored for now
-                                                }
-                                        }
-                                        return full.trim();
-                                }
+                                /* OpenAI functions removed - all LLM calls now go through MAS #2 */
                         };
 
                         /*
@@ -1995,7 +1883,6 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         const out = Utils.outputsToMap(json.outputs || []);
                                         State.summaryCache = {
                                                 systemPrompt: out['systemPrompt'], // AI prompt with AML context and instructions
-                                                key: out['key'],                   // OpenAI API key for this operation
                                                 cutoff: out['CUTOFF_DATE']         // Data boundary for compliance reporting
                                         };
 
@@ -2035,8 +1922,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
 
                                         const out = Utils.outputsToMap(json.outputs || []);
                                         State.chatCache = {
-                                                dataString: out['systemPrompt'] || '', // Chat-optimized prompt and context data
-                                                key: out['key']                        // OpenAI API credentials for chat operations
+                                                dataString: out['systemPrompt'] || '' // Chat-optimized prompt and context data
                                         };
 
                                         return State.chatCache;
@@ -2116,42 +2002,28 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         let rafId = null;
 
                                         try {
-                                                // Call OpenAI with MAS-provided key
-                                                const chosenModel = UI.elements.modelSelect.value || Config.OPENAI_SUMMARY_MODEL;
+                                                // Call MAS #2 LLM endpoint server-side
+                                                const chosenModel = UI.elements.modelSelect.value || 'gpt-5-mini';
                                                 const s = State.summaryCache || await (State.summaryMasPromise || (this.startPrefetch(), State.summaryMasPromise));
                                                 if (!s?.systemPrompt) throw new Error('Summary data not ready from MAS');
-                                                if (!s?.key) throw new Error('OpenAI API key missing from MAS');
-                                                let buffer = '';
-                                                const flush = () => {
-                                                        const safe = sanitize(buffer);
-                                                        if (UI.elements.summaryEl.innerHTML !== safe) {
-                                                                UI.elements.summaryEl.innerHTML = safe; // one DOM write per frame
-                                                        }
-                                                        rafId = null;
-                                                };
 
-                                                let finalText = await API.callOpenAI(
-                                                        s.systemPrompt,
-                                                        s.key,
-                                                        chosenModel,
-                                                        (_delta, full) => {
-                                                                if (!started) {
-                                                                        started = true;
-                                                                        clearInterval(timer);         // stop the skeleton/rotator immediately
-                                                                }
-                                                                buffer = full;
-                                                                if (!rafId) rafId = requestAnimationFrame(flush);
-                                                        }
-                                                );
+                                                // Single MAS #2 call - no streaming
+                                                const finalText = await API.postMas(Config.MODULE_URI_LLM, {
+                                                        model: chosenModel,
+                                                        documents: s.systemPrompt,
+                                                        number_documents: 'single',
+                                                        language: 'English'
+                                                });
+
+                                                // Stop loading animations once response received
+                                                if (!started) {
+                                                        started = true;
+                                                        clearInterval(timer);
+                                                }
 
                                                 // Final synchronous write (includes cutoff if present)
-                                                // Build cutoff as an allowed tag and escape its text
                                                 const cutoffHtml = s.cutoff ? `<p class="cutoff">${Utils.escapeHtml(s.cutoff)}</p>` : '';
-
                                                 const finalSafe = sanitize(finalText + cutoffHtml);
-
-                                                // Ensure anything pending is canceled, then do one last write
-                                                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
                                                 UI.elements.summaryEl.innerHTML = finalSafe;
 
                                         } catch (e) {
@@ -2177,58 +2049,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         management optimized for financial compliance investigations and alert analysis.
                         */
                         const Chat = {
-                                /*
-                                Enterprise AI Prompt Engineering for AML Compliance
-                                ===================================================
-                                Constructs secure, compliant prompts that restrict AI responses to verified
-                                alert data while enabling general AML knowledge sharing. Implements strict
-                                data boundaries to prevent AI hallucination of customer-specific information
-                                and ensures audit trail compliance for regulatory requirements.
-                                */
-                                buildChatPrompt(dataString, userMessage, history = []) {
-                                        // Core AI assistant behavioral constraints for AML compliance
-                                        const system = [
-                                                'You are a concise, friendly AML assistant embedded in the SAS AML solution.',
-                                                'Customer/alert-specific facts MUST come only from the Data section.',
-                                                'If a requested detail is missing in Data, be very clear that it is missing. Do not invent values.',
-                                                'You MAY add general AML knowledge (regulations, definitions, typologies).',
-                                                'Write in clear, friendly, natural prose — no bullet points. Keep it brief.',
-                                                'Start by directly answering the question',
-                                                'Only answer questions related to AML',
-                                                'Avoid exposing or inferring PII beyond what appears in Data.',
-                                                `Alert ID: ${State.ALERT_ID || 'unknown'}`
-                                        ].join(' ');
-
-                                        /*
-                                        Conversation Context Window Management
-                                        ====================================
-                                        Maintains rolling window of recent exchanges (last 3 conversations = 6 messages)
-                                        to preserve context while managing token limits and API costs.
-                                        Prevents duplicate user messages in history during current turn processing.
-                                        */
-                                        let hist = Array.isArray(history) ? history.slice() : [];
-                                        if (hist.length && hist[hist.length - 1].role === 'user') hist.pop(); // Remove current turn if already added
-                                        const recent = hist.slice(-6); // Limit to last 6 messages for context efficiency
-                                        const historyBlock = recent.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
-
-                                        /*
-                                        Structured Prompt Assembly for Compliance
-                                        =========================================
-                                        Creates well-defined sections for AI processing:
-                                        - SYSTEM: Behavioral rules and AML compliance constraints
-                                        - HISTORY: Recent conversation context for continuity
-                                        - DATA: SAS-verified alert information (single source of truth)
-                                        - USER: Current analyst question
-                                        - ASSISTANT: Response initiation marker
-                                        */
-                                        return [
-                                                `SYSTEM:\n${system}`,
-                                                historyBlock ? `HISTORY (last ${Math.floor(recent.length / 2)} exchanges):\n${Utils.trimChars(historyBlock, 2000)}` : null,
-                                                `DATA:\n${Utils.trimChars(dataString, 7000)}`,  // Primary alert data from SAS MAS
-                                                `USER:\n${userMessage}`,
-                                                'ASSISTANT:'
-                                        ].filter(Boolean).join('\n\n');
-                                },
+                                /* Prompt building now handled server-side in MAS #2 */
 
                                 /*
                                 Orchestrated Chat Query Processing
@@ -2237,21 +2058,23 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                 and OpenAI API communication for secure, compliant chat interactions.
                                 Implements fallback strategies for API key resolution and error handling.
                                 */
-                                async chatQuery(userText, onDelta) {
+                                async chatQuery(userText) {
                                         // Step 1: Ensure alert context is established before chat operations
                                         if (!State.ALERT_ID) {
                                                 this.addMessage('bot', '<em>Waiting for Alert ID from Visual Analytics…</em>');
                                                 await State.alertIdReady;
                                         }
 
-                                        // Step 2: Retrieve chat-specific data and API credentials from MAS
+                                        // Step 2: Retrieve chat-specific data from MAS
                                         const cc = State.chatCache || await (State.chatMasPromise || (Summary.startPrefetch(), State.chatMasPromise));
-                                        const apiKey = cc.key || State.summaryCache?.key; // Fallback to summary cache for API key
-                                        if (!apiKey) throw new Error('OpenAI API key not found in MAS output');
+                                        const model = UI.elements.modelSelect.value || 'gpt-5-mini';
 
-                                        // Step 3: Construct compliant prompt and execute OpenAI call
-                                        const prompt = this.buildChatPrompt(cc.dataString, userText, State.chatHistory);
-                                        const reply = await API.callOpenAI(prompt, apiKey, Config.OPENAI_CHAT_MODEL, onDelta);
+                                        // Step 3: Call MAS #2 LLM endpoint with documents and user question
+                                        const reply = await API.postMas(Config.MODULE_URI_LLM, {
+                                                model,
+                                                documents: cc.dataString || '',
+                                                user_question: userText
+                                        });
                                         return reply.trim();
                                 },
 
@@ -2338,42 +2161,19 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         const thinking = this.showBotThinking();
                                         await Utils.nextFrame(); // Guarantee thinking animation is painted
 
-                                        // Step 3: Initialize streaming response management
-                                        let stopped = false;        // Tracks if any streaming content received
-                                        let chatRaf = null;         // Animation frame ID for progressive rendering
-                                        let chatBuf = '';           // Buffer for accumulated response content
+                                        // Step 3: Single response handling (no streaming)
                                         const messagesEl = UI.elements.chatMessages;    // Cache DOM references for performance
                                         const bubbleEl = thinking.bubble;
+                                        let stopped = false;        // Tracks if response received
 
                                         try {
-                                                // Frame-optimized content flushing for smooth streaming experience
-                                                const chatFlush = () => {
-                                                        if (bubbleEl.innerHTML !== chatBuf) {
-                                                                bubbleEl.innerHTML = chatBuf;
-                                                        }
-                                                        messagesEl.scrollTop = messagesEl.scrollHeight; // Maintain scroll position
-                                                        chatRaf = null;
-                                                        stopped = true; // Mark that content has been received
-                                                };
+                                                // Execute chat query and get complete response
+                                                const final = await this.chatQuery(text);
 
-                                                // Execute chat query with streaming delta processing
-                                                const final = await this.chatQuery(text, (_delta, full) => {
-                                                        chatBuf = Utils.escapeHtml(full).replace(/\n/g, '<br>'); // Convert newlines to HTML
-                                                        if (!chatRaf) chatRaf = requestAnimationFrame(chatFlush); // Throttle DOM updates to animation frames
-                                                });
-
-                                                /*
-                                                Final Response Rendering and Cleanup
-                                                ===================================
-                                                Ensures complete response is rendered even if streaming stops abruptly.
-                                                Cancels any pending animation frames and performs final DOM update.
-                                                */
-                                                if (chatRaf) { cancelAnimationFrame(chatRaf); chatRaf = null; }
+                                                // Render final response
                                                 const finalHtml = Utils.escapeHtml(final).replace(/\n/g, '<br>');
-                                                if (bubbleEl.innerHTML !== finalHtml) {
-                                                        bubbleEl.innerHTML = finalHtml;
-                                                        messagesEl.scrollTop = messagesEl.scrollHeight;
-                                                }
+                                                bubbleEl.innerHTML = finalHtml;
+                                                messagesEl.scrollTop = messagesEl.scrollHeight;
                                                 stopped = true;
 
                                                 // Step 4: Update conversation history with response and manage window size
@@ -2391,12 +2191,11 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                         State.chatHistory.pop();
                                                 }
                                         } finally {
-                                                // Comprehensive cleanup and state restoration
+                                                // Cleanup and state restoration
                                                 if (!stopped && thinking.stop) thinking.stop(); // Remove thinking indicator if no content received
                                                 State.chatBusy = false;
                                                 this.refreshSend(); // Re-enable send button
                                                 UI.elements.chatText.focus(); // Return focus for continued interaction
-                                                if (chatRaf) { cancelAnimationFrame(chatRaf); chatRaf = null; } // Final animation frame cleanup
                                         }
                                 }
 
@@ -2474,7 +2273,6 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                 */
                                 checkAlertId() {
                                         console.log('[id] init: waiting for alert id (from VA or URL)');
-
                                         /*
                                         URL Parameter Alert ID Resolution
                                         =================================
