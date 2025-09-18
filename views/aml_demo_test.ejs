@@ -2009,10 +2009,13 @@ AML ALERT SUMMARIZER APPLICATION BODY
 
                                                 // Single MAS #2 call - no streaming
                                                 const finalText = await API.postMas(Config.MODULE_URI_LLM, {
-                                                        model: chosenModel,
-                                                        documents: s.systemPrompt,
+                                                        documents_content: s.systemPrompt,
+                                                        language: 'English',
+                                                        language_model_name: chosenModel,
+                                                        language_model_provider: 'openai',
+                                                        mode: 'summary',
                                                         number_documents: 'single',
-                                                        language: 'English'
+                                                        user_question: ''
                                                 });
 
                                                 // Stop loading animations once response received
@@ -2071,8 +2074,12 @@ AML ALERT SUMMARIZER APPLICATION BODY
 
                                         // Step 3: Call MAS #2 LLM endpoint with documents and user question
                                         const reply = await API.postMas(Config.MODULE_URI_LLM, {
-                                                model,
-                                                documents: cc.dataString || '',
+                                                documents_content: cc.dataString || '',
+                                                language: 'English',
+                                                language_model_name: model,
+                                                language_model_provider: 'openai',
+                                                mode: 'chat',
+                                                number_documents: 'single',
                                                 user_question: userText
                                         });
                                         return reply.trim();
