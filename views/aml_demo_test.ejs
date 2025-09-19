@@ -2106,7 +2106,10 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         const json = await res.json().catch(() => ({}));
                                         if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
                                         const out = (json.outputs || []).reduce((m, { name, value }) => (m[name] = value, m), {});
-                                        return out.response || '';
+                                        return (
+                                                out.llm_response || out.response || out.answer || out.summary ||
+                                                (json.outputs && json.outputs[0]?.value) || ''
+                                        );
                                 },
 
                                 /* OpenAI functions removed - all LLM calls now go through MAS #2 */
