@@ -1368,6 +1368,40 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                 -->
                                 <div class="row" style="justify-content:flex-end;margin-top:8px">
                                         <!--
+                                        LANGUAGE SELECTION INTERFACE
+                                        ============================
+                                        Multi-language support for international compliance workflows.
+                                        Comprehensive language list with native names for better UX.
+                                        -->
+                                        <label for="langSelect" class="sr-only">Language</label>
+                                        <select id="langSelect" class="select-model" aria-label="Language">
+                                                <option value="English" selected>English</option>
+                                                <option value="Español">Español</option>
+                                                <option value="Français">Français</option>
+                                                <option value="Deutsch">Deutsch</option>
+                                                <option value="Italiano">Italiano</option>
+                                                <option value="Português">Português</option>
+                                                <option value="Nederlands">Nederlands</option>
+                                                <option value="Svenska">Svenska</option>
+                                                <option value="Norsk">Norsk</option>
+                                                <option value="Dansk">Dansk</option>
+                                                <option value="Suomi">Suomi</option>
+                                                <option value="Polski">Polski</option>
+                                                <option value="Русский">Русский</option>
+                                                <option value="Türkçe">Türkçe</option>
+                                                <option value="العربية">العربية</option>
+                                                <option value="فارسی">فارسی</option>
+                                                <option value="हिन्दी">हिन्दी</option>
+                                                <option value="বাংলা">বাংলা</option>
+                                                <option value="ไทย">ไทย</option>
+                                                <option value="Tiếng Việt">Tiếng Việt</option>
+                                                <option value="한국어">한국어</option>
+                                                <option value="日本語">日本語</option>
+                                                <option value="中文（简体）">中文（简体）</option>
+                                                <option value="中文（繁體）">中文（繁體）</option>
+                                        </select>
+
+                                        <!--
                                         AI MODEL SELECTION INTERFACE
                                         ============================
                                         Risk-tiered model selection for compliance efficiency:
@@ -1376,11 +1410,14 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         - GPT-5 nano: High-speed screening for obvious false positives
                                         - GPT-5 mini: Balanced analysis for standard alert investigation
                                         - GPT-5: Comprehensive analysis for complex suspicious activity
+                                        - Gemini 1.5 Flash: Google's fast multimodal model
+                                        - Mistral Tiny: Efficient European model option
 
                                         ENTERPRISE CONSIDERATIONS:
                                         - Cost optimization through appropriate model selection
                                         - Audit trail includes model used for compliance reporting
                                         - Performance scaling based on alert complexity and risk level
+                                        - Provider selection handled automatically server-side
 
                                         ACCESSIBILITY IMPLEMENTATION:
                                         - Hidden label prevents visual redundancy while supporting screen readers
@@ -1392,7 +1429,8 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 <option value="gpt-5-nano">GPT-5 nano</option>
                                                 <option value="gpt-5-mini" selected>GPT-5 mini</option>
                                                 <option value="gpt-5">GPT-5</option>
-
+                                                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                                <option value="mistral-tiny">Mistral Tiny</option>
                                         </select>
 
                                         <!--
@@ -1879,6 +1917,10 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 summarizeBtn: document.getElementById('summarizeBtn'),
                                                 // Main CTA button for triggering AI summary generation
 
+                                                // Control Elements
+                                                langSelect: document.getElementById('langSelect'),
+                                                // Language selection dropdown
+
                                                 // Content Display Areas
                                                 summaryEl: document.getElementById('summary'),
                                                 // Container for AI-generated alert summaries with loading states
@@ -1928,6 +1970,12 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         // Security measure: disable summarization until alert context is established
                                         // Prevents premature API calls that could fail or process wrong data
                                         this.elements.summarizeBtn.disabled = true;
+
+                                        // Restore saved user preferences from localStorage
+                                        const savedLang = localStorage.getItem('aml_lang');
+                                        if (savedLang) this.elements.langSelect.value = savedLang;
+                                        const savedModel = localStorage.getItem('aml_model');
+                                        if (savedModel) this.elements.modelSelect.value = savedModel;
                                 },
 
                                 /*
@@ -2014,6 +2062,20 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 "\"": "&quot;",  // Double quote - attribute injection prevention
                                                 "'": "&#39;"     // Single quote - additional attribute protection
                                         }[m]));
+                                },
+
+                                /*
+                                Dynamic AI Provider Mapping
+                                ===========================
+                                Maps model names to their corresponding AI providers for API calls.
+                                Supports OpenAI, Google, and Mistral models with fallback to OpenAI.
+                                */
+                                getProviderForModel(modelName) {
+                                        if (!modelName) return 'openai'; // Default fallback
+                                        if (modelName.startsWith('gpt-')) return 'openai';
+                                        if (modelName.startsWith('gemini-')) return 'google';
+                                        if (modelName.startsWith('mistral-')) return 'mistral';
+                                        return 'openai'; // Fallback for unknown models
                                 },
 
                                 /*
@@ -2296,9 +2358,9 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 // Single MAS #2 call - no streaming
                                                 const finalText = await API.postMas(Config.MODULE_URI_LLM, {
                                                         documents_content_: s.systemPrompt,
-                                                        language_: 'English',
+                                                        language_: UI.elements.langSelect.value || 'English',
                                                         language_model_name_: chosenModel,
-                                                        language_model_provider_: 'openai',
+                                                        language_model_provider_: Utils.getProviderForModel(chosenModel),
                                                         mode_: 'summary',
                                                         number_documents_: 'single',
                                                         user_question_: 'Summarize the document.'
@@ -2363,9 +2425,9 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         if (!docs) throw new Error('No documents content available for MAS LLM.');
                                         const reply = await API.postMas(Config.MODULE_URI_LLM, {
                                                 documents_content_: docs,
-                                                language_: 'English',
+                                                language_: UI.elements.langSelect.value || 'English',
                                                 language_model_name_: model,
-                                                language_model_provider_: 'openai',
+                                                language_model_provider_: Utils.getProviderForModel(model),
                                                 mode_: 'chat',
                                                 number_documents_: 'single',
                                                 user_question_: userText
@@ -2689,6 +2751,18 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                         e.preventDefault();                                          // Prevent form submission
                                                         Chat.handleSend();                                           // Process chat message
                                                 }
+                                        });
+
+                                        /*
+                                        User Preference Persistence
+                                        ============================
+                                        localStorage integration for remembering language and model selections.
+                                        */
+                                        UI.elements.langSelect.addEventListener('change', () => {
+                                                localStorage.setItem('aml_lang', UI.elements.langSelect.value);
+                                        });
+                                        UI.elements.modelSelect.addEventListener('change', () => {
+                                                localStorage.setItem('aml_model', UI.elements.modelSelect.value);
                                         });
 
                                         /*
