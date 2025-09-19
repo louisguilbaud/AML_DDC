@@ -96,43 +96,62 @@ anton.johansson@sas.com
                         ================================================
                         Semantic color tokens following enterprise design patterns
                         */
-                        --bg: #fff;                    /* Primary background - pure white for maximum contrast */
-                        --fg: #1d1d1f;                 /* Primary text - near-black for optimal readability */
-                        --muted: #6e6e73;              /* Secondary text - sufficient contrast for WCAG AA */
-                        --card: #fff;                  /* Surface/card background - maintains consistency */
-                        --border: rgba(0, 0, 0, .08);  /* Subtle borders - minimal visual weight */
+                        --bg: #fff;
+                        /* Primary background - pure white for maximum contrast */
+                        --fg: #1d1d1f;
+                        /* Primary text - near-black for optimal readability */
+                        --muted: #6e6e73;
+                        /* Secondary text - sufficient contrast for WCAG AA */
+                        --card: #fff;
+                        /* Surface/card background - maintains consistency */
+                        --border: rgba(0, 0, 0, .08);
+                        /* Subtle borders - minimal visual weight */
 
                         /*
                         SAS Brand Colors - Primary Interactive Elements
                         ==============================================
                         Official SAS brand blue palette for CTAs and active states
                         */
-                        --primary: #0478CE;            /* SAS brand blue - primary action color */
-                        --primary-press: #0366AF;      /* Darker variant for active/pressed states */
-                        --primary-soft: #E8F3FF;       /* Light blue tint for secondary surfaces */
-                        --grey-soft: #fafafa;          /* Neutral light background for input fields */
+                        --primary: #0478CE;
+                        /* SAS brand blue - primary action color */
+                        --primary-press: #0366AF;
+                        /* Darker variant for active/pressed states */
+                        --primary-soft: #E8F3FF;
+                        /* Light blue tint for secondary surfaces */
+                        --grey-soft: #fafafa;
+                        /* Neutral light background for input fields */
 
                         /*
                         Layout System Variables
                         ======================
                         Consistent spacing and sizing tokens
                         */
-                        --content-indent: 14px;        /* Standard content indentation for hierarchy */
+                        --content-indent: 14px;
+                        /* Standard content indentation for hierarchy */
 
                         /*
                         Typography Scale - Font Size System
                         ==================================
                         Semantic font size tokens for consistent typography hierarchy
                         */
-                        --fs-1: 12px;                  /* Smallest text - model disclaimers */
-                        --fs-2: 13px;                  /* Small text - labels, captions, summary cutoff */
-                        --fs-3: 14px;                  /* Small+ text - general disclaimers */
-                        --fs-4: 15px;                  /* Medium-small - subtitles, secondary buttons, selects, tab labels */
-                        --fs-5: 16px;                  /* Base text - summary content, textareas, messages, inputs, comments */
-                        --fs-6: 17px;                  /* Base+ text - body text, primary buttons */
-                        --fs-7: 19px;                  /* Medium heading - summary h2 subheadings */
-                        --fs-8: 26px;                  /* Large heading - summary h1 headings */
-                        --fs-9: 30px;                  /* Largest heading - main page title */
+                        --fs-1: 12px;
+                        /* Smallest text - model disclaimers */
+                        --fs-2: 13px;
+                        /* Small text - labels, captions, summary cutoff */
+                        --fs-3: 14px;
+                        /* Small+ text - general disclaimers */
+                        --fs-4: 15px;
+                        /* Medium-small - subtitles, secondary buttons, selects, tab labels */
+                        --fs-5: 16px;
+                        /* Base text - summary content, textareas, messages, inputs, comments */
+                        --fs-6: 17px;
+                        /* Base+ text - body text, primary buttons */
+                        --fs-7: 19px;
+                        /* Medium heading - summary h2 subheadings */
+                        --fs-8: 26px;
+                        /* Large heading - summary h1 headings */
+                        --fs-9: 30px;
+                        /* Largest heading - main page title */
                 }
 
                 /*
@@ -141,21 +160,26 @@ anton.johansson@sas.com
                 Cross-browser normalization and base styling for consistent rendering
                 */
                 * {
-                        box-sizing: border-box              /* Predictable sizing model */
+                        box-sizing: border-box
+                                /* Predictable sizing model */
                 }
 
                 html,
                 body {
-                        height: 100%                       /* Full viewport height for single-page layout */
+                        height: 100%
+                                /* Full viewport height for single-page layout */
                 }
 
                 body {
-                        margin: 0;                         /* Remove default browser margins */
-                        background: var(--bg);             /* Apply theme background */
-                        color: var(--fg);                  /* Apply theme text color */
+                        margin: 0;
+                        /* Remove default browser margins */
+                        background: var(--bg);
+                        /* Apply theme background */
+                        color: var(--fg);
+                        /* Apply theme text color */
                         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui;
                         /* System font stack for optimal performance and native feel across platforms */
-                        font-size: var(--fs-6); 
+                        font-size: var(--fs-6);
                 }
 
 
@@ -166,9 +190,12 @@ anton.johansson@sas.com
                 both desktop compliance workstations and mobile device access
                 */
                 .container {
-                        width: min(96vw, 1600px);          /* Responsive width: 96% viewport up to 1600px max */
-                        margin: 2vh auto 8vh;              /* Vertical spacing: 2% top, 8% bottom for breathing room */
-                        padding: 0 24px;                   /* Horizontal padding for edge-to-edge mobile safety */
+                        width: min(96vw, 1600px);
+                        /* Responsive width: 96% viewport up to 1600px max */
+                        margin: 2vh auto 8vh;
+                        /* Vertical spacing: 2% top, 8% bottom for breathing room */
+                        padding: 0 24px;
+                        /* Horizontal padding for edge-to-edge mobile safety */
                 }
 
                 /*
@@ -178,14 +205,20 @@ anton.johansson@sas.com
                 Uses layered shadows for subtle depth and professional appearance.
                 */
                 .card {
-                        background: var(--card);           /* Theme-aware surface color */
-                        border: 1px solid var(--border);   /* Subtle edge definition */
-                        border-radius: 24px;               /* Generous rounding for modern aesthetic */
+                        background: var(--card);
+                        /* Theme-aware surface color */
+                        border: 1px solid var(--border);
+                        /* Subtle edge definition */
+                        border-radius: 24px;
+                        /* Generous rounding for modern aesthetic */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 30px rgba(0, 0, 0, .06);
                         /* Layered shadow: subtle contact shadow + ambient shadow for depth */
-                        padding: 32px;                     /* Generous internal spacing for content breathing room */
-                        display: grid;                      /* CSS Grid for flexible content layout */
-                        gap: 18px                           /* Consistent spacing between card sections */
+                        padding: 32px;
+                        /* Generous internal spacing for content breathing room */
+                        display: grid;
+                        /* CSS Grid for flexible content layout */
+                        gap: 18px
+                                /* Consistent spacing between card sections */
                 }
 
                 /*
@@ -194,23 +227,32 @@ anton.johansson@sas.com
                 Application header with title area and controls
                 */
                 .header {
-                        display: flex;                      /* Horizontal layout for title and controls */
-                        justify-content: space-between;    /* Push content to edges */
-                        align-items: flex-start;           /* Top-align for multi-line content */
-                        gap: 12px                           /* Breathing room between title and controls */
+                        display: flex;
+                        /* Horizontal layout for title and controls */
+                        justify-content: space-between;
+                        /* Push content to edges */
+                        align-items: flex-start;
+                        /* Top-align for multi-line content */
+                        gap: 12px
+                                /* Breathing room between title and controls */
                 }
 
                 h1 {
-                        margin: 0 0 6px 0;                 /* Minimal bottom margin for subtitle spacing */
-                        font-size: var(--fs-9); 
-                        font-weight: 650;                  /* Semi-bold for authority without heaviness */
-                        letter-spacing: -.02em              /* Slight negative tracking for large text */
+                        margin: 0 0 6px 0;
+                        /* Minimal bottom margin for subtitle spacing */
+                        font-size: var(--fs-9);
+                        font-weight: 650;
+                        /* Semi-bold for authority without heaviness */
+                        letter-spacing: -.02em
+                                /* Slight negative tracking for large text */
                 }
 
                 .subtitle {
-                        margin: 0;                         /* Reset default paragraph margins */
-                        color: var(--muted);               /* Reduced contrast for hierarchy */
-                        font-size: var(--fs-4);  
+                        margin: 0;
+                        /* Reset default paragraph margins */
+                        color: var(--muted);
+                        /* Reduced contrast for hierarchy */
+                        font-size: var(--fs-4);
                 }
 
                 /*
@@ -219,16 +261,23 @@ anton.johansson@sas.com
                 Reusable layout patterns and form element normalization
                 */
                 .row {
-                        display: flex;                      /* Horizontal content flow */
-                        gap: 10px;                         /* Consistent item spacing */
-                        align-items: center                 /* Vertical center alignment */
+                        display: flex;
+                        /* Horizontal content flow */
+                        gap: 10px;
+                        /* Consistent item spacing */
+                        align-items: center
+                                /* Vertical center alignment */
                 }
 
                 button {
-                        appearance: none;                   /* Remove default browser styling */
-                        border: none;                       /* Clean slate for custom styling */
-                        cursor: pointer;                    /* Indicate interactivity */
-                        font-family: inherit                /* Inherit system font stack */
+                        appearance: none;
+                        /* Remove default browser styling */
+                        border: none;
+                        /* Clean slate for custom styling */
+                        cursor: pointer;
+                        /* Indicate interactivity */
+                        font-family: inherit
+                                /* Inherit system font stack */
                 }
 
                 /*
@@ -239,48 +288,66 @@ anton.johansson@sas.com
 
                 /* Primary CTA button (Summarize, Send) - High-emphasis actions */
                 .btn-primary {
-                        background: var(--primary);        /* SAS brand blue for primary actions */
-                        color: #fff;                        /* High contrast white text */
-                        border-radius: 14px;               /* Rounded corners matching design system */
-                        padding: 12px 18px;                /* Comfortable touch target (44px+ height) */
-                        font-size: var(--fs-6); 
-                        font-weight: 600;                  /* Semi-bold for emphasis and readability */
+                        background: var(--primary);
+                        /* SAS brand blue for primary actions */
+                        color: #fff;
+                        /* High contrast white text */
+                        border-radius: 14px;
+                        /* Rounded corners matching design system */
+                        padding: 12px 18px;
+                        /* Comfortable touch target (44px+ height) */
+                        font-size: var(--fs-6);
+                        font-weight: 600;
+                        /* Semi-bold for emphasis and readability */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
                         /* Colored shadow reinforces button importance and adds depth */
                         transition: transform .06s, box-shadow .2s, filter .2s
-                        /* Fast micro-interactions for responsive feel */
+                                /* Fast micro-interactions for responsive feel */
                 }
 
                 .btn-primary:hover {
-                        filter: brightness(1.02)           /* Subtle brightness increase on hover */
+                        filter: brightness(1.02)
+                                /* Subtle brightness increase on hover */
                 }
 
                 .btn-primary:active {
-                        transform: scale(.985)              /* Slight scale down for tactile feedback */
+                        transform: scale(.985)
+                                /* Slight scale down for tactile feedback */
                 }
 
                 .btn-primary:disabled {
-                        opacity: .65;                       /* Reduced opacity indicates disabled state */
-                        cursor: not-allowed;                /* Clear visual feedback for disabled state */
-                        box-shadow: none                    /* Remove elevation when non-interactive */
+                        opacity: .65;
+                        /* Reduced opacity indicates disabled state */
+                        cursor: not-allowed;
+                        /* Clear visual feedback for disabled state */
+                        box-shadow: none
+                                /* Remove elevation when non-interactive */
                 }
 
                 /* Secondary/neutral button (Clear/Save) - Medium-emphasis actions */
                 .btn-secondary {
-                        background: var(--grey-soft);      /* Neutral background for secondary actions */
-                        color: var(--fg);                  /* Primary text color for readability */
-                        border-radius: 14px;               /* Consistent rounding with primary buttons */
-                        padding: 10px 16px;                /* Slightly smaller padding for hierarchy */
-                        font-size: var(--fs-4); /* Scalable secondary text size */
-                        font-weight: 600                   /* Maintain readability with semi-bold weight */
+                        background: var(--grey-soft);
+                        /* Neutral background for secondary actions */
+                        color: var(--fg);
+                        /* Primary text color for readability */
+                        border-radius: 14px;
+                        /* Consistent rounding with primary buttons */
+                        padding: 10px 16px;
+                        /* Slightly smaller padding for hierarchy */
+                        font-size: var(--fs-4);
+                        /* Scalable secondary text size */
+                        font-weight: 600
+                                /* Maintain readability with semi-bold weight */
                 }
 
                 .btn-secondary:hover {
-                        filter: brightness(.97)            /* Subtle darkening on hover for feedback */
+                        filter: brightness(.97)
+                                /* Subtle darkening on hover for feedback */
                 }
 
                 .btn-secondary:active {
-                        filter: brightness(.94)            /* More pronounced darkening when pressed */
+                        filter: brightness(.94)
+                                /* More pronounced darkening when pressed */
                 }
 
                 /*
@@ -291,29 +358,37 @@ anton.johansson@sas.com
 
                 /* Inline spinner for button loading states */
                 .spinner {
-                        width: 16px;                        /* Compact size for inline use */
+                        width: 16px;
+                        /* Compact size for inline use */
                         height: 16px;
                         border: 2px solid rgba(255, 255, 255, .6);
                         /* Semi-transparent border for subtle appearance */
-                        border-top-color: #fff;            /* Full opacity top for rotation visual */
-                        border-radius: 50%;                /* Perfect circle */
-                        animation: spin 1s linear infinite; /* Smooth continuous rotation */
-                        display: none                       /* Hidden by default, shown via JavaScript */
+                        border-top-color: #fff;
+                        /* Full opacity top for rotation visual */
+                        border-radius: 50%;
+                        /* Perfect circle */
+                        animation: spin 1s linear infinite;
+                        /* Smooth continuous rotation */
+                        display: none
+                                /* Hidden by default, shown via JavaScript */
                 }
 
                 @keyframes spin {
                         to {
-                                transform: rotate(360deg)   /* Full rotation for smooth spinner animation */
+                                transform: rotate(360deg)
+                                        /* Full rotation for smooth spinner animation */
                         }
                 }
 
                 /* Loading state management - toggle between text and spinner */
                 .loading .spinner {
-                        display: inline-block               /* Show spinner during loading */
+                        display: inline-block
+                                /* Show spinner during loading */
                 }
 
                 .loading .labeltext {
-                        display: none                       /* Hide button text during loading */
+                        display: none
+                                /* Hide button text during loading */
                 }
 
                 /*
@@ -324,12 +399,17 @@ anton.johansson@sas.com
 
                 /* Section label headers (Summary, Comments, Chat) */
                 .label {
-                        font-size: var(--fs-2); 
-                        text-transform: uppercase;          /* All caps for section emphasis */
-                        letter-spacing: .08em;              /* Wide tracking for readability */
-                        color: var(--muted);               /* Reduced contrast for hierarchy */
-                        margin-bottom: 8px;                /* Spacing before section content */
-                        padding-left: var(--content-indent); /* Consistent left alignment */
+                        font-size: var(--fs-2);
+                        text-transform: uppercase;
+                        /* All caps for section emphasis */
+                        letter-spacing: .08em;
+                        /* Wide tracking for readability */
+                        color: var(--muted);
+                        /* Reduced contrast for hierarchy */
+                        margin-bottom: 8px;
+                        /* Spacing before section content */
+                        padding-left: var(--content-indent);
+                        /* Consistent left alignment */
                 }
 
                 /*
@@ -340,15 +420,23 @@ anton.johansson@sas.com
 
                 /* Visually hidden content for screen readers (WCAG 2.1 AA compliant) */
                 .sr-only {
-                        position: absolute;                 /* Remove from normal document flow */
-                        width: 1px;                         /* Minimal dimensions */
+                        position: absolute;
+                        /* Remove from normal document flow */
+                        width: 1px;
+                        /* Minimal dimensions */
                         height: 1px;
-                        padding: 0;                         /* Remove all spacing */
-                        margin: -1px;                       /* Negative margin to fully hide */
-                        overflow: hidden;                   /* Prevent content overflow */
-                        clip: rect(0, 0, 0, 0);            /* Legacy clipping for older browsers */
-                        white-space: nowrap;                /* Prevent text wrapping */
-                        border: 0;                          /* Remove any borders */
+                        padding: 0;
+                        /* Remove all spacing */
+                        margin: -1px;
+                        /* Negative margin to fully hide */
+                        overflow: hidden;
+                        /* Prevent content overflow */
+                        clip: rect(0, 0, 0, 0);
+                        /* Legacy clipping for older browsers */
+                        white-space: nowrap;
+                        /* Prevent text wrapping */
+                        border: 0;
+                        /* Remove any borders */
                 }
 
                 /*
@@ -359,18 +447,26 @@ anton.johansson@sas.com
 
                 /* Model selection dropdown styled to match secondary buttons */
                 .select-model {
-                        background: var(--grey-soft);      /* Neutral background matching btn-secondary */
-                        color: var(--fg);                  /* Primary text color */
-                        border: none;                       /* Clean appearance without borders */
-                        border-radius: 14px;               /* Consistent rounding */
-                        padding: 10px 12px;                /* Comfortable padding for readability */
-                        font-size: var(--fs-4); 
-                        font-weight: 600;                  /* Semi-bold for consistency */
+                        background: var(--grey-soft);
+                        /* Neutral background matching btn-secondary */
+                        color: var(--fg);
+                        /* Primary text color */
+                        border: none;
+                        /* Clean appearance without borders */
+                        border-radius: 14px;
+                        /* Consistent rounding */
+                        padding: 10px 12px;
+                        /* Comfortable padding for readability */
+                        font-size: var(--fs-4);
+                        font-weight: 600;
+                        /* Semi-bold for consistency */
                 }
 
                 .select-model:disabled {
-                        opacity: .65;                       /* Visual feedback for disabled state */
-                        cursor: not-allowed;                /* Clear interaction feedback */
+                        opacity: .65;
+                        /* Visual feedback for disabled state */
+                        cursor: not-allowed;
+                        /* Clear interaction feedback */
                 }
 
                 /*
@@ -381,44 +477,58 @@ anton.johansson@sas.com
 
                 /* AI summary output container - supports rich HTML content */
                 .summary {
-                        border: 1px solid var(--border);   /* Subtle edge definition */
-                        border-radius: 14px;               /* Consistent rounding */
-                        background: var(--grey-soft);      /* Light background for content separation */
-                        padding: 14px;                     /* Internal spacing for readability */
-                        min-height: 140px;                 /* Minimum height prevents layout shift */
-                        white-space: normal;                /* Allow normal text wrapping */
-                        font-size: var(--fs-5);  
+                        border: 1px solid var(--border);
+                        /* Subtle edge definition */
+                        border-radius: 14px;
+                        /* Consistent rounding */
+                        background: var(--grey-soft);
+                        /* Light background for content separation */
+                        padding: 14px;
+                        /* Internal spacing for readability */
+                        min-height: 140px;
+                        /* Minimum height prevents layout shift */
+                        white-space: normal;
+                        /* Allow normal text wrapping */
+                        font-size: var(--fs-5);
                 }
 
                 /* Rich text styling within summary content */
                 .summary h1 {
-                        font-size: var(--fs-8); 
-                        margin: 0 0 8px                    /* Bottom spacing for content separation */
+                        font-size: var(--fs-8);
+                        margin: 0 0 8px
+                                /* Bottom spacing for content separation */
                 }
 
                 .summary h2 {
-                        font-size: var(--fs-7); 
-                        margin: 14px 0 6px                 /* Top and bottom spacing for hierarchy */
+                        font-size: var(--fs-7);
+                        margin: 14px 0 6px
+                                /* Top and bottom spacing for hierarchy */
                 }
 
                 .summary p {
-                        margin: 6px 0                      /* Minimal paragraph spacing */
+                        margin: 6px 0
+                                /* Minimal paragraph spacing */
                 }
 
                 .summary ul {
-                        margin: 6px 0 6px 18px;            /* List spacing with left offset */
-                        padding-left: 14px                 /* Additional indentation for bullets */
+                        margin: 6px 0 6px 18px;
+                        /* List spacing with left offset */
+                        padding-left: 14px
+                                /* Additional indentation for bullets */
                 }
 
                 .summary li {
-                        margin: 3px 0                      /* Compact list item spacing */
+                        margin: 3px 0
+                                /* Compact list item spacing */
                 }
 
                 /* AI model knowledge cutoff disclaimer */
                 .summary .cutoff {
-                        margin-top: 10px;                  /* Separation from main content */
-                        font-size: var(--fs-2); 
-                        color: var(--muted)                /* Reduced emphasis for footnote content */
+                        margin-top: 10px;
+                        /* Separation from main content */
+                        font-size: var(--fs-2);
+                        color: var(--muted)
+                                /* Reduced emphasis for footnote content */
                 }
 
                 /*
@@ -429,29 +539,40 @@ anton.johansson@sas.com
 
                 /* Comment textarea with auto-resize functionality */
                 textarea {
-                        width: 100%;                       /* Full width for maximum usability */
-                        min-height: 120px;                /* Minimum height for comfortable editing */
-                        padding: 14px 14px;               /* Generous padding for touch targets */
-                        border-radius: 16px;              /* Slightly larger radius for text areas */
+                        width: 100%;
+                        /* Full width for maximum usability */
+                        min-height: 120px;
+                        /* Minimum height for comfortable editing */
+                        padding: 14px 14px;
+                        /* Generous padding for touch targets */
+                        border-radius: 16px;
+                        /* Slightly larger radius for text areas */
                         border: 1px solid rgba(0, 0, 0, .12);
                         /* Subtle border with transparency */
-                        background: #fff;                  /* Clean white background for text clarity */
-                        outline: none;                     /* Remove default focus outline */
-                        line-height: 1.5;                 /* Comfortable reading line height */
-                        overflow: hidden;                  /* Hide scrollbars for auto-resize */
-                        resize: none;                      /* Disable manual resize for consistent layout */
-                        font-size: var(--fs-5); 
+                        background: #fff;
+                        /* Clean white background for text clarity */
+                        outline: none;
+                        /* Remove default focus outline */
+                        line-height: 1.5;
+                        /* Comfortable reading line height */
+                        overflow: hidden;
+                        /* Hide scrollbars for auto-resize */
+                        resize: none;
+                        /* Disable manual resize for consistent layout */
+                        font-size: var(--fs-5);
                 }
 
                 textarea:focus {
-                        border-color: var(--primary-press); /* Brand color focus indication */
+                        border-color: var(--primary-press);
+                        /* Brand color focus indication */
                         box-shadow: 0 0 0 4px rgba(10, 132, 255, .12)
-                        /* Accessible focus ring with sufficient contrast */
+                                /* Accessible focus ring with sufficient contrast */
                 }
 
                 .caption {
                         font-size: var(--fs-2);
-                        color: var(--muted)                /* Reduced contrast for supporting text */
+                        color: var(--muted)
+                                /* Reduced contrast for supporting text */
                 }
 
                 /*
@@ -464,11 +585,16 @@ anton.johansson@sas.com
                 h1#title,
                 .subtitle,
                 .label {
-                        -webkit-user-select: none;         /* Safari */
-                        -moz-user-select: none;            /* Firefox */
-                        -ms-user-select: none;             /* IE/Edge legacy */
-                        user-select: none;                 /* Standard property */
-                        -webkit-touch-callout: none;       /* Disable iOS long-press context menu */
+                        -webkit-user-select: none;
+                        /* Safari */
+                        -moz-user-select: none;
+                        /* Firefox */
+                        -ms-user-select: none;
+                        /* IE/Edge legacy */
+                        user-select: none;
+                        /* Standard property */
+                        -webkit-touch-callout: none;
+                        /* Disable iOS long-press context menu */
                 }
 
                 /* Prevent selection of loading states and skeleton content */
@@ -476,11 +602,13 @@ anton.johansson@sas.com
                 .summary .working *,
                 .summary .skel,
                 .summary .skel * {
-                        -webkit-user-select: none;         /* Cross-browser text selection prevention */
+                        -webkit-user-select: none;
+                        /* Cross-browser text selection prevention */
                         -moz-user-select: none;
                         -ms-user-select: none;
                         user-select: none;
-                        -webkit-touch-callout: none;       /* iOS touch interaction prevention */
+                        -webkit-touch-callout: none;
+                        /* iOS touch interaction prevention */
                 }
 
 
@@ -492,27 +620,37 @@ anton.johansson@sas.com
 
                 /* Toast notification component for save/clear confirmations */
                 .toast {
-                        position: fixed;                    /* Fixed positioning for overlay */
-                        left: 50%;                          /* Center horizontally */
-                        bottom: 24px;                      /* Fixed distance from bottom */
+                        position: fixed;
+                        /* Fixed positioning for overlay */
+                        left: 50%;
+                        /* Center horizontally */
+                        bottom: 24px;
+                        /* Fixed distance from bottom */
                         transform: translateX(-50%) translateY(20px);
                         /* Center and initially offset down for animation */
-                        background: #111;                  /* High contrast dark background */
-                        color: #fff;                       /* White text for maximum readability */
-                        padding: 10px 14px;               /* Compact padding for brief messages */
-                        border-radius: 999px;             /* Pill shape for modern appearance */
+                        background: #111;
+                        /* High contrast dark background */
+                        color: #fff;
+                        /* White text for maximum readability */
+                        padding: 10px 14px;
+                        /* Compact padding for brief messages */
+                        border-radius: 999px;
+                        /* Pill shape for modern appearance */
                         box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
                         /* Strong shadow for overlay emphasis */
-                        opacity: 0;                        /* Hidden by default */
-                        pointer-events: none;              /* Non-interactive during fade */
+                        opacity: 0;
+                        /* Hidden by default */
+                        pointer-events: none;
+                        /* Non-interactive during fade */
                         transition: transform .35s, opacity .35s
-                        /* Smooth slide-up animation */
+                                /* Smooth slide-up animation */
                 }
 
                 .toast.show {
-                        opacity: 1;                        /* Visible state */
+                        opacity: 1;
+                        /* Visible state */
                         transform: translateX(-50%) translateY(0)
-                        /* Final position - centered and at bottom */
+                                /* Final position - centered and at bottom */
                 }
 
                 /*
@@ -523,74 +661,101 @@ anton.johansson@sas.com
 
                 /* "Working..." text with animated dots */
                 .working {
-                        display: inline-flex;              /* Horizontal layout with text and dots */
-                        align-items: center;               /* Vertical center alignment */
-                        gap: 6px;                          /* Spacing between text and animation */
-                        color: var(--muted);               /* Reduced contrast for loading state */
-                        font-weight: 600                   /* Semi-bold for visibility */
+                        display: inline-flex;
+                        /* Horizontal layout with text and dots */
+                        align-items: center;
+                        /* Vertical center alignment */
+                        gap: 6px;
+                        /* Spacing between text and animation */
+                        color: var(--muted);
+                        /* Reduced contrast for loading state */
+                        font-weight: 600
+                                /* Semi-bold for visibility */
                 }
 
                 .working .dots {
-                        display: inline-flex;              /* Horizontal dot layout */
-                        gap: 4px;                          /* Spacing between dots */
-                        margin-left: 2px                   /* Small offset from text */
+                        display: inline-flex;
+                        /* Horizontal dot layout */
+                        gap: 4px;
+                        /* Spacing between dots */
+                        margin-left: 2px
+                                /* Small offset from text */
                 }
 
                 .working .dots i {
-                        width: 6px;                        /* Small dot size */
+                        width: 6px;
+                        /* Small dot size */
                         height: 6px;
-                        border-radius: 50%;               /* Perfect circle */
-                        background: var(--muted);         /* Muted color for subtlety */
-                        opacity: .25;                      /* Base transparency */
+                        border-radius: 50%;
+                        /* Perfect circle */
+                        background: var(--muted);
+                        /* Muted color for subtlety */
+                        opacity: .25;
+                        /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite
-                        /* Smooth pulsing animation */
+                                /* Smooth pulsing animation */
                 }
 
                 .working .dots i:nth-child(2) {
-                        animation-delay: .2s               /* Staggered animation timing */
+                        animation-delay: .2s
+                                /* Staggered animation timing */
                 }
 
                 .working .dots i:nth-child(3) {
-                        animation-delay: .4s               /* Further staggered timing */
+                        animation-delay: .4s
+                                /* Further staggered timing */
                 }
 
                 @keyframes dotpulse {
+
                         0%,
                         100% {
-                                transform: translateY(0);      /* Rest position */
-                                opacity: .25                    /* Base transparency */
+                                transform: translateY(0);
+                                /* Rest position */
+                                opacity: .25
+                                        /* Base transparency */
                         }
 
                         50% {
-                                transform: translateY(-3px);   /* Small upward movement */
-                                opacity: 1                     /* Full opacity at peak */
+                                transform: translateY(-3px);
+                                /* Small upward movement */
+                                opacity: 1
+                                        /* Full opacity at peak */
                         }
                 }
 
                 /* Skeleton screen placeholder content */
                 .skel {
-                        display: grid;                     /* Vertical layout for skeleton lines */
-                        gap: 8px;                          /* Spacing between skeleton elements */
-                        margin-top: 10px                   /* Separation from loading text */
+                        display: grid;
+                        /* Vertical layout for skeleton lines */
+                        gap: 8px;
+                        /* Spacing between skeleton elements */
+                        margin-top: 10px
+                                /* Separation from loading text */
                 }
 
                 .skel .line {
-                        height: 10px;                     /* Text line height simulation */
-                        border-radius: 6px;               /* Rounded line ends */
+                        height: 10px;
+                        /* Text line height simulation */
+                        border-radius: 6px;
+                        /* Rounded line ends */
                         background: linear-gradient(90deg, #ececec, #f7f7f7, #ececec);
                         /* Gradient for shimmer effect */
-                        background-size: 200% 100%;       /* Oversized background for animation */
+                        background-size: 200% 100%;
+                        /* Oversized background for animation */
                         animation: shimmer 2.5s linear infinite
-                        /* Continuous shimmer movement */
+                                /* Continuous shimmer movement */
                 }
 
                 @keyframes shimmer {
                         0% {
-                                background-position: 200% 0    /* Start position - off right */
+                                background-position: 200% 0
+                                        /* Start position - off right */
                         }
 
                         100% {
-                                background-position: -200% 0   /* End position - off left */
+                                background-position: -200% 0
+                                        /* End position - off left */
                         }
                 }
 
@@ -601,11 +766,13 @@ anton.johansson@sas.com
                 */
 
                 #charCount {
-                        margin-left: var(--content-indent); /* Align with other content elements */
+                        margin-left: var(--content-indent);
+                        /* Align with other content elements */
                 }
 
                 .header>div:first-child {
-                        padding-left: var(--content-indent); /* Header content indentation */
+                        padding-left: var(--content-indent);
+                        /* Header content indentation */
                 }
 
                 /*
@@ -615,26 +782,41 @@ anton.johansson@sas.com
                 Optimized for compliance workflows with clear message hierarchy.
                 */
                 .chat {
-                        border: 1px solid var(--border);   /* Subtle container definition */
-                        border-radius: 14px;               /* Consistent rounding */
-                        background: var(--grey-soft);      /* Light background for message contrast */
-                        padding: 14px;                     /* Internal spacing */
-                        display: flex;                      /* Vertical flex layout */
-                        flex-direction: column;            /* Stack messages over input */
-                        gap: 10px;                         /* Spacing between messages and input */
+                        border: 1px solid var(--border);
+                        /* Subtle container definition */
+                        border-radius: 14px;
+                        /* Consistent rounding */
+                        background: var(--grey-soft);
+                        /* Light background for message contrast */
+                        padding: 14px;
+                        /* Internal spacing */
+                        display: flex;
+                        /* Vertical flex layout */
+                        flex-direction: column;
+                        /* Stack messages over input */
+                        gap: 10px;
+                        /* Spacing between messages and input */
                 }
 
                 .chat-messages {
-                        min-height: 273px;                 /* Minimum scrollable area */
+                        min-height: 273px;
+                        /* Minimum scrollable area */
                         max-height: clamp(360px, 55vh, 720px);
                         /* Responsive height: min 360px, max 720px, prefer 55% viewport */
-                        overflow: auto;                     /* Scrollable when content exceeds height */
-                        display: grid;                      /* Grid layout for message stacking */
-                        gap: 10px;                         /* Spacing between messages */
-                        padding-right: 4px;                /* Account for scrollbar width */
-                        align-content: start;              /* Top-align message grid */
-                        align-items: start;                /* Top-align individual messages */
-                        grid-auto-rows: max-content;       /* Size rows to content height */
+                        overflow: auto;
+                        /* Scrollable when content exceeds height */
+                        display: grid;
+                        /* Grid layout for message stacking */
+                        gap: 10px;
+                        /* Spacing between messages */
+                        padding-right: 4px;
+                        /* Account for scrollbar width */
+                        align-content: start;
+                        /* Top-align message grid */
+                        align-items: start;
+                        /* Top-align individual messages */
+                        grid-auto-rows: max-content;
+                        /* Size rows to content height */
                 }
 
                 /*
@@ -644,39 +826,55 @@ anton.johansson@sas.com
                 */
 
                 .msg {
-                        display: flex;                      /* Horizontal message layout */
+                        display: flex;
+                        /* Horizontal message layout */
                 }
 
                 .msg .bubble {
-                        border: 1px solid var(--border);   /* Subtle edge definition */
-                        background: #f7f7f7;               /* Default message background */
-                        color: var(--fg);                  /* Primary text color */
-                        padding: 10px 12px;                /* Comfortable reading padding */
-                        border-radius: 14px 14px 4px 14px; /* Asymmetric rounding for speech bubble effect */
-                        font-size: var(--fs-5); 
-                        line-height: 1.35;                 /* Compact line height for conversation */
-                        max-width: 72%;                    /* Prevent overly wide messages */
+                        border: 1px solid var(--border);
+                        /* Subtle edge definition */
+                        background: #f7f7f7;
+                        /* Default message background */
+                        color: var(--fg);
+                        /* Primary text color */
+                        padding: 10px 12px;
+                        /* Comfortable reading padding */
+                        border-radius: 14px 14px 4px 14px;
+                        /* Asymmetric rounding for speech bubble effect */
+                        font-size: var(--fs-5);
+                        line-height: 1.35;
+                        /* Compact line height for conversation */
+                        max-width: 72%;
+                        /* Prevent overly wide messages */
                         box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
                         /* Subtle shadow for message separation */
                 }
 
                 /* Bot message styling - clean white bubbles */
                 .msg.bot .bubble {
-                        background: #fff;                  /* Clean white for AI responses */
-                        color: var(--fg);                 /* Standard text color */
-                        border-color: var(--border);      /* Consistent border treatment */
+                        background: #fff;
+                        /* Clean white for AI responses */
+                        color: var(--fg);
+                        /* Standard text color */
+                        border-color: var(--border);
+                        /* Consistent border treatment */
                 }
 
                 .msg.user {
-                        justify-content: flex-end;        /* Right-align user messages */
+                        justify-content: flex-end;
+                        /* Right-align user messages */
                 }
 
                 /* User message styling - branded color treatment */
                 .msg.user .bubble {
-                        background: var(--primary-soft);  /* Light brand color for user messages */
-                        color: var(--fg);                 /* Maintain text readability */
-                        border-color: var(--border);      /* Consistent border treatment */
-                        border-radius: 14px 14px 14px 4px; /* Flipped radius for right alignment */
+                        background: var(--primary-soft);
+                        /* Light brand color for user messages */
+                        color: var(--fg);
+                        /* Maintain text readability */
+                        border-color: var(--border);
+                        /* Consistent border treatment */
+                        border-radius: 14px 14px 14px 4px;
+                        /* Flipped radius for right alignment */
                 }
 
                 /*
@@ -686,23 +884,31 @@ anton.johansson@sas.com
                 */
 
                 .chat-input {
-                        display: flex;                     /* Horizontal layout: input + button */
-                        gap: 8px;                          /* Spacing between input and send button */
+                        display: flex;
+                        /* Horizontal layout: input + button */
+                        gap: 8px;
+                        /* Spacing between input and send button */
                 }
 
                 #chatText {
-                        flex: 1;                           /* Expand to fill available width */
+                        flex: 1;
+                        /* Expand to fill available width */
                         border: 1px solid rgba(0, 0, 0, .12);
                         /* Subtle border for input definition */
-                        border-radius: 14px;              /* Consistent rounding */
-                        padding: 12px 14px;               /* Comfortable typing padding */
-                        font: inherit;                     /* Use system font stack */
-                        outline: none;                     /* Remove default focus outline */
-                        font-size: var(--fs-5); 
+                        border-radius: 14px;
+                        /* Consistent rounding */
+                        padding: 12px 14px;
+                        /* Comfortable typing padding */
+                        font: inherit;
+                        /* Use system font stack */
+                        outline: none;
+                        /* Remove default focus outline */
+                        font-size: var(--fs-5);
                 }
 
                 #chatText:focus {
-                        border-color: var(--primary-press); /* Brand color focus indication */
+                        border-color: var(--primary-press);
+                        /* Brand color focus indication */
                         box-shadow: 0 0 0 4px rgba(10, 132, 255, .12);
                         /* Accessible focus ring */
                 }
@@ -714,32 +920,43 @@ anton.johansson@sas.com
                 */
 
                 .typing {
-                        display: inline-flex;              /* Horizontal layout for typing indicator */
-                        align-items: center;               /* Vertical center alignment */
-                        gap: 6px;                          /* Spacing between text and dots */
+                        display: inline-flex;
+                        /* Horizontal layout for typing indicator */
+                        align-items: center;
+                        /* Vertical center alignment */
+                        gap: 6px;
+                        /* Spacing between text and dots */
                 }
 
                 .typing .dots {
-                        display: inline-flex;              /* Horizontal dot arrangement */
-                        gap: 4px;                          /* Spacing between dots */
+                        display: inline-flex;
+                        /* Horizontal dot arrangement */
+                        gap: 4px;
+                        /* Spacing between dots */
                 }
 
                 .typing .dots i {
-                        width: 6px;                        /* Small dot size for subtlety */
+                        width: 6px;
+                        /* Small dot size for subtlety */
                         height: 6px;
-                        border-radius: 50%;               /* Perfect circle */
-                        background: var(--muted);         /* Muted color for non-intrusive feedback */
-                        opacity: .35;                      /* Base transparency */
+                        border-radius: 50%;
+                        /* Perfect circle */
+                        background: var(--muted);
+                        /* Muted color for non-intrusive feedback */
+                        opacity: .35;
+                        /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite;
                         /* Reuse dotpulse animation for consistency */
                 }
 
                 .typing .dots i:nth-child(2) {
-                        animation-delay: .2s;              /* Staggered timing for wave effect */
+                        animation-delay: .2s;
+                        /* Staggered timing for wave effect */
                 }
 
                 .typing .dots i:nth-child(3) {
-                        animation-delay: .4s;              /* Further staggered timing */
+                        animation-delay: .4s;
+                        /* Further staggered timing */
                 }
 
                 /*
@@ -752,12 +969,14 @@ anton.johansson@sas.com
                 textarea,
                 button,
                 select {
-                        font-family: inherit;             /* Use system font stack consistently */
-                        font-size: inherit;               /* Inherit contextual sizing */
+                        font-family: inherit;
+                        /* Use system font stack consistently */
+                        font-size: inherit;
+                        /* Inherit contextual sizing */
                 }
 
                 #comments {
-                        font-size: var(--fs-5); 
+                        font-size: var(--fs-5);
                 }
 
                 /*
@@ -767,46 +986,72 @@ anton.johansson@sas.com
                 Features animated pill indicator with smooth transitions.
                 */
                 .viewtoggle {
-                        position: relative;                /* Required for absolute positioned pill */
-                        display: flex;                     /* Horizontal tab layout */
-                        align-items: center;               /* Vertical center alignment */
-                        gap: 0;                            /* No gap - tabs should be adjacent */
-                        width: 200px;                     /* Fixed width for consistent layout */
-                        height: 36px;                     /* Comfortable touch target height */
-                        padding: 4px;                     /* Internal padding for pill positioning */
-                        border-radius: 999px;             /* Pill-shaped container */
-                        background: var(--grey-soft);     /* Neutral background */
-                        border: 1px solid var(--border);  /* Subtle edge definition */
-                        font-weight: 600;                 /* Semi-bold for tab readability */
-                        user-select: none;                /* Prevent text selection */
-                        cursor: pointer;                   /* Indicate interactivity */
+                        position: relative;
+                        /* Required for absolute positioned pill */
+                        display: flex;
+                        /* Horizontal tab layout */
+                        align-items: center;
+                        /* Vertical center alignment */
+                        gap: 0;
+                        /* No gap - tabs should be adjacent */
+                        width: 200px;
+                        /* Fixed width for consistent layout */
+                        height: 36px;
+                        /* Comfortable touch target height */
+                        padding: 4px;
+                        /* Internal padding for pill positioning */
+                        border-radius: 999px;
+                        /* Pill-shaped container */
+                        background: var(--grey-soft);
+                        /* Neutral background */
+                        border: 1px solid var(--border);
+                        /* Subtle edge definition */
+                        font-weight: 600;
+                        /* Semi-bold for tab readability */
+                        user-select: none;
+                        /* Prevent text selection */
+                        cursor: pointer;
+                        /* Indicate interactivity */
                 }
 
                 .viewtoggle .label {
-                        flex: 1;                           /* Equal width tabs */
-                        display: flex;                     /* Center content horizontally and vertically */
+                        flex: 1;
+                        /* Equal width tabs */
+                        display: flex;
+                        /* Center content horizontally and vertically */
                         align-items: center;
                         justify-content: center;
-                        font-size: var(--fs-4); /* Scalable tab text size */
-                        margin: 0;                         /* Reset global .label margin */
-                        padding: 0;                        /* Reset global .label padding-left */
-                        text-transform: none;              /* Override global UPPERCASE */
-                        letter-spacing: 0;                /* Reset global letter-spacing */
-                        line-height: 1;                   /* Precise vertical centering */
-                        color: var(--muted);              /* Inactive tab color */
-                        position: relative;                /* Layer above pill background */
-                        z-index: 1;                       /* Ensure text appears above pill */
+                        font-size: var(--fs-4);
+                        /* Scalable tab text size */
+                        margin: 0;
+                        /* Reset global .label margin */
+                        padding: 0;
+                        /* Reset global .label padding-left */
+                        text-transform: none;
+                        /* Override global UPPERCASE */
+                        letter-spacing: 0;
+                        /* Reset global letter-spacing */
+                        line-height: 1;
+                        /* Precise vertical centering */
+                        color: var(--muted);
+                        /* Inactive tab color */
+                        position: relative;
+                        /* Layer above pill background */
+                        z-index: 1;
+                        /* Ensure text appears above pill */
                 }
 
                 /* Active tab text styling - white over brand blue pill */
                 .card:not(.show-chat) .viewtoggle .label:first-child,
                 .card.show-chat .viewtoggle .label:nth-child(2) {
-                        color: #fff !important;           /* High contrast white text over blue */
+                        color: #fff !important;
+                        /* High contrast white text over blue */
                 }
 
                 /* Content spacing optimization */
                 #pane-summary .summary {
-                        margin-bottom: 20px;              /* Breathing room before Comments section */
+                        margin-bottom: 20px;
+                        /* Breathing room before Comments section */
                 }
 
 
@@ -817,18 +1062,28 @@ anton.johansson@sas.com
                 */
 
                 .viewtoggle .pill {
-                        position: absolute;                /* Float above tab background */
-                        top: 4px;                          /* Align with container padding */
-                        left: 4px;                         /* Align with container padding */
-                        height: 28px;                     /* Fill available height */
-                        width: calc(50% - 4px);           /* Half width minus padding */
-                        border-radius: 999px;             /* Match container pill shape */
-                        background: var(--primary);       /* Brand blue for active indication */
+                        position: absolute;
+                        /* Float above tab background */
+                        top: 4px;
+                        /* Align with container padding */
+                        left: 4px;
+                        /* Align with container padding */
+                        height: 28px;
+                        /* Fill available height */
+                        width: calc(50% - 4px);
+                        /* Half width minus padding */
+                        border-radius: 999px;
+                        /* Match container pill shape */
+                        background: var(--primary);
+                        /* Brand blue for active indication */
                         box-shadow: 0 6px 18px rgba(0, 122, 255, .25);
                         /* Colored shadow for emphasis and depth */
-                        transition: transform .0s;         /* Instant positioning (can be customized) */
-                        z-index: 0;                       /* Behind text labels */
-                        pointer-events: none;             /* Non-interactive decoration */
+                        transition: transform .0s;
+                        /* Instant positioning (can be customized) */
+                        z-index: 0;
+                        /* Behind text labels */
+                        pointer-events: none;
+                        /* Non-interactive decoration */
                 }
 
                 /*
@@ -839,43 +1094,56 @@ anton.johansson@sas.com
 
                 /* Compact progress dots for tab-level loading indication */
                 .viewtoggle .mini-dots {
-                        display: none;                     /* Hidden by default */
-                        margin-left: 4px;                 /* Small offset from tab text */
-                        gap: 3px;                          /* Tight spacing for compact display */
-                        align-items: center;               /* Vertical alignment with text */
+                        display: none;
+                        /* Hidden by default */
+                        margin-left: 4px;
+                        /* Small offset from tab text */
+                        gap: 3px;
+                        /* Tight spacing for compact display */
+                        align-items: center;
+                        /* Vertical alignment with text */
                 }
 
                 .viewtoggle .mini-dots i {
-                        width: 4px;                        /* Smaller dots for tab context */
+                        width: 4px;
+                        /* Smaller dots for tab context */
                         height: 4px;
-                        border-radius: 50%;               /* Perfect circle */
-                        background: currentColor;          /* Inherit text color for consistency */
-                        opacity: .35;                      /* Base transparency */
+                        border-radius: 50%;
+                        /* Perfect circle */
+                        background: currentColor;
+                        /* Inherit text color for consistency */
+                        opacity: .35;
+                        /* Base transparency */
                         animation: dotpulse 1s ease-in-out infinite;
                         /* Reuse established dotpulse animation */
                 }
 
                 .viewtoggle .mini-dots i:nth-child(2) {
-                        animation-delay: .2s;              /* Staggered timing */
+                        animation-delay: .2s;
+                        /* Staggered timing */
                 }
 
                 .viewtoggle .mini-dots i:nth-child(3) {
-                        animation-delay: .4s;              /* Further staggered timing */
+                        animation-delay: .4s;
+                        /* Further staggered timing */
                 }
 
                 /* Conditional progress indicator visibility */
                 .card.show-chat .viewtoggle.is-summarizing .mini-dots {
-                        display: inline-flex;              /* Show dots when summarizing in Chat tab */
+                        display: inline-flex;
+                        /* Show dots when summarizing in Chat tab */
                 }
 
                 /* Tab state animations */
                 .card.show-chat .viewtoggle .pill {
-                        transform: translateX(100%);       /* Slide pill to Chat tab position */
+                        transform: translateX(100%);
+                        /* Slide pill to Chat tab position */
                 }
 
                 /* Context-sensitive UI element visibility */
                 .card.show-chat #summarizeBtn {
-                        display: none;                     /* Hide Summarize button in Chat mode */
+                        display: none;
+                        /* Hide Summarize button in Chat mode */
                 }
 
                 /*
@@ -886,17 +1154,20 @@ anton.johansson@sas.com
 
                 /* Default state - Chat pane hidden */
                 #pane-chat {
-                        display: none;                     /* Hidden by default */
+                        display: none;
+                        /* Hidden by default */
                 }
 
                 /* Chat mode active - show Chat pane */
                 .card.show-chat #pane-chat {
-                        display: block;                    /* Visible when Chat tab active */
+                        display: block;
+                        /* Visible when Chat tab active */
                 }
 
                 /* Chat mode active - hide Summary pane */
                 .card.show-chat #pane-summary {
-                        display: none;                     /* Hidden when Chat tab active */
+                        display: none;
+                        /* Hidden when Chat tab active */
                 }
 
                 /*
@@ -909,22 +1180,32 @@ anton.johansson@sas.com
                 .card.show-chat::after {
                         content: "Generative AI can make mistakes. Check important info.";
                         /* Standard AI disclaimer text for regulatory compliance */
-                        display: block;                    /* Block display for proper spacing */
-                        margin-top: 7px;                  /* Separation from chat interface */
-                        font-size: var(--fs-3); 
-                        color: var(--muted);              /* Reduced emphasis */
-                        text-align: center;               /* Center alignment for disclaimer */
+                        display: block;
+                        /* Block display for proper spacing */
+                        margin-top: 7px;
+                        /* Separation from chat interface */
+                        font-size: var(--fs-3);
+                        color: var(--muted);
+                        /* Reduced emphasis */
+                        text-align: center;
+                        /* Center alignment for disclaimer */
                 }
 
                 /* Inline disclaimer for Summary mode context */
                 .disclaimer-inline {
-                        position: absolute;                /* Positioned overlay */
+                        position: absolute;
+                        /* Positioned overlay */
                         left: 0;
-                        right: 0;                          /* Full width positioning */
-                        text-align: center;               /* Center alignment */
-                        font-size: var(--fs-1); /* Scalable small disclaimer text */
-                        color: var(--muted);              /* Reduced emphasis */
-                        pointer-events: none;             /* Non-interactive overlay */
+                        right: 0;
+                        /* Full width positioning */
+                        text-align: center;
+                        /* Center alignment */
+                        font-size: var(--fs-1);
+                        /* Scalable small disclaimer text */
+                        color: var(--muted);
+                        /* Reduced emphasis */
+                        pointer-events: none;
+                        /* Non-interactive overlay */
                 }
 
                 /*
@@ -935,7 +1216,8 @@ anton.johansson@sas.com
 
                 #pane-summary,
                 #pane-chat {
-                        contain: layout paint;            /* CSS containment to isolate layout and paint work */
+                        contain: layout paint;
+                        /* CSS containment to isolate layout and paint work */
                         /* Improves performance by limiting reflow scope to pane contents */
                 }
         </style>
@@ -946,6 +1228,7 @@ anton.johansson@sas.com
 AML ALERT SUMMARIZER APPLICATION BODY
 =========================================================================
 -->
+
 <body>
         <!--
         =======================================================================
@@ -1107,7 +1390,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         <label for="modelSelect" class="sr-only">Model</label>
                                         <select id="modelSelect" class="select-model" aria-label="Model">
                                                 <option value="gpt-5-nano">GPT-5 nano</option>
-                                                <option value="gpt-5-mini"selected >GPT-5 mini</option>
+                                                <option value="gpt-5-mini" selected>GPT-5 mini</option>
                                                 <option value="gpt-5">GPT-5</option>
 
                                         </select>
@@ -1472,7 +1755,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         while preserving essential formatting for readability in AML analysis reports.
                         */
                         const SANITIZE_CFG = {
-                                ALLOWED_TAGS: ['article','h2','h3','p','ul','ol','li','strong','em','blockquote'],
+                                ALLOWED_TAGS: ['article', 'h2', 'h3', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote'],
                                 // Whitelist of safe HTML tags for AI-generated content formatting
                                 // Limited to basic text formatting and structure elements
 
@@ -1821,8 +2104,8 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 })
                                         });
                                         const json = await res.json().catch(() => ({}));
-                                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0,500)}`);
-                                        const out = (json.outputs || []).reduce((m, {name, value}) => (m[name]=value, m), {});
+                                        if (!res.ok) throw new Error(`${res.status} ${res.statusText}\n${JSON.stringify(json).slice(0, 500)}`);
+                                        const out = (json.outputs || []).reduce((m, { name, value }) => (m[name] = value, m), {});
                                         return out.response || '';
                                 },
 
@@ -2009,13 +2292,13 @@ AML ALERT SUMMARIZER APPLICATION BODY
 
                                                 // Single MAS #2 call - no streaming
                                                 const finalText = await API.postMas(Config.MODULE_URI_LLM, {
-                                                        documents_content: s.systemPrompt,
-                                                        language: 'English',
-                                                        language_model_name: chosenModel,
-                                                        language_model_provider: 'openai',
-                                                        mode: 'summary',
-                                                        number_documents: 'single',
-                                                        user_question: ''
+                                                        documents_content_: s.systemPrompt,
+                                                        language_: 'English',
+                                                        language_model_name_: chosenModel,
+                                                        language_model_provider_: 'openai',
+                                                        mode_: 'summary',
+                                                        number_documents_: 'single',
+                                                        user_question_: 'Summarize the document.'
                                                 });
 
                                                 // Stop loading animations once response received
@@ -2073,14 +2356,16 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         const model = UI.elements.modelSelect.value || 'gpt-5-mini';
 
                                         // Step 3: Call MAS #2 LLM endpoint with documents and user question
+                                        const docs = cc.dataString || (State.summaryCache?.systemPrompt ?? '');
+                                        if (!docs) throw new Error('No documents content available for MAS LLM.');
                                         const reply = await API.postMas(Config.MODULE_URI_LLM, {
-                                                documents_content: cc.dataString || '',
-                                                language: 'English',
-                                                language_model_name: model,
-                                                language_model_provider: 'openai',
-                                                mode: 'chat',
-                                                number_documents: 'single',
-                                                user_question: userText
+                                                documents_content_: docs,
+                                                language_: 'English',
+                                                language_model_name_: model,
+                                                language_model_provider_: 'openai',
+                                                mode_: 'chat',
+                                                number_documents_: 'single',
+                                                user_question_: userText
                                         });
                                         return reply.trim();
                                 },
