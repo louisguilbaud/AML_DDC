@@ -2352,7 +2352,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                         mode_: 'summary',
                                                         number_documents_: 'single',
                                                         user_question_: 'Summarize the document.',
-                                                        customer_name: State.customerName || 'INSERT_CUSTOMER_NAME'
+                                                        customer_name_: State.customerName || 'INSERT_CUSTOMER_NAME'
                                                 });
 
                                                 // Stop loading animations once response received
@@ -2420,7 +2420,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 mode_: 'chat',
                                                 number_documents_: 'single',
                                                 user_question_: userText,
-                                                customer_name: State.customerName || ''
+                                                customer_name_: State.customerName || ''
                                         });
                                         return reply.trim();
                                 },
