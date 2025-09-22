@@ -1416,7 +1416,6 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 <option value="gpt-5">GPT-5</option>
                                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                                                 <option value="mistral-tiny">Mistral Tiny</option>
-                                                <option value="mistral-medium-2508">Mistral Medium</option>
                                         </select>
 
                                         <!--
@@ -1709,10 +1708,10 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         */
                         const Config = {
                                 // SAS Microanalytic Service Integration
-                                MODULE_URI: '/microanalyticScore/modules/test_aml_demo_data_retrieval1_0/steps/execute', 
+                                MODULE_URI: '/microanalyticScore/modules/test_aml_demo_data_retrieval2_0/steps/execute', 
                                 // Primary execution endpoint for AML data retrieval microanalytic module
 
-                                MODULE_URI_LLM: '/microanalyticScore/modules/document_aml_demo1_0/steps/execute',
+                                MODULE_URI_LLM: '/microanalyticScore/modules/document_aml_demo1_1/steps/execute',
                                 // Secondary execution endpoint for LLM processing via SAS Intelligent Decisioning
 
                                 CSRF_PRIMER_URL: '/microanalyticScore/modules',
@@ -2216,9 +2215,11 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         // Transform MAS outputs array into accessible object structure
                                         const out = Utils.outputsToMap(json.outputs || []);
                                         State.summaryCache = {
-                                                systemPrompt: out['systemPrompt'], // AI prompt with AML context and instructions
+                                                systemPrompt: out['systemPrompt'], // Data recieved from SAS API endpoints (no prompt anymore)
                                                 cutoff: out['CUTOFF_DATE']         // Data boundary for compliance reporting
                                         };
+                                        State.customerName = out['customer_name'] || out['CUSTOMER_NAME'] || '';
+
 
                                         return State.summaryCache;
                                 },
@@ -2256,8 +2257,9 @@ AML ALERT SUMMARIZER APPLICATION BODY
 
                                         const out = Utils.outputsToMap(json.outputs || []);
                                         State.chatCache = {
-                                                dataString: out['systemPrompt'] || '' // Chat-optimized prompt and context data
+                                                dataString: out['systemPrompt'] || '' // Data recieved from SAS API endpoints (no prompt anymore)
                                         };
+                                        if (!State.customerName) State.customerName = (out['customer_name'] || out['CUSTOMER_NAME'] || '');
 
                                         return State.chatCache;
                                 },
@@ -2349,7 +2351,8 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                         language_model_provider_: Utils.getProviderForModel(chosenModel),
                                                         mode_: 'summary',
                                                         number_documents_: 'single',
-                                                        user_question_: 'Summarize the document.'
+                                                        user_question_: 'Summarize the document.',
+                                                        customer_name: State.customerName || 'INSERT_CUSTOMER_NAME'
                                                 });
 
                                                 // Stop loading animations once response received
@@ -2416,7 +2419,8 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 language_model_provider_: Utils.getProviderForModel(model),
                                                 mode_: 'chat',
                                                 number_documents_: 'single',
-                                                user_question_: userText
+                                                user_question_: userText,
+                                                customer_name: State.customerName || ''
                                         });
                                         return reply.trim();
                                 },
