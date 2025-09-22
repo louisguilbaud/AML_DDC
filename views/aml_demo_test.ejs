@@ -2351,7 +2351,6 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                         language_model_name_: chosenModel,
                                                         language_model_provider_: Utils.getProviderForModel(chosenModel),
                                                         mode_: 'summary',
-                                                        number_documents_: 'single',
                                                         user_question_: 'Summarize the document.',
                                                         customer_name_: State.customerName || 'INSERT_CUSTOMER_NAME'
                                                 });
@@ -2419,7 +2418,6 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                                 language_model_name_: model,
                                                 language_model_provider_: Utils.getProviderForModel(model),
                                                 mode_: 'chat',
-                                                number_documents_: 'single',
                                                 user_question_: userText,
                                                 customer_name_: State.customerName || ''
                                         });
