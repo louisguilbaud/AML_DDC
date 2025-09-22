@@ -1706,7 +1706,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         */
                         const Config = {
                                 // SAS Microanalytic Service Integration
-                                MODULE_URI: '/microanalyticScore/modules/test_aml_demo_data_retrieval2_0/steps/execute', 
+                                MODULE_URI: '/microanalyticScore/modules/test_aml_demo_data_retrieval2_0/steps/execute',
                                 // Primary execution endpoint for AML data retrieval microanalytic module
 
                                 MODULE_URI_LLM: '/microanalyticScore/modules/document_aml_demo1_1/steps/execute',
@@ -1776,7 +1776,7 @@ AML ALERT SUMMARIZER APPLICATION BODY
                         while preserving essential formatting for readability in AML analysis reports.
                         */
                         const SANITIZE_CFG = {
-                                ALLOWED_TAGS: ['article','h1','h2','h3','p','ul','ol','li','strong','em','blockquote','b','i'],
+                                ALLOWED_TAGS: ['article', 'h1', 'h2', 'h3', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'blockquote', 'b', 'i'],
                                 // Whitelist of safe HTML tags for AI-generated content formatting
                                 // Limited to basic text formatting and structure elements
 
@@ -1955,10 +1955,30 @@ AML ALERT SUMMARIZER APPLICATION BODY
                                         this.elements.summarizeBtn.disabled = true;
 
                                         // Restore saved user preferences from localStorage
+
+                                        // Language
+                                        const langEl = this.elements.langSelect;
                                         const savedLang = localStorage.getItem('aml_lang');
-                                        if (savedLang) this.elements.langSelect.value = savedLang;
+                                        const langAllowed = Array.from(langEl.options).map(o => o.value);
+
+                                        if (savedLang && langAllowed.includes(savedLang)) {
+                                                langEl.value = savedLang;
+                                        } else {
+                                                if (langEl.selectedIndex < 0) langEl.selectedIndex = 0;   // ensure a selection
+                                                localStorage.setItem('aml_lang', langEl.value || 'English'); // persist fallback
+                                        }
+
+                                        // Model
+                                        const m = this.elements.modelSelect;
                                         const savedModel = localStorage.getItem('aml_model');
-                                        if (savedModel) this.elements.modelSelect.value = savedModel;
+                                        const allowed = Array.from(m.options).map(o => o.value);
+
+                                        if (savedModel && allowed.includes(savedModel)) {
+                                                m.value = savedModel;
+                                        } else {
+                                                if (m.selectedIndex < 0) m.selectedIndex = 0;
+                                                localStorage.setItem('aml_model', m.value || 'gpt-5-mini');
+                                        }
                                 },
 
                                 /*
