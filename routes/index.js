@@ -124,7 +124,7 @@ router.get("/aml_demo_test.html", function (req, res, next) {
 	res.render("aml_demo_test", { title: "AML demo test" });
 });
 
-router.get("/attached_invoices_and_receipts.pdf", function (req, res, next) {
+router.get("/attached_invoices_and_receipts.html", function (req, res, next) {
 	res.render("attached_invoices_and_receipts", { title: "attached invoices and receipts" });
 });
 
