@@ -124,8 +124,8 @@ router.get("/aml_demo_test.html", function (req, res, next) {
 	res.render("aml_demo_test", { title: "AML demo test" });
 });
 
-router.get("/attached invoices and receipts.pdf", function (req, res, next) {
-	res.render("attached invoices and receipts", { title: "attached invoices and receipts" });
+router.get("/attached_invoices_and_receipts.pdf", function (req, res, next) {
+	res.render("attached_invoices_and_receipts", { title: "attached invoices and receipts" });
 });
 
 module.exports = router;
