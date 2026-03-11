@@ -65,10 +65,6 @@ const displayForm = (message) => {
     return html
   })
 
-  console.log(
-							"test log",
-							displayForm
-						);
   // Add AML risk component
   formElements.push(riskComponent("rating"))
 
@@ -106,7 +102,7 @@ const displayForm = (message) => {
     })
 
     data["AML_RISK"] = selectedRisk
-
+	console.log("test log",data);
     // Call the SAS Viya Job
     const url = "https://sasserver.demo.sas.com"
 
