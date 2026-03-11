@@ -1,32 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1" />
 
-        <title>My DDC object</title>
-        <meta
-            name="description"
-            content="A simple HTML file for my DDC object." />
-        <script
-            type="text/javascript"
-            src="util/contentUtil.js"></script>
-        <script
-            type="text/javascript"
-            src="util/messagingUtil.js"></script>
-        <script
-            type="text/javascript"
-            src="lib/jquery.min.js"></script>
-        <link
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
-            rel="stylesheet"
-            integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3"
-            crossorigin="anonymous" />
-    </head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <body>
-        <h1>My Car Evaluation</h1>
-    </body>
+  <title>My DDC object</title>
+  <meta name="description" content="A simple HTML file for my DDC object.">
+  <script type="text/javascript" src="utils/messagingUtil.js"></script>
+  <script type="text/javascript" src="utils/jobExecutionUtil.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+  <!-- CSS only -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+    integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<style>
+  .checked {
+    color: orange;
+  }
+</style>
+
+<body>
+  <form id="evaluation" class="container"></form>
+  <script>
+    const displayForm = (message) => {
+      // Generate the different form elements using the VA data
+      const formElements = message.columns.map((element, index) => {
+        const html =
+          `
+          <div class="row m-3">
+              <label for="${element.name}" class="col-2">${element.label}</label>
+              <input type="text" id="${element.name}" name="${element.label}" value="${message.data[0][index]}" disabled class="col">
+          </div>
+          `
+        return html
+      })
+      // Add the ratingComponent to the form
+      formElements.push(ratingComponent(5, "rating"))
+      // Add a submit button to the form
+      formElements.push('<div class="row m-3"><button id="submitButton" type="submit" class="col btn btn-primary">Save evaluation</button></div>')
+      // Add title to the form
+      formElements.unshift("<h1 class='row m-3 bg-primary p-3'>Evaluation</h1>")
+
+      // Generate the form
+      $("#evaluation").html(formElements.join(""))
+      // Add click event to the rating component
+      $("#rating span").on("click", (event) => {
+        $("#rating span").removeClass("checked")
+        const selected = event.currentTarget.id.split("_")[1]
+        for (let index = 0; index <= selected; index++) {
+          $("#star_" + index).toggleClass("checked")
+        }
+      })
+      // Add submit event to the form
+      $("#submitButton").on("click", (event) => {
+        // Block normal processing of submit button
+        event.preventDefault()
+
+        // Collect information from the form
+        const data = {}
+        $("#evaluation input").each((index, element) => {
+          data[element.name] = element.value
+        })
+        data["rating"] = $("#rating").find(".checked").length
+
+        // Call the SAS Viya Job
+        const url = "https://live.stable.gel.race.sas.com"
+        const parameters = {
+          "_program": "/Users/sbxxab/My Folder/car_rating",
+        }
+        executeJob(url, data, parameters).then(response => console.log(response))
+
+        // Reinitialize the rating element
+        $("#rating span").removeClass("checked")
+      })
+    }
+
+    // Function to generate the rating element
+    const ratingComponent = (number, divID) => {
+      const stars = []
+      for (let index = 0; index < number; index++) {
+        const star = `<span class="fa fa-star" id="star_${index}"></span>`
+        stars.push(star)
+      }
+      return `
+                <div id=${divID} class="row m-3">
+                    <div class="col-2">
+                        Rating
+                    </div>
+                    <div class="col">
+                        ${stars.join('')}
+                    </div>
+                </div>
+                `
+    }
+
+    va.messagingUtil.setOnDataReceivedCallback(displayForm)
+  </script>
+</body>
+
 </html>
