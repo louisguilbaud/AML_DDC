@@ -7,98 +7,158 @@
 
   <title>My DDC object</title>
   <meta name="description" content="A simple HTML file for my DDC object.">
-  <script type="text/javascript" src="./javascripts/sas/util/messagingUtil.js"></script>
-  <script type="text/javascript" src="./javascripts/sas/util/jobExecutionUtil.js"></script>
-  <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="utils/messagingUtil.js"></script>
+  <script type="text/javascript" src="utils/jobExecutionUtil.js"></script>
+
+  <script src="https://code.jquery.com/jquery-3.6.1.min.js"
+    integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
+    crossorigin="anonymous"></script>
+
   <!-- CSS only -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
-    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
-    integrity="sha512-xh6O/CkQoPOWDdYTDqeRdPCVd1SpvCA9XXcUnZS2FmJNp1coAFzvtCN9BmamE+4aHK8yyUHUSCcJHgXloTyT2A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+    crossorigin="anonymous">
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
 </head>
+
 <style>
-  .checked {
-    color: orange;
-  }
+
+.selected-risk{
+  box-shadow:0 0 8px rgba(0,0,0,0.4);
+  transform:scale(1.05);
+}
+
 </style>
 
 <body>
-  <form id="evaluation" class="container"></form>
-  <script>
-    const displayForm = (message) => {
-      // Generate the different form elements using the VA data
-      const formElements = message.columns.map((element, index) => {
-        const html =
-          `
-          <div class="row m-3">
-              <label for="${element.name}" class="col-2">${element.label}</label>
-              <input type="text" id="${element.name}" name="${element.label}" value="${message.data[0][index]}" disabled class="col">
-          </div>
-          `
-        return html
-      })
-      // Add the ratingComponent to the form
-      formElements.push(ratingComponent(5, "rating"))
-      // Add a submit button to the form
-      formElements.push('<div class="row m-3"><button id="submitButton" type="submit" class="col btn btn-primary">Save evaluation</button></div>')
-      // Add title to the form
-      formElements.unshift("<h1 class='row m-3 bg-primary p-3'>Evaluation</h1>")
 
-      // Generate the form
-      $("#evaluation").html(formElements.join(""))
-      // Add click event to the rating component
-      $("#rating span").on("click", (event) => {
-        $("#rating span").removeClass("checked")
-        const selected = event.currentTarget.id.split("_")[1]
-        for (let index = 0; index <= selected; index++) {
-          $("#star_" + index).toggleClass("checked")
-        }
-      })
-      // Add submit event to the form
-      $("#submitButton").on("click", (event) => {
-        // Block normal processing of submit button
-        event.preventDefault()
+<form id="evaluation" class="container"></form>
 
-        // Collect information from the form
-        const data = {}
-        $("#evaluation input").each((index, element) => {
-          data[element.name] = element.value
-        })
-        data["rating"] = $("#rating").find(".checked").length
+<script>
 
-        // Call the SAS Viya Job
-        const url = "https://sasserver.demo.sas.com/SASStudio/"
-        const parameters = {
-          "_program": "/Public/countries_rating",
-        }
-        executeJob(url, data, parameters).then(response => console.log(response))
+let selectedRisk = 0
 
-        // Reinitialize the rating element
-        $("#rating span").removeClass("checked")
-      })
+const displayForm = (message) => {
+
+  // Generate the different form elements using the VA data
+  const formElements = message.columns.map((element, index) => {
+
+    const html =
+
+      `
+      <div class="row m-3">
+          <label for="${element.name}" class="col-2">${element.label}</label>
+          <input type="text"
+          id="${element.name}"
+          name="${element.label}"
+          value="${message.data[0][index]}"
+          disabled
+          class="col">
+      </div>
+      `
+
+    return html
+  })
+
+  // Add AML risk component
+  formElements.push(riskComponent("rating"))
+
+  // Add submit button
+  formElements.push('<div class="row m-3"><button id="submitButton" type="submit" class="col btn btn-primary">Save evaluation</button></div>')
+
+  // Add title
+  formElements.unshift("<h1 class='row m-3 bg-primary p-3'>Evaluation</h1>")
+
+  // Generate the form
+  $("#evaluation").html(formElements.join(""))
+
+
+  // Handle risk button click
+  $(".risk-btn").on("click", function () {
+
+    $(".risk-btn").removeClass("selected-risk")
+
+    $(this).addClass("selected-risk")
+
+    selectedRisk = $(this).data("value")
+
+  })
+
+
+  // Submit event
+  $("#submitButton").on("click", (event) => {
+
+    event.preventDefault()
+
+    const data = {}
+
+    $("#evaluation input").each((index, element) => {
+      data[element.name] = element.value
+    })
+
+    data["AML_RISK"] = selectedRisk
+
+    // Call the SAS Viya Job
+    const url = "https://sasserver.demo.sas.com"
+
+    const parameters = {
+      "_program": "/Public/countries_rating",
     }
 
-    // Function to generate the rating element
-    const ratingComponent = (number, divID) => {
-      const stars = []
-      for (let index = 0; index < number; index++) {
-        const star = `<span class="fa fa-star" id="star_${index}"></span>`
-        stars.push(star)
-      }
-      return `
-                <div id=${divID} class="row m-3">
-                    <div class="col-2">
-                        Rating
-                    </div>
-                    <div class="col">
-                        ${stars.join('')}
-                    </div>
-                </div>
-                `
-    }
+    executeJob(url, data, parameters).then(response => console.log(response))
 
-    va.messagingUtil.setOnDataReceivedCallback(displayForm)
-  </script>
+    $(".risk-btn").removeClass("selected-risk")
+    selectedRisk = 0
+
+  })
+}
+
+
+// AML Risk component
+const riskComponent = (divID) => {
+
+  return `
+  <div id=${divID} class="row m-3">
+
+      <div class="col-2">
+          AML Risk
+      </div>
+
+      <div class="col">
+
+          <button type="button"
+          class="btn btn-success risk-btn"
+          data-value="1">
+          Low Risk
+          </button>
+
+          <button type="button"
+          class="btn btn-warning risk-btn"
+          data-value="2">
+          Medium Risk
+          </button>
+
+          <button type="button"
+          class="btn btn-danger risk-btn"
+          data-value="3">
+          High Risk
+          </button>
+
+      </div>
+
+  </div>
+  `
+}
+
+va.messagingUtil.setOnDataReceivedCallback(displayForm)
+
+</script>
+
 </body>
 
 </html>
