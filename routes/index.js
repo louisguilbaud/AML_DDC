@@ -128,4 +128,8 @@ router.get("/attached_invoices_and_receipts.html", function (req, res, next) {
 	res.render("attached_invoices_and_receipts", { title: "attached invoices and receipts" });
 });
 
+router.get("/countries_risk_rating.html", function (req, res, next) {
+	res.render("countries_risk_rating", { title: "countries_risk_rating" });
+});
+
 module.exports = router;
