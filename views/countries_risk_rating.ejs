@@ -2,42 +2,67 @@
 <html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>My DDC object</title>
-  <meta name="description" content="A simple HTML file for my DDC object.">
-  <script type="text/javascript" src="./javascripts/sas/util/messagingUtil.js"></script>
-  <script type="text/javascript" src="./javascripts/sas/util/jobExecutionUtil.js"></script>
+<title>AML Evaluation</title>
 
-  <script src="https://code.jquery.com/jquery-3.6.1.min.js"
-    integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
-    crossorigin="anonymous"></script>
+<script src="utils/messagingUtil.js"></script>
+<script src="utils/jobExecutionUtil.js"></script>
 
-  <!-- CSS only -->
-  <link rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
-    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
-    crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
-    crossorigin="anonymous" referrerpolicy="no-referrer" />
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
 
-</head>
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
 <style>
 
+body{
+background:#f4f6f9;
+}
+
+.container-box{
+background:white;
+padding:30px;
+border-radius:8px;
+box-shadow:0 4px 12px rgba(0,0,0,0.15);
+max-width:700px;
+margin:auto;
+margin-top:40px;
+}
+
 .selected-risk{
-  box-shadow:0 0 8px rgba(0,0,0,0.4);
-  transform:scale(1.05);
+box-shadow:0 0 8px rgba(0,0,0,0.4);
+transform:scale(1.05);
+}
+
+.risk-btn{
+margin-right:10px;
+min-width:130px;
+}
+
+.form-control[disabled]{
+background:#f8f9fa;
+font-weight:500;
+}
+
+h1{
+font-size:28px;
+color:white;
 }
 
 </style>
 
+</head>
+
 <body>
 
-<form id="evaluation" class="container"></form>
+<div class="container-box">
+<form id="evaluation"></form>
+</div>
 
 <script>
 
@@ -45,114 +70,109 @@ let selectedRisk = 0
 
 const displayForm = (message) => {
 
-  // Generate the different form elements using the VA data
-  const formElements = message.columns.map((element, index) => {
+const formElements = message.columns.map((element, index) => {
 
-    const html =
+const html =
 
-      `
-      <div class="row m-3">
-          <label for="${element.name}" class="col-2">${element.label}</label>
-          <input type="text"
-          id="${element.name}"
-          name="${element.label}"
-          value="${message.data[0][index]}"
-          disabled
-          class="col">
-      </div>
-      `
+`
+<div class="mb-3">
 
-    return html
-  })
+<label class="form-label fw-bold">${element.label}</label>
 
-  // Add AML risk component
-  formElements.push(riskComponent("rating"))
+<input
+type="text"
+id="${element.name}"
+name="${element.label}"
+value="${message.data[0][index]}"
+disabled
+class="form-control">
 
-  // Add submit button
-  formElements.push('<div class="row m-3"><button id="submitButton" type="submit" class="col btn btn-primary">Save evaluation</button></div>')
+</div>
+`
 
-  // Add title
-  formElements.unshift("<h1 class='row m-3 bg-primary p-3'>Evaluation</h1>")
+return html
 
-  // Generate the form
-  $("#evaluation").html(formElements.join(""))
+})
+
+formElements.push(riskComponent("rating"))
+
+formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4'>Evaluation</h1>")
+
+$("#evaluation").html(formElements.join(""))
 
 
-  // Handle risk button click
-  $(".risk-btn").on("click", function () {
+$(".risk-btn").on("click", function(){
 
-    $(".risk-btn").removeClass("selected-risk")
+$(".risk-btn").removeClass("selected-risk")
 
-    $(this).addClass("selected-risk")
+$(this).addClass("selected-risk")
 
-    selectedRisk = $(this).data("value")
+selectedRisk = $(this).data("value")
 
-  })
+executeEvaluation()
 
+})
 
-  // Submit event
-  $("#submitButton").on("click", (event) => {
-
-    event.preventDefault()
-
-    const data = {}
-
-    $("#evaluation input").each((index, element) => {
-      data[element.name] = element.value
-    })
-
-    data["AML_RISK"] = selectedRisk
-	console.log("test log",data);
-    // Call the SAS Viya Job
-    const url = "https://sasserver.demo.sas.com"
-
-    const parameters = {
-      "_program": "/Public/countries_rating",
-    }
-
-    executeJob(url, data, parameters).then(response => console.log(response))
-
-    $(".risk-btn").removeClass("selected-risk")
-    selectedRisk = 0
-
-  })
 }
 
 
-// AML Risk component
+function executeEvaluation(){
+
+const data = {}
+
+$("#evaluation input").each((index, element) => {
+data[element.name] = element.value
+})
+
+data["AML_RISK"] = selectedRisk
+
+const url = "https://sasserver.demo.sas.com/SASStudio/"
+
+const parameters = {
+"_program": "/Public/countries_rating",
+}
+
+executeJob(url, data, parameters)
+.then(response => console.log(response))
+
+}
+
+
+// AML Risk buttons
 const riskComponent = (divID) => {
 
-  return `
-  <div id=${divID} class="row m-3">
+return `
+<div id=${divID} class="mb-3">
 
-      <div class="col-2">
-          AML Risk
-      </div>
+<label class="form-label fw-bold">AML Risk</label>
 
-      <div class="col">
+<div>
 
-          <button type="button"
-          class="btn btn-success risk-btn"
-          data-value="1">
-          Low Risk
-          </button>
+<button
+type="button"
+class="btn btn-success risk-btn"
+data-value="1">
+Low Risk
+</button>
 
-          <button type="button"
-          class="btn btn-warning risk-btn"
-          data-value="2">
-          Medium Risk
-          </button>
+<button
+type="button"
+class="btn btn-warning risk-btn"
+data-value="2">
+Medium Risk
+</button>
 
-          <button type="button"
-          class="btn btn-danger risk-btn"
-          data-value="3">
-          High Risk
-          </button>
+<button
+type="button"
+class="btn btn-danger risk-btn"
+data-value="3">
+High Risk
+</button>
 
-      </div>
+</div>
 
-  </div>
-  `
+</div>
+`
 }
 
 va.messagingUtil.setOnDataReceivedCallback(displayForm)
