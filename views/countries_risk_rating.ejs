@@ -22,8 +22,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css"
 html, body {
   height: 100%;
   margin: 0;
-  overflow: hidden; /* bloque le scroll */
-  background: white; /* fond blanc */
+  overflow: hidden;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,26 +56,29 @@ html, body {
   min-width:120px;
 }
 
-/* Conteneur des boutons + loader */
+/* Conteneur des boutons */
 .risk-container {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 20px;
   margin-top: 20px;
+  position: relative; /* nécessaire pour le cercle en absolu */
 }
 
-/* Cercle de chargement */
+/* Cercle de chargement à droite */
 .loader-circle {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #0d6efd; /* bleu Bootstrap */
+  border-top: 4px solid #0d6efd;
   border-radius: 50%;
-  animation: spin 5s linear forwards;
+  position: absolute;
+  right: -60px; /* espace à droite des boutons */
+  display: none;
+  animation: spin 6s linear forwards;
 }
 
-/* Animation rotation 360° */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
@@ -87,9 +90,7 @@ html, body {
 <body>
 
 <div class="container-box">
-
   <form id="evaluation"></form>
-
 </div>
 
 <script>
@@ -98,9 +99,7 @@ let selectedRisk = 0
 const displayForm = (message) => {
 
   const formElements = message.columns.map((element, index) => {
-
     const label = element.label.replace("_"," ")
-
     return `
     <div class="row mb-3 align-items-center">
       <label class="col-4 col-form-label fw-bold">${label}</label>
@@ -122,18 +121,17 @@ const displayForm = (message) => {
   $("#evaluation").html(formElements.join(""))
 
   $(".risk-btn").on("click", function(){
-
     $(".risk-btn").removeClass("selected-risk")
     $(this).addClass("selected-risk")
     selectedRisk = $(this).data("value")
 
-    // Affiche le cercle de chargement à côté du bouton cliqué
-    $(".loader-circle").show()
-    setTimeout(() => { $(".loader-circle").hide() }, 5000)
+    // Affiche le cercle
+    const loader = $(this).closest(".risk-container").find(".loader-circle")
+    loader.show()
+    setTimeout(() => { loader.hide() }, 6000)
 
     executeEvaluation()
   })
-
 }
 
 function executeEvaluation(){
@@ -154,12 +152,10 @@ function executeEvaluation(){
 const riskComponentWithLoader = (divID) => {
   return `
   <div id="${divID}" class="risk-container">
-
     <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
     <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
     <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
-
-    <div class="loader-circle" style="display:none;"></div>
+    <div class="loader-circle"></div>
   </div>
   `
 }
