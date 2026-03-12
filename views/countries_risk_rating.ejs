@@ -54,26 +54,17 @@
 
         .risk-btn {
             min-width: 130px;
-            transition: all 0.1s ease;
             border-radius: 6px;
             font-weight: 500;
+            transition: none; /* Désactive toutes les transitions fluides */
         }
 
-        /* Effet de clic (feedback rapide) */
-        .btn-clicked {
-            animation: click-pop 0.3s ease-out;
-        }
-
-        @keyframes click-pop {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; transform: scale(0.98); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-
-        /* État sélectionné discret */
+        /* État sélectionné purement statique */
         .selected-risk {
             font-weight: 800 !important;
-            border-width: 2px !important;
+            border-width: 3px !important;
+            box-shadow: none !important;
+            transform: none !important;
         }
 
         .col-form-label {
@@ -106,7 +97,7 @@
                                name="${label}"
                                value="${message.data[0][index]}"
                                disabled
-                               class="form-control shadow-sm">
+                               class="form-control">
                     </div>
                 </div>
                 `;
@@ -116,17 +107,11 @@
             $("#evaluation").html(formElements.join(""));
 
             $(".risk-btn").on("click", function() {
-                const $this = $(this);
-
-                // Feedback visuel rapide (pop)
-                $this.addClass("btn-clicked");
-                setTimeout(() => $this.removeClass("btn-clicked"), 300);
-
-                // Gestion de la sélection
+                // Changement d'état immédiat sans animation
                 $(".risk-btn").removeClass("selected-risk");
-                $this.addClass("selected-risk");
+                $(this).addClass("selected-risk");
                 
-                selectedRisk = $this.data("value");
+                selectedRisk = $(this).data("value");
                 executeEvaluation();
             });
         }
