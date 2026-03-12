@@ -18,10 +18,11 @@
             height: 100%;
             margin: 0;
             overflow: hidden;
-            background: #f8f9fa;
+            background: #f4f7f9; /* Fond légèrement gris pour faire ressortir la box */
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
         .container-box {
@@ -31,57 +32,65 @@
             width: 700px;
             max-width: 90%;
             padding: 40px;
-            max-height: 90vh;
+            max-height: 90vh; 
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
 
         .form-control[disabled] {
-            background: #ffffff;
+            background: #f8f9fa;
             font-weight: 500;
             border: 1px solid #dee2e6;
-            color: #212529;
+            color: #333;
         }
 
         .risk-container {
             display: flex;
             justify-content: center;
-            gap: 20px;
+            align-items: center;
+            gap: 15px;
             margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-            position: relative; /* Pour positionner le loader sans bouger les boutons */
+            padding-top: 25px;
+            border-top: 1px solid #edf2f7;
         }
 
+        /* Style Premium pour les boutons sélectionnés */
         .selected-risk {
-            box-shadow: 0 0 0 4px rgba(0,0,0,0.1);
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.1), inset 0 0 10px rgba(0,0,0,0.1);
             transform: scale(1.05);
             font-weight: bold;
         }
 
         .risk-btn {
-            min-width: 140px;
-            transition: all 0.2s ease;
+            min-width: 130px;
+            transition: all 0.2s ease-in-out;
+            border-radius: 6px;
         }
 
-        /* Le cercle de chargement */
+        /* Loader discret et aligné */
         .loader-circle {
-            width: 30px;
-            height: 30px;
+            width: 26px;
+            height: 26px;
             border: 3px solid #f3f3f3;
             border-top: 3px solid #0d6efd;
             border-radius: 50%;
-            position: absolute;
-            left: 20px; /* Aligné à gauche dans le container des boutons */
-            top: 50%;
-            transform: translateY(-50%);
-            display: none;
-            animation: spin 1s linear infinite;
+            display: none; /* Géré par jQuery fadeIn/fadeOut */
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
         }
 
         @keyframes spin {
-            0% { transform: translateY(-50%) rotate(0deg); }
-            100% { transform: translateY(-50%) rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Labels plus lisibles */
+        .col-form-label {
+            color: #4a5568;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
         }
     </style>
 </head>
@@ -93,63 +102,56 @@
     </div>
 
     <script>
-        let selectedRisk = 0
+        let selectedRisk = 0;
 
         const displayForm = (message) => {
             const formElements = message.columns.map((element, index) => {
-                const label = element.label.replace("_", " ")
+                const label = element.label.replace("_", " ");
                 return `
                 <div class="row mb-3 align-items-center">
-                    <label class="col-4 col-form-label fw-bold text-secondary">${label}</label>
+                    <label class="col-4 col-form-label fw-bold">${label}</label>
                     <div class="col-8">
                         <input type="text"
                                id="${element.name}"
-                               name="${label}" 
+                               name="${label}"
                                value="${message.data[0][index]}"
                                disabled
-                               class="form-control">
+                               class="form-control shadow-sm">
                     </div>
                 </div>
-                `
-            })
+                `;
+            });
 
-            formElements.push(riskComponent("rating"))
-            $("#evaluation").html(formElements.join(""))
+            formElements.push(riskComponent("rating"));
+            $("#evaluation").html(formElements.join(""));
 
-            $(".risk-btn").on("click", function () {
-                $(".risk-btn").removeClass("selected-risk")
-                $(this).addClass("selected-risk")
-                selectedRisk = $(this).data("value")
-                
-                // Afficher le loader
+            $(".risk-btn").on("click", function() {
+                $(".risk-btn").removeClass("selected-risk");
+                $(this).addClass("selected-risk");
+                selectedRisk = $(this).data("value");
+
+                // Affichage du loader
                 $(".loader-circle").fadeIn(200);
 
-                executeEvaluation()
-            })
+                executeEvaluation();
+            });
         }
 
         function executeEvaluation() {
-            const data = {}
+            const data = {};
             $("#evaluation input").each((index, element) => {
-                data[element.name] = element.value
-            })
-            
-            data["AML RISK"] = selectedRisk
+                data[element.name] = element.value;
+            });
+            data["AML RISK"] = selectedRisk;
 
-            const url = "https://sasserver.demo.sas.com"
-            const parameters = {
-                "_program": "/Public/countries_rating"
-            }
+            const url = "https://sasserver.demo.sas.com";
+            const parameters = { "_program": "/Public/countries_rating" };
 
             executeJob(url, data, parameters)
-                .then(response => {
-                    console.log("Success:", response);
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                })
+                .then(response => console.log("Success:", response))
+                .catch(error => console.error("Error:", error))
                 .finally(() => {
-                    // Cacher le loader proprement à la fin de la requête
+                    // Arrêt du loader dès que la réponse arrive (succès ou erreur)
                     $(".loader-circle").fadeOut(200);
                 });
         }
@@ -158,17 +160,14 @@
             return `
             <div id="${divID}" class="risk-container">
                 <div class="loader-circle"></div>
-                <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
-                <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
-                <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
+                <button type="button" class="btn btn-outline-success risk-btn" data-value="1">Low Risk</button>
+                <button type="button" class="btn btn-outline-warning risk-btn" data-value="2">Medium Risk</button>
+                <button type="button" class="btn btn-outline-danger risk-btn" data-value="3">High Risk</button>
             </div>
-            `
+            `;
         }
 
-        // Liaison SAS VA
-        if (typeof va !== "undefined" && va.messagingUtil) {
-            va.messagingUtil.setOnDataReceivedCallback(displayForm);
-        }
+        va.messagingUtil.setOnDataReceivedCallback(displayForm);
     </script>
 
 </body>
