@@ -56,16 +56,26 @@
             min-width: 130px;
             border-radius: 6px;
             font-weight: 500;
-            transition: none; /* Désactive toutes les transitions fluides */
+            transition: none;
         }
 
-        /* État sélectionné purement statique */
+        /* Correction du contraste pour Medium Risk */
+        .btn-outline-warning:hover, 
+        .selected-risk.btn-outline-warning {
+            color: white !important;
+            background-color: #ffc107 !important;
+        }
+
         .selected-risk {
             font-weight: 800 !important;
             border-width: 3px !important;
-            box-shadow: none !important;
-            transform: none !important;
+            color: white !important; /* Force le blanc sur tous les sélectionnés */
         }
+
+        /* On remplit le fond quand c'est sélectionné */
+        .selected-risk.btn-outline-success { background-color: #198754; }
+        .selected-risk.btn-outline-warning { background-color: #ffc107; }
+        .selected-risk.btn-outline-danger { background-color: #dc3545; }
 
         .col-form-label {
             color: #4a5568;
@@ -107,7 +117,6 @@
             $("#evaluation").html(formElements.join(""));
 
             $(".risk-btn").on("click", function() {
-                // Changement d'état immédiat sans animation
                 $(".risk-btn").removeClass("selected-risk");
                 $(this).addClass("selected-risk");
                 
