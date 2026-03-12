@@ -2,200 +2,158 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AML Evaluation</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <script src="./javascripts/sas/util/messagingUtil.js"></script>
-    <script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+<title>AML Evaluation</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+<script src="./javascripts/sas/util/messagingUtil.js"></script>
+<script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            overflow: hidden;
-            background: #f4f7f9;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
-        .container-box {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 700px;
-            max-width: 95%;
-            padding: 40px;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-        .form-control[disabled] {
-            background: #f8f9fa;
-            font-weight: 500;
-            color: #333;
-            border: 1px solid #dee2e6;
-        }
+.container-box {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 700px;
+  max-width: 90%;
+  padding: 30px;
+  max-height: 90vh; 
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
 
-        /* Effet sur le bouton sélectionné */
-        .selected-risk {
-            box-shadow: 0 0 0 3px rgba(0,0,0,0.1), inset 0 0 10px rgba(0,0,0,0.2);
-            transform: scale(1.02);
-            font-weight: bold;
-        }
+.form-control[disabled]{
+  background:#f8f9fa;
+  font-weight:500;
+}
 
-        .risk-btn {
-            min-width: 110px;
-            transition: all 0.2s ease;
-        }
+.selected-risk{
+  box-shadow:0 0 8px rgba(0,0,0,0.4);
+  transform:scale(1.05);
+}
 
-        /* Cercle de chargement optimisé */
-        .loader-circle {
-            width: 24px;
-            height: 24px;
-            border: 3px solid #e9ecef;
-            border-top: 3px solid #0d6efd;
-            border-radius: 50%;
-            /* Utilisation de l'opacité pour éviter le saut de mise en page */
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s;
-            animation: spin 0.8s linear infinite;
-            margin-right: 15px;
-        }
+.risk-btn{
+  min-width:120px;
+  margin-right: 10px;
+}
 
-        .loader-circle.active {
-            opacity: 1;
-            visibility: visible;
-        }
+/* Cercle de chargement - Corrigé pour l'alignement */
+.loader-circle {
+  width: 25px;
+  height: 25px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #0d6efd;
+  border-radius: 50%;
+  display: none;
+  animation: spin 1s linear infinite; /* Changé en infinite pour qu'il tourne en continu */
+  margin-right: 15px; /* Espace constant avec les boutons */
+}
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .risk-row {
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-            margin-top: 10px;
-        }
-    </style>
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+</style>
 </head>
 
 <body>
 
-    <div class="container-box">
-        <form id="evaluation"></form>
+<div class="container-box">
+  <form id="evaluation"></form>
+</div>
+
+<script>
+let selectedRisk = 0;
+
+const displayForm = (message) => {
+
+  const formElements = message.columns.map((element, index) => {
+    const label = element.label.replace("_"," ")
+    return `
+    <div class="row mb-3 align-items-center">
+      <label class="col-4 col-form-label fw-bold">${label}</label>
+      <div class="col-8">
+        <input type="text"
+        id="${element.name}"
+        name="${element.name}"
+        value="${message.data[0][index]}"
+        disabled
+        class="form-control">
+      </div>
     </div>
+    `;
+  });
 
-    <script>
-        let selectedRisk = 0;
+  formElements.push(riskButtonsRow("rating"));
 
-        // Configuration de l'affichage du formulaire
-        const displayForm = (message) => {
-            if (!message || !message.columns) return;
+  $("#evaluation").html(formElements.join(""));
 
-            const formElements = message.columns.map((element, index) => {
-                const label = element.label.replace("_", " ");
-                return `
-                <div class="row mb-3 align-items-center">
-                    <label class="col-4 col-form-label fw-bold text-secondary text-uppercase" style="font-size: 0.85rem;">${label}</label>
-                    <div class="col-8">
-                        <input type="text"
-                            id="${element.name}"
-                            name="${element.name}"
-                            value="${message.data[0][index]}"
-                            disabled
-                            class="form-control">
-                    </div>
-                </div>
-                `;
-            });
+  $(".risk-btn").on("click", function(){
+    $(".risk-btn").removeClass("selected-risk")
+    $(this).addClass("selected-risk")
+    selectedRisk = $(this).data("value")
 
-            // Ajout de la ligne des boutons
-            formElements.push(riskButtonsRow("rating_section"));
+    // Affiche le loader
+    const loader = $(this).closest(".risk-row").find(".loader-circle")
+    loader.css("display", "inline-block")
+    
+    // On cache le loader après l'exécution (ajusté à 3s pour l'exemple)
+    setTimeout(() => { loader.hide() }, 3000)
 
-            $("#evaluation").html(formElements.join(""));
+    executeEvaluation()
+  })
+}
 
-            // Gestionnaire d'événements
-            $(".risk-btn").on("click", function () {
-                const $btn = $(this);
-                const $loader = $(".loader-circle");
+function executeEvaluation(){
+  const data = {}
+  $("#evaluation input").each((index, element) => {
+    data[element.name] = element.value
+  })
+  data["AML RISK"] = selectedRisk
 
-                // UI update
-                $(".risk-btn").removeClass("selected-risk");
-                $btn.addClass("selected-risk");
-                selectedRisk = $btn.data("value");
+  const url = "https://sasserver.demo.sas.com"
+  const parameters = { "_program": "/Public/countries_rating" }
 
-                // Afficher le loader et lancer l'exécution
-                $loader.addClass("active");
-                executeEvaluation($loader);
-            });
-        }
+  executeJob(url, data, parameters)
+  .then(response => console.log(response))
+}
 
-        function executeEvaluation($loader) {
-            const data = {};
-            $("#evaluation input").each((index, element) => {
-                data[element.name] = element.value;
-            });
-            data["AML_RISK"] = selectedRisk;
+const riskButtonsRow = (divID) => {
+  return `
+  <div id="${divID}" class="row mb-3 align-items-center risk-row">
+    <div class="col-4"></div> 
+    <div class="col-8 d-flex align-items-center">
+      <div class="loader-circle"></div> 
+      <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
+      <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
+      <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
+    </div>
+  </div>
+  `;
+}
 
-            const url = "https://sasserver.demo.sas.com";
-            const parameters = { "_program": "/Public/countries_rating" };
-
-            // Appel SAS Job Execution
-            executeJob(url, data, parameters)
-                .then(response => {
-                    console.log("Success:", response);
-                })
-                .catch(err => {
-                    console.error("Error:", err);
-                })
-                .finally(() => {
-                    // Cacher le loader quel que soit le résultat
-                    $loader.removeClass("active");
-                });
-        }
-
-        // Template de la ligne de notation avec loader aligné
-        const riskButtonsRow = (divID) => {
-            return `
-            <div id="${divID}" class="row align-items-center risk-row">
-                <div class="col-4">
-                    <span class="fw-bold text-primary">UPDATE RISK:</span>
-                </div>
-                <div class="col-8 d-flex align-items-center">
-                    <div class="loader-circle"></div>
-                    <div class="btn-group shadow-sm" role="group">
-                        <button type="button" class="btn btn-outline-success risk-btn" data-value="1">Low</button>
-                        <button type="button" class="btn btn-outline-warning risk-btn" data-value="2">Medium</button>
-                        <button type="button" class="btn btn-outline-danger risk-btn" data-value="3">High</button>
-                    </div>
-                </div>
-            </div>
-            `;
-        }
-
-        // Initialisation du canal de communication SAS
-        if (typeof va !== "undefined" && va.messagingUtil) {
-            va.messagingUtil.setOnDataReceivedCallback(displayForm);
-        } else {
-            // Mode test si hors environnement SAS
-            console.warn("SAS Messaging Util non détecté. Simulation du formulaire.");
-            const mockData = {
-                columns: [{label: "Country_Name", name: "country"}, {label: "ISO2", name: "iso"}, {label: "Current_AML_Risk", name: "risk"}],
-                data: [["France", "FR", "Low"]]
-            };
-            displayForm(mockData);
-        }
-    </script>
+if (typeof va !== "undefined" && va.messagingUtil) {
+    va.messagingUtil.setOnDataReceivedCallback(displayForm);
+}
+</script>
 
 </body>
 </html>
