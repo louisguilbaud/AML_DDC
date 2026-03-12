@@ -63,20 +63,17 @@ html, body {
   align-items: center;
   gap: 20px;
   margin-top: 20px;
-  position: relative; /* nécessaire pour le cercle en absolu */
 }
 
-/* Cercle de chargement à droite */
+/* Cercle de chargement */
 .loader-circle {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #0d6efd;
+  border-top: 4px solid #0d6efd; /* bleu Bootstrap */
   border-radius: 50%;
-  position: absolute;
-  right: -60px; /* espace à droite des boutons */
   display: none;
-  animation: spin 6s linear forwards;
+  animation: spin 6s linear forwards; /* 6 secondes */
 }
 
 @keyframes spin {
@@ -94,7 +91,7 @@ html, body {
 </div>
 
 <script>
-let selectedRisk = 0
+let selectedRisk = 0;
 
 const displayForm = (message) => {
 
@@ -112,23 +109,23 @@ const displayForm = (message) => {
         class="form-control">
       </div>
     </div>
-    `
-  })
+    `;
+  });
 
-  // Ajout du composant AML Risk avec loader
-  formElements.push(riskComponentWithLoader("rating"))
+  // Ajout du composant AML Risk avec loader collé à High Risk
+  formElements.push(riskComponentWithLoader("rating"));
 
-  $("#evaluation").html(formElements.join(""))
+  $("#evaluation").html(formElements.join(""));
 
   $(".risk-btn").on("click", function(){
     $(".risk-btn").removeClass("selected-risk")
     $(this).addClass("selected-risk")
     selectedRisk = $(this).data("value")
 
-    // Affiche le cercle
+    // Cercle juste à côté du High Risk
     const loader = $(this).closest(".risk-container").find(".loader-circle")
     loader.show()
-    setTimeout(() => { loader.hide() }, 6000)
+    setTimeout(() => { loader.hide() }, 6000) // 6 secondes
 
     executeEvaluation()
   })
@@ -148,19 +145,21 @@ function executeEvaluation(){
   .then(response => console.log(response))
 }
 
-// AML Risk buttons + loader
+// AML Risk buttons + loader à côté de High Risk
 const riskComponentWithLoader = (divID) => {
   return `
   <div id="${divID}" class="risk-container">
     <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
     <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
-    <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
-    <div class="loader-circle"></div>
+    <div style="position: relative; display: inline-block;">
+      <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
+      <div class="loader-circle" style="position:absolute; top:50%; left:100%; transform: translate(5px, -50%);"></div>
+    </div>
   </div>
-  `
+  `;
 }
 
-va.messagingUtil.setOnDataReceivedCallback(displayForm)
+va.messagingUtil.setOnDataReceivedCallback(displayForm);
 </script>
 
 </body>
