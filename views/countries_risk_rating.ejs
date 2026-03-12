@@ -58,12 +58,6 @@ html, body {
   font-weight:500;
 }
 
-h1{
-  font-size:28px;
-  color:white;
-  text-align:center;
-}
-
 .selected-risk{
   box-shadow:0 0 8px rgba(0,0,0,0.4);
   transform:scale(1.05);
@@ -123,7 +117,8 @@ return html
 
 })
 
-formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4 text-center'>Evaluation</h1>")
+// Ligne supprimée pour enlever le gros titre
+// formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4 text-center'>Evaluation</h1>")
 
 formElements.push(riskComponent("rating"))
 
@@ -168,8 +163,6 @@ executeJob(url, data, parameters)
 
 }
 
-
-// AML Risk buttons
 const riskComponent = (divID) => {
 
 return `
