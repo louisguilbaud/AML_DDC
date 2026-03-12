@@ -1,206 +1,51 @@
-<!doctype html>
-<html lang="en">
-
-<head>
-
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>AML Evaluation</title>
-
-<script src="./javascripts/sas/util/messagingUtil.js"></script>
-<script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
-
-<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
-
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
-
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-
-<style>
-
-html, body{
-height:100%;
-margin:0;
-overflow:hidden;
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* bloque le scroll */
+  background: white; /* fond blanc */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-body{
-display:flex;
-align-items:center;
-justify-content:center;
-}
+.container-box {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 700px;
+  max-width: 90%;
+  padding: 30px;
 
-.container-box{
-background:white;
-padding:30px;
-border-radius:8px;
-box-shadow:0 4px 12px rgba(0,0,0,0.15);
-width:700px;
-max-width:90%;
-}
-
-.selected-risk{
-box-shadow:0 0 8px rgba(0,0,0,0.4);
-transform:scale(1.05);
-}
-
-.risk-btn{
-min-width:140px;
-}
-
-.form-control[disabled]{
-background:#f8f9fa;
-font-weight:500;
-}
-
-h1{
-font-size:28px;
-color:white;
+  /* Important : prend toute la hauteur possible */
+  max-height: 90vh; 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* place les boutons en bas */
 }
 
 .risk-container{
-display:flex;
-justify-content:center;
-gap:20px;
-margin-top:30px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
 }
 
-</style>
-
-</head>
-
-<body>
-
-<div class="container-box">
-
-<form id="evaluation"></form>
-
-</div>
-
-<script>
-
-let selectedRisk = 0
-
-const displayForm = (message) => {
-
-const formElements = message.columns.map((element, index) => {
-
-const label = element.label.replace("_"," ")
-
-const html =
-
-`
-<div class="row mb-3 align-items-center">
-
-<label class="col-4 col-form-label fw-bold">
-${label}
-</label>
-
-<div class="col-8">
-
-<input
-type="text"
-id="${element.name}"
-name="${label}"
-value="${message.data[0][index]}"
-disabled
-class="form-control">
-
-</div>
-
-</div>
-`
-
-return html
-
-})
-
-formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4 text-center'>Evaluation</h1>")
-
-formElements.push(riskComponent("rating"))
-
-$("#evaluation").html(formElements.join(""))
-
-
-$(".risk-btn").on("click", function(){
-
-$(".risk-btn").removeClass("selected-risk")
-
-$(this).addClass("selected-risk")
-
-selectedRisk = $(this).data("value")
-
-executeEvaluation()
-
-})
-
+.form-control[disabled]{
+  background:#f8f9fa;
+  font-weight:500;
 }
 
-
-function executeEvaluation(){
-
-const data = {}
-
-$("#evaluation input").each((index, element) => {
-
-data[element.name] = element.value
-
-})
-
-data["AML RISK"] = selectedRisk
-
-const url = "https://sasserver.demo.sas.com"
-
-const parameters = {
-"_program": "/Public/countries_rating"
+h1{
+  font-size:28px;
+  color:white;
+  text-align:center;
 }
 
-executeJob(url, data, parameters)
-.then(response => console.log(response))
-
+.selected-risk{
+  box-shadow:0 0 8px rgba(0,0,0,0.4);
+  transform:scale(1.05);
 }
 
-
-// AML Risk buttons
-const riskComponent = (divID) => {
-
-return `
-
-<div id="${divID}" class="risk-container">
-
-<button
-type="button"
-class="btn btn-success risk-btn"
-data-value="1">
-Low Risk
-</button>
-
-<button
-type="button"
-class="btn btn-warning risk-btn"
-data-value="2">
-Medium Risk
-</button>
-
-<button
-type="button"
-class="btn btn-danger risk-btn"
-data-value="3">
-High Risk
-</button>
-
-</div>
-
-`
+.risk-btn{
+  min-width:140px;
 }
-
-va.messagingUtil.setOnDataReceivedCallback(displayForm)
-
-</script>
-
-</body>
-
-</html>
