@@ -2,158 +2,174 @@
 <html lang="en">
 
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AML Evaluation</title>
 
-<title>AML Evaluation</title>
+    <script src="./javascripts/sas/util/messagingUtil.js"></script>
+    <script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 
-<script src="./javascripts/sas/util/messagingUtil.js"></script>
-<script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+        .container-box {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 700px;
+            max-width: 90%;
+            padding: 40px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-.container-box {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  width: 700px;
-  max-width: 90%;
-  padding: 30px;
-  max-height: 90vh; 
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-}
+        .form-control[disabled] {
+            background: #ffffff;
+            font-weight: 500;
+            border: 1px solid #dee2e6;
+            color: #212529;
+        }
 
-.form-control[disabled]{
-  background:#f8f9fa;
-  font-weight:500;
-}
+        .risk-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            position: relative; /* Pour positionner le loader sans bouger les boutons */
+        }
 
-.selected-risk{
-  box-shadow:0 0 8px rgba(0,0,0,0.4);
-  transform:scale(1.05);
-}
+        .selected-risk {
+            box-shadow: 0 0 0 4px rgba(0,0,0,0.1);
+            transform: scale(1.05);
+            font-weight: bold;
+        }
 
-.risk-btn{
-  min-width:120px;
-  margin-right: 10px;
-}
+        .risk-btn {
+            min-width: 140px;
+            transition: all 0.2s ease;
+        }
 
-/* Cercle de chargement - Corrigé pour l'alignement */
-.loader-circle {
-  width: 25px;
-  height: 25px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #0d6efd;
-  border-radius: 50%;
-  display: none;
-  animation: spin 1s linear infinite; /* Changé en infinite pour qu'il tourne en continu */
-  margin-right: 15px; /* Espace constant avec les boutons */
-}
+        /* Le cercle de chargement */
+        .loader-circle {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0d6efd;
+            border-radius: 50%;
+            position: absolute;
+            left: 20px; /* Aligné à gauche dans le container des boutons */
+            top: 50%;
+            transform: translateY(-50%);
+            display: none;
+            animation: spin 1s linear infinite;
+        }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-</style>
+        @keyframes spin {
+            0% { transform: translateY(-50%) rotate(0deg); }
+            100% { transform: translateY(-50%) rotate(360deg); }
+        }
+    </style>
 </head>
 
 <body>
 
-<div class="container-box">
-  <form id="evaluation"></form>
-</div>
-
-<script>
-let selectedRisk = 0;
-
-const displayForm = (message) => {
-
-  const formElements = message.columns.map((element, index) => {
-    const label = element.label.replace("_"," ")
-    return `
-    <div class="row mb-3 align-items-center">
-      <label class="col-4 col-form-label fw-bold">${label}</label>
-      <div class="col-8">
-        <input type="text"
-        id="${element.name}"
-        name="${element.name}"
-        value="${message.data[0][index]}"
-        disabled
-        class="form-control">
-      </div>
+    <div class="container-box">
+        <form id="evaluation"></form>
     </div>
-    `;
-  });
 
-  formElements.push(riskButtonsRow("rating"));
+    <script>
+        let selectedRisk = 0
 
-  $("#evaluation").html(formElements.join(""));
+        const displayForm = (message) => {
+            const formElements = message.columns.map((element, index) => {
+                const label = element.label.replace("_", " ")
+                return `
+                <div class="row mb-3 align-items-center">
+                    <label class="col-4 col-form-label fw-bold text-secondary">${label}</label>
+                    <div class="col-8">
+                        <input type="text"
+                               id="${element.name}"
+                               name="${label}" 
+                               value="${message.data[0][index]}"
+                               disabled
+                               class="form-control">
+                    </div>
+                </div>
+                `
+            })
 
-  $(".risk-btn").on("click", function(){
-    $(".risk-btn").removeClass("selected-risk")
-    $(this).addClass("selected-risk")
-    selectedRisk = $(this).data("value")
+            formElements.push(riskComponent("rating"))
+            $("#evaluation").html(formElements.join(""))
 
-    // Affiche le loader
-    const loader = $(this).closest(".risk-row").find(".loader-circle")
-    loader.css("display", "inline-block")
-    
-    // On cache le loader après l'exécution (ajusté à 3s pour l'exemple)
-    setTimeout(() => { loader.hide() }, 3000)
+            $(".risk-btn").on("click", function () {
+                $(".risk-btn").removeClass("selected-risk")
+                $(this).addClass("selected-risk")
+                selectedRisk = $(this).data("value")
+                
+                // Afficher le loader
+                $(".loader-circle").fadeIn(200);
 
-    executeEvaluation()
-  })
-}
+                executeEvaluation()
+            })
+        }
 
-function executeEvaluation(){
-  const data = {}
-  $("#evaluation input").each((index, element) => {
-    data[element.name] = element.value
-  })
-  data["AML RISK"] = selectedRisk
+        function executeEvaluation() {
+            const data = {}
+            $("#evaluation input").each((index, element) => {
+                data[element.name] = element.value
+            })
+            
+            data["AML RISK"] = selectedRisk
 
-  const url = "https://sasserver.demo.sas.com"
-  const parameters = { "_program": "/Public/countries_rating" }
+            const url = "https://sasserver.demo.sas.com"
+            const parameters = {
+                "_program": "/Public/countries_rating"
+            }
 
-  executeJob(url, data, parameters)
-  .then(response => console.log(response))
-}
+            executeJob(url, data, parameters)
+                .then(response => {
+                    console.log("Success:", response);
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                })
+                .finally(() => {
+                    // Cacher le loader proprement à la fin de la requête
+                    $(".loader-circle").fadeOut(200);
+                });
+        }
 
-const riskButtonsRow = (divID) => {
-  return `
-  <div id="${divID}" class="row mb-3 align-items-center risk-row">
-    <div class="col-4"></div> 
-    <div class="col-8 d-flex align-items-center">
-      <div class="loader-circle"></div> 
-      <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
-      <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
-      <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
-    </div>
-  </div>
-  `;
-}
+        const riskComponent = (divID) => {
+            return `
+            <div id="${divID}" class="risk-container">
+                <div class="loader-circle"></div>
+                <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
+                <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
+                <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
+            </div>
+            `
+        }
 
-if (typeof va !== "undefined" && va.messagingUtil) {
-    va.messagingUtil.setOnDataReceivedCallback(displayForm);
-}
-</script>
+        // Liaison SAS VA
+        if (typeof va !== "undefined" && va.messagingUtil) {
+            va.messagingUtil.setOnDataReceivedCallback(displayForm);
+        }
+    </script>
 
 </body>
 </html>
