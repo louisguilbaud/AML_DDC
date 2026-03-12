@@ -101,7 +101,7 @@ const displayForm = (message) => {
     `;
   });
 
-  // Ligne des boutons sans label, alignée à gauche
+  // Ligne des boutons avec loader à gauche
   formElements.push(riskButtonsRow("rating"));
 
   $("#evaluation").html(formElements.join(""));
@@ -111,6 +111,7 @@ const displayForm = (message) => {
     $(this).addClass("selected-risk")
     selectedRisk = $(this).data("value")
 
+    // Affiche le loader à gauche
     const loader = $(this).closest(".risk-row").find(".loader-circle")
     loader.show()
     setTimeout(() => { loader.hide() }, 6000)
@@ -133,18 +134,16 @@ function executeEvaluation(){
   .then(response => console.log(response))
 }
 
-// Ligne des boutons + loader à droite, sans label
+// Ligne des boutons + loader à gauche, aligné avec inputs
 const riskButtonsRow = (divID) => {
   return `
   <div id="${divID}" class="row mb-3 align-items-center risk-row">
     <div class="col-4"></div> <!-- espace pour aligner avec labels -->
     <div class="col-8 d-flex align-items-center">
+      <div class="loader-circle me-3"></div> <!-- cercle à gauche des boutons -->
       <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
       <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
-      <div style="position: relative; display: inline-block;">
-        <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
-        <div class="loader-circle ms-2"></div>
-      </div>
+      <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
     </div>
   </div>
   `;
