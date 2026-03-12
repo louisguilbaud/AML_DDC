@@ -18,7 +18,7 @@
             height: 100%;
             margin: 0;
             overflow: hidden;
-            background: #f4f7f9;
+            background: white; /* Fond retiré */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -31,11 +31,11 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             width: 700px;
             max-width: 90%;
-            padding: 30px; /* Réduit pour remonter le contenu */
+            padding: 30px;
             max-height: 90vh; 
             display: flex;
             flex-direction: column;
-            justify-content: flex-start; /* Aligne tout vers le haut */
+            justify-content: flex-start;
         }
 
         .form-control[disabled] {
@@ -50,7 +50,7 @@
             justify-content: center;
             align-items: center;
             gap: 15px;
-            margin-top: 20px; /* Réduit pour remonter les boutons */
+            margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid #edf2f7;
         }
@@ -67,6 +67,7 @@
             border-radius: 6px;
         }
 
+        /* Chargement ralenti */
         .loader-circle {
             width: 26px;
             height: 26px;
@@ -74,7 +75,7 @@
             border-top: 3px solid #0d6efd;
             border-radius: 50%;
             display: none;
-            animation: spin 0.8s linear infinite;
+            animation: spin 2s linear infinite; /* Ralenti à 2 secondes */
             margin-right: 10px;
         }
 
