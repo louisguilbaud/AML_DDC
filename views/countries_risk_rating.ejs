@@ -11,14 +11,13 @@
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
     <style>
         html, body {
             height: 100%;
             margin: 0;
             overflow: hidden;
-            background: white; /* Fond retiré */
+            background: white;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -32,7 +31,6 @@
             width: 700px;
             max-width: 90%;
             padding: 30px;
-            max-height: 90vh; 
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
@@ -48,40 +46,34 @@
         .risk-container {
             display: flex;
             justify-content: center;
-            align-items: center;
             gap: 15px;
             margin-top: 20px;
             padding-top: 20px;
             border-top: 1px solid #edf2f7;
         }
 
-        .selected-risk {
-            box-shadow: 0 0 0 3px rgba(0,0,0,0.1), inset 0 0 10px rgba(0,0,0,0.1);
-            transform: scale(1.05);
-            font-weight: bold;
-        }
-
         .risk-btn {
             min-width: 130px;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.1s ease;
             border-radius: 6px;
+            font-weight: 500;
         }
 
-        /* Chargement ralenti */
-        .loader-circle {
-            width: 26px;
-            height: 26px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #0d6efd;
-            border-radius: 50%;
-            display: none;
-            animation: spin 2s linear infinite; /* Ralenti à 2 secondes */
-            margin-right: 10px;
+        /* Effet de clic (feedback rapide) */
+        .btn-clicked {
+            animation: click-pop 0.3s ease-out;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes click-pop {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; transform: scale(0.98); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* État sélectionné discret */
+        .selected-risk {
+            font-weight: 800 !important;
+            border-width: 2px !important;
         }
 
         .col-form-label {
@@ -124,11 +116,17 @@
             $("#evaluation").html(formElements.join(""));
 
             $(".risk-btn").on("click", function() {
-                $(".risk-btn").removeClass("selected-risk");
-                $(this).addClass("selected-risk");
-                selectedRisk = $(this).data("value");
+                const $this = $(this);
 
-                $(".loader-circle").fadeIn(200);
+                // Feedback visuel rapide (pop)
+                $this.addClass("btn-clicked");
+                setTimeout(() => $this.removeClass("btn-clicked"), 300);
+
+                // Gestion de la sélection
+                $(".risk-btn").removeClass("selected-risk");
+                $this.addClass("selected-risk");
+                
+                selectedRisk = $this.data("value");
                 executeEvaluation();
             });
         }
@@ -145,16 +143,12 @@
 
             executeJob(url, data, parameters)
                 .then(response => console.log("Success:", response))
-                .catch(error => console.error("Error:", error))
-                .finally(() => {
-                    $(".loader-circle").fadeOut(200);
-                });
+                .catch(error => console.error("Error:", error));
         }
 
         const riskComponent = (divID) => {
             return `
             <div id="${divID}" class="risk-container">
-                <div class="loader-circle"></div>
                 <button type="button" class="btn btn-outline-success risk-btn" data-value="1">Low Risk</button>
                 <button type="button" class="btn btn-outline-warning risk-btn" data-value="2">Medium Risk</button>
                 <button type="button" class="btn btn-outline-danger risk-btn" data-value="3">High Risk</button>
