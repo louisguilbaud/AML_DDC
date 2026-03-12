@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -20,7 +19,6 @@ href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
 <style>
-
 html, body {
   height: 100%;
   margin: 0;
@@ -38,19 +36,10 @@ html, body {
   width: 700px;
   max-width: 90%;
   padding: 30px;
-
-  /* Important : prend toute la hauteur possible */
   max-height: 90vh; 
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* place les boutons en bas */
-}
-
-.risk-container{
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 20px;
+  justify-content: space-between;
 }
 
 .form-control[disabled]{
@@ -64,9 +53,33 @@ html, body {
 }
 
 .risk-btn{
-  min-width:140px;
+  min-width:120px;
 }
 
+/* Conteneur des boutons + loader */
+.risk-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* Cercle de chargement */
+.loader-circle {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0d6efd; /* bleu Bootstrap */
+  border-radius: 50%;
+  animation: spin 5s linear forwards;
+}
+
+/* Animation rotation 360° */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 </style>
 
 </head>
@@ -75,130 +88,84 @@ html, body {
 
 <div class="container-box">
 
-<form id="evaluation"></form>
+  <form id="evaluation"></form>
 
 </div>
 
 <script>
-
 let selectedRisk = 0
 
 const displayForm = (message) => {
 
-const formElements = message.columns.map((element, index) => {
+  const formElements = message.columns.map((element, index) => {
 
-const label = element.label.replace("_"," ")
+    const label = element.label.replace("_"," ")
 
-const html =
+    return `
+    <div class="row mb-3 align-items-center">
+      <label class="col-4 col-form-label fw-bold">${label}</label>
+      <div class="col-8">
+        <input type="text"
+        id="${element.name}"
+        name="${label}"
+        value="${message.data[0][index]}"
+        disabled
+        class="form-control">
+      </div>
+    </div>
+    `
+  })
 
-`
-<div class="row mb-3 align-items-center">
+  // Ajout du composant AML Risk avec loader
+  formElements.push(riskComponentWithLoader("rating"))
 
-<label class="col-4 col-form-label fw-bold">
-${label}
-</label>
+  $("#evaluation").html(formElements.join(""))
 
-<div class="col-8">
+  $(".risk-btn").on("click", function(){
 
-<input
-type="text"
-id="${element.name}"
-name="${label}"
-value="${message.data[0][index]}"
-disabled
-class="form-control">
+    $(".risk-btn").removeClass("selected-risk")
+    $(this).addClass("selected-risk")
+    selectedRisk = $(this).data("value")
 
-</div>
+    // Affiche le cercle de chargement à côté du bouton cliqué
+    $(".loader-circle").show()
+    setTimeout(() => { $(".loader-circle").hide() }, 5000)
 
-</div>
-`
-
-return html
-
-})
-
-// Ligne supprimée pour enlever le gros titre
-// formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4 text-center'>Evaluation</h1>")
-
-formElements.push(riskComponent("rating"))
-
-$("#evaluation").html(formElements.join(""))
-
-
-$(".risk-btn").on("click", function(){
-
-$(".risk-btn").removeClass("selected-risk")
-
-$(this).addClass("selected-risk")
-
-selectedRisk = $(this).data("value")
-
-executeEvaluation()
-
-})
+    executeEvaluation()
+  })
 
 }
-
 
 function executeEvaluation(){
+  const data = {}
+  $("#evaluation input").each((index, element) => {
+    data[element.name] = element.value
+  })
+  data["AML RISK"] = selectedRisk
 
-const data = {}
+  const url = "https://sasserver.demo.sas.com"
+  const parameters = { "_program": "/Public/countries_rating" }
 
-$("#evaluation input").each((index, element) => {
-
-data[element.name] = element.value
-
-})
-
-data["AML RISK"] = selectedRisk
-
-const url = "https://sasserver.demo.sas.com"
-
-const parameters = {
-"_program": "/Public/countries_rating"
+  executeJob(url, data, parameters)
+  .then(response => console.log(response))
 }
 
-executeJob(url, data, parameters)
-.then(response => console.log(response))
+// AML Risk buttons + loader
+const riskComponentWithLoader = (divID) => {
+  return `
+  <div id="${divID}" class="risk-container">
 
-}
+    <button type="button" class="btn btn-success risk-btn" data-value="1">Low Risk</button>
+    <button type="button" class="btn btn-warning risk-btn" data-value="2">Medium Risk</button>
+    <button type="button" class="btn btn-danger risk-btn" data-value="3">High Risk</button>
 
-const riskComponent = (divID) => {
-
-return `
-
-<div id="${divID}" class="risk-container">
-
-<button
-type="button"
-class="btn btn-success risk-btn"
-data-value="1">
-Low Risk
-</button>
-
-<button
-type="button"
-class="btn btn-warning risk-btn"
-data-value="2">
-Medium Risk
-</button>
-
-<button
-type="button"
-class="btn btn-danger risk-btn"
-data-value="3">
-High Risk
-</button>
-
-</div>
-
-`
+    <div class="loader-circle" style="display:none;"></div>
+  </div>
+  `
 }
 
 va.messagingUtil.setOnDataReceivedCallback(displayForm)
-
 </script>
 
 </body>
-
 </html>
