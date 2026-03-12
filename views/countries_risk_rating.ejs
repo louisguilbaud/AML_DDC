@@ -2,21 +2,22 @@
 <html lang="en">
 
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>AML Evaluation</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="./javascript/utils/messagingUtil.js"></script>
-<script src="./javascript/utils/jobExecutionUtil.js"></script>
+  <title>AML Evaluation</title>
 
-<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+  <script src="./javascripts/sas/util/messagingUtil.js"></script>
+  <script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
 
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+  <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
 
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+  <link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+
+  <link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
 
 <style>
 
@@ -61,7 +62,9 @@ color:white;
 <body>
 
 <div class="container-box">
+
 <form id="evaluation"></form>
+
 </div>
 
 <script>
@@ -75,9 +78,13 @@ const formElements = message.columns.map((element, index) => {
 const html =
 
 `
-<div class="mb-3">
+<div class="row mb-3 align-items-center">
 
-<label class="form-label fw-bold">${element.label}</label>
+<label class="col-4 col-form-label fw-bold">
+${element.label}
+</label>
+
+<div class="col-8">
 
 <input
 type="text"
@@ -88,6 +95,8 @@ disabled
 class="form-control">
 
 </div>
+
+</div>
 `
 
 return html
@@ -96,10 +105,9 @@ return html
 
 formElements.push(riskComponent("rating"))
 
-formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4'>Evaluation</h1>")
+formElements.unshift("<h1 class='bg-primary p-3 rounded mb-4 text-center'>Evaluation</h1>")
 
 $("#evaluation").html(formElements.join(""))
-
 
 $(".risk-btn").on("click", function(){
 
@@ -121,7 +129,9 @@ function executeEvaluation(){
 const data = {}
 
 $("#evaluation input").each((index, element) => {
+
 data[element.name] = element.value
+
 })
 
 data["AML_RISK"] = selectedRisk
@@ -129,7 +139,7 @@ data["AML_RISK"] = selectedRisk
 const url = "https://sasserver.demo.sas.com"
 
 const parameters = {
-"_program": "/Public/countries_rating",
+"_program": "/Public/countries_rating"
 }
 
 executeJob(url, data, parameters)
@@ -142,11 +152,14 @@ executeJob(url, data, parameters)
 const riskComponent = (divID) => {
 
 return `
-<div id=${divID} class="mb-3">
 
-<label class="form-label fw-bold">AML Risk</label>
+<div id="${divID}" class="row mb-3 align-items-center">
 
-<div>
+<label class="col-4 col-form-label fw-bold">
+AML Risk
+</label>
+
+<div class="col-8">
 
 <button
 type="button"
@@ -172,6 +185,7 @@ High Risk
 </div>
 
 </div>
+
 `
 }
 
