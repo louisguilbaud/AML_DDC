@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Words Risk Manager</title>
+
+<script src="./javascripts/sas/util/messagingUtil.js"></script>
+<script src="./javascripts/sas/util/jobExecutionUtil.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+</head>
+
+<body style="display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f5;">
+
+<div class="card p-4" style="width:500px">
+
+    <h4 class="mb-3">Manage Risk Words</h4>
+
+    <!-- Mot sélectionné -->
+    <div class="mb-3">
+        <label class="form-label">Selected word</label>
+        <input type="text" id="selectedWord" class="form-control" readonly>
+    </div>
+
+    <!-- Bouton supprimer -->
+    <button class="btn btn-danger mb-4" onclick="deleteWord()">Delete</button>
+
+    <hr>
+
+    <!-- Ajouter mot -->
+    <div class="mb-3">
+        <label class="form-label">New word</label>
+        <input type="text" id="newWord" class="form-control">
+    </div>
+
+    <button class="btn btn-success" onclick="addWord()">Add</button>
+
+</div>
+
+<script>
+
+let currentWord = "";
+
+/* Quand tu cliques sur une ligne VA */
+const displayForm = (message) => {
+    currentWord = message.data[0][0]; // colonne "word"
+    $("#selectedWord").val(currentWord);
+};
+
+/* DELETE */
+function deleteWord() {
+    if (!currentWord) return alert("No word selected");
+
+    sendToSAS("DELETE", currentWord);
+}
+
+/* ADD */
+function addWord() {
+    const newWord = $("#newWord").val();
+
+    if (!newWord) return alert("Enter a word");
+
+    sendToSAS("ADD", newWord);
+}
+
+/* Appel job SAS */
+function sendToSAS(action, word) {
+
+    const data = {
+        action: action,
+        word: word
+    };
+
+    const url = "https://sasserver.demo.sas.com";
+    const parameters = {
+        "_program": "/Public/manage_words"
+    };
+
+    executeJob(url, data, parameters)
+        .then(response => {
+            alert("Success: " + action + " " + word);
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error");
+        });
+}
+
+/* VA callback */
+va.messagingUtil.setOnDataReceivedCallback(displayForm);
+
+</script>
+
+</body>
+</html>
