@@ -132,4 +132,8 @@ router.get("/countries_risk_rating.html", function (req, res, next) {
 	res.render("countries_risk_rating", { title: "countries_risk_rating" });
 });
 
+router.get("/managing_words.html", function (req, res, next) {
+	res.render("managing_words", { title: "managing_words" });
+});
+
 module.exports = router;
