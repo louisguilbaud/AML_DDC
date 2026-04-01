@@ -127,17 +127,43 @@
 
         function executeEvaluation() {
             const data = {};
+        
             $("#evaluation input").each((index, element) => {
                 data[element.name] = element.value;
             });
+        
             data["AML RISK"] = selectedRisk;
-
+        
             const url = "https://sasserver.demo.sas.com";
-            const parameters = { "_program": "/Public/countries_rating" };
-
-            executeJob(url, data, parameters)
-                .then(response => console.log("Success:", response))
-                .catch(error => console.error("Error:", error));
+        
+            const parametersEval = { 
+                "_program": "/Public/countries_rating" 
+            };
+        
+            const parametersDashboard = { 
+                "_program": "/Public/update_tbml_dashboards" 
+            };
+        
+            // 1. Appel du job principal
+            executeJob(url, data, parametersEval)
+                .then(response => {
+        
+                    console.log("Evaluation success:", response);
+        
+                    // Optionnel : vérifier le retour SAS
+                    if (response.status && response.status !== "success") {
+                        throw new Error("Evaluation failed");
+                    }
+        
+                    // 2. Appel du job dashboard
+                    return executeJob(url, {}, parametersDashboard);
+                })
+                .then(response => {
+                    console.log("Dashboard updated:", response);
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
         }
 
         const riskComponent = (divID) => {
