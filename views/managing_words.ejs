@@ -70,11 +70,23 @@ function sendToSAS(action, word) {
     };
 
     const url = "https://sasserver.demo.sas.com";
-    const parameters = {
+
+    const parametersManage = {
         "_program": "/Public/manage_words"
     };
 
-    executeJob(url, data, parameters)
+    const parametersDashboard = {
+        "_program": "/Public/update_tbml_dashboards"
+    };
+
+    // 1. Appel du premier job
+    executeJob(url, data, parametersManage)
+        .then(response => {
+
+            // 2. Appel du deuxième job
+            return executeJob(url, {}, parametersDashboard);
+
+        })
         .then(response => {
             alert("Success: " + action + " " + word);
         })
