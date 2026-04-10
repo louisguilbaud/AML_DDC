@@ -139,32 +139,43 @@
             const parametersEval = { 
                 "_program": "/Public/countries_rating" 
             };
-        
+            
             const parametersDashboard = { 
                 "_program": "/Public/update_tbml_dashboards" 
             };
-        
+            
+            const parametersHighlight = { 
+                "_program": "/Public/highlight_mt_messages" 
+            };
+            
             // 1. Appel du job principal
             executeJob(url, data, parametersEval)
                 .then(response => {
-        
+            
                     console.log("Evaluation success:", response);
-        
-                    // Optionnel : vérifier le retour SAS
+            
                     if (response.status && response.status !== "success") {
                         throw new Error("Evaluation failed");
                     }
-        
+            
                     // 2. Appel du job dashboard
                     return executeJob(url, {}, parametersDashboard);
                 })
                 .then(response => {
+            
                     console.log("Dashboard updated:", response);
+            
+                    // 3. Appel du job highlight
+                    return executeJob(url, {}, parametersHighlight);
+                })
+                .then(response => {
+            
+                    console.log("Highlight done:", response);
+            
                 })
                 .catch(error => {
                     console.error("Error:", error);
                 });
-        }
 
         const riskComponent = (divID) => {
             return `
