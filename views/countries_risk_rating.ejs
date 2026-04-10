@@ -158,14 +158,18 @@
                         throw new Error("Evaluation failed");
                     }
             
-                    // 2. Appel du job dashboard
                     return executeJob(url, {}, parametersDashboard);
                 })
                 .then(response => {
             
                     console.log("Dashboard updated:", response);
             
-                    // 3. Appel du job highlight
+                    if (response.status && response.status !== "success") {
+                        throw new Error("Dashboard failed");
+                    }
+            
+                    console.log("➡️ Launching highlight job...");
+            
                     return executeJob(url, {}, parametersHighlight);
                 })
                 .then(response => {
