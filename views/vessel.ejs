@@ -2,13 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Suivi de Navire SAS VA</title>
+    <title>Suivi de Navire Segmenté - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #041424; }
-        .info-box { font-size: 12px; line-height: 1.4; }
-        .vessel-stat { font-weight: bold; color: #2196F3; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #map { height: 100vh; width: 100vw; background: #0f172a; }
+        .info-box { font-size: 13px; min-width: 200px; }
+        .header { font-weight: bold; color: #38bdf8; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -19,15 +19,14 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
-        // 1. Initialisation de la carte
+        // 1. Initialisation de la carte avec un fond sombre élégant
         const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
 
         let pathLayer = L.featureGroup().addTo(map);
 
-        // 2. Fonction de réception des données SAS
         function onMessage(event) {
             if (event.data && event.data.data) {
                 drawVesselPath(event.data);
@@ -37,65 +36,84 @@
         function drawVesselPath(sasPayload) {
             pathLayer.clearLayers();
             const rows = sasPayload.data;
-            const coords = [];
-
             if (rows.length === 0) return;
 
+            let currentSegment = [];
+            const allSegments = [];
+            const threshold = 5; // Seuil de distance en degrés (si > 5°, on considère que c'est un nouveau trajet)
+
             rows.forEach((row, index) => {
-                // Mapping des index (doit correspondre à l'ordre dans SAS VA)
                 const lat = row[0];
                 const lng = row[1];
-                const heading = row[2];
-                const sog = row[3];
-                const cog = row[4];
-                const type = row[5];
-                const dwt = row[6];
-                const rot = row[7];
 
-                coords.push([lat, lng]);
+                // Vérification du saut de distance pour éviter les lignes traversantes
+                if (currentSegment.length > 0) {
+                    const lastPoint = currentSegment[currentSegment.length - 1];
+                    const distance = Math.sqrt(Math.pow(lat - lastPoint[0], 2) + Math.pow(lng - lastPoint[1], 2));
+                    
+                    if (distance > threshold) {
+                        allSegments.push(currentSegment); // On sauvegarde le segment fini
+                        currentSegment = []; // On en commence un nouveau
+                    }
+                }
+                
+                currentSegment.push([lat, lng]);
 
-                // 3. Dessiner le marqueur du bateau (seulement pour la position actuelle/dernière ligne)
+                // Gestion du marqueur pour le point final (la position actuelle)
                 if (index === rows.length - 1) {
-                    const shipIcon = L.divIcon({
-                        html: `<svg viewBox="0 0 24 24" width="30" height="30" fill="#00e676">
-                                <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
-                        className: '',
-                        iconSize: [30, 30],
-                        iconAnchor: [15, 15]
-                    });
+                    createShipMarker(row);
+                }
+            });
+            
+            // Ajouter le dernier segment
+            allSegments.push(currentSegment);
 
-                    const marker = L.marker([lat, lng], { 
-                        icon: shipIcon,
-                        rotationAngle: heading // Utilisation de trueheading
+            // 2. Dessiner tous les segments proprement
+            allSegments.forEach(segment => {
+                if (segment.length > 1) {
+                    L.polyline(segment, {
+                        color: '#38bdf8',
+                        weight: 3,
+                        opacity: 0.8,
+                        lineJoin: 'round'
                     }).addTo(pathLayer);
-
-                    marker.bindPopup(`
-                        <div class="info-box">
-                            <h3 style="margin:0 0 5px 0">${type}</h3>
-                            <hr>
-                            <b>Vitesse (SOG):</b> ${sog} nœuds<br>
-                            <b>Route (COG):</b> ${cog}°<br>
-                            <b>Cap (Heading):</b> ${heading}°<br>
-                            <b>Rotation:</b> ${rot}°/min<br>
-                            <b>Tonnage (DWT):</b> ${dwt} t
-                        </div>
-                    `).openPopup();
                 }
             });
 
-            // 4. Tracer la ligne de trajectoire
-            const polyline = L.polyline(coords, {
-                color: '#2196F3',
-                weight: 3,
-                opacity: 0.7,
-                dashArray: '5, 10'
-            }).addTo(pathLayer);
-
-            // Ajuster la vue pour voir tout le trajet
-            map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+            // Ajuster la vue
+            if (pathLayer.getBounds().isValid()) {
+                map.fitBounds(pathLayer.getBounds(), { padding: [50, 50] });
+            }
         }
 
-        // Écouter les messages venant de SAS Visual Analytics
+        function createShipMarker(data) {
+            const [lat, lng, heading, sog, cog, type, dwt, rot] = data;
+
+            const shipIcon = L.divIcon({
+                html: `<svg viewBox="0 0 24 24" width="34" height="34" fill="#4ade80" style="filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.5));">
+                        <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
+                className: '',
+                iconSize: [34, 34],
+                iconAnchor: [17, 17]
+            });
+
+            const marker = L.marker([lat, lng], { 
+                icon: shipIcon,
+                rotationAngle: heading
+            }).addTo(pathLayer);
+
+            marker.bindPopup(`
+                <div class="info-box">
+                    <div class="header">${type || 'Navire'}</div>
+                    <b>Vitesse :</b> ${sog?.toFixed(2) || 0} kts<br>
+                    <b>Route (COG) :</b> ${cog?.toFixed(1) || 0}°<br>
+                    <b>Cap (Heading) :</b> ${heading?.toFixed(1) || 0}°<br>
+                    <b>Rotation :</b> ${rot || 0}°/min<br>
+                    <b>Tonnage :</b> ${dwt?.toLocaleString() || 0} DWT
+                </div>
+            `).openPopup();
+        }
+
         window.addEventListener('message', onMessage, false);
     </script>
 </body>
