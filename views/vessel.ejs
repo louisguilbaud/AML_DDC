@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Suivi de Navire SAS VA</title>
+    <title>Suivi de Navire Temps Réel - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; }
@@ -19,7 +19,6 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
-        // 1. Initialisation de la carte
         const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap'
@@ -27,7 +26,6 @@
 
         let pathLayer = L.featureGroup().addTo(map);
 
-        // 2. Fonction de réception des données SAS
         function onMessage(event) {
             if (event.data && event.data.data) {
                 drawVesselPath(event.data);
@@ -37,12 +35,25 @@
         function drawVesselPath(sasPayload) {
             pathLayer.clearLayers();
             const rows = sasPayload.data;
-            const coords = [];
+            
+            if (!rows || rows.length === 0) return;
 
-            if (rows.length === 0) return;
+            // 1. Trouver l'index de la ligne la plus récente basé sur la colonne datetime (Index 8)
+            let mostRecentIndex = 0;
+            let maxTime = 0;
 
             rows.forEach((row, index) => {
-                // Mapping des index (doit correspondre à l'ordre dans SAS VA)
+                // On convertit la valeur datetime en nombre pour comparer
+                const currentTime = new Date(row[8]).getTime(); 
+                if (currentTime > maxTime) {
+                    maxTime = currentTime;
+                    mostRecentIndex = index;
+                }
+            });
+
+            const coords = [];
+
+            rows.forEach((row, index) => {
                 const lat = row[0];
                 const lng = row[1];
                 const heading = row[2];
@@ -51,51 +62,50 @@
                 const type = row[5];
                 const dwt = row[6];
                 const rot = row[7];
+                const dt = row[8]; // datetime
 
                 coords.push([lat, lng]);
 
-                // 3. Dessiner le marqueur du bateau (seulement pour la position actuelle/dernière ligne)
-                if (index === rows.length - 1) {
+                // 2. N'afficher l'icône du bateau QUE pour la valeur datetime la plus récente
+                if (index === mostRecentIndex) {
                     const shipIcon = L.divIcon({
-                        html: `<svg viewBox="0 0 24 24" width="30" height="30" fill="#00e676">
+                        html: `<svg viewBox="0 0 24 24" width="32" height="32" fill="#00e676">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
-                        iconSize: [30, 30],
-                        iconAnchor: [15, 15]
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
                     });
 
                     const marker = L.marker([lat, lng], { 
                         icon: shipIcon,
-                        rotationAngle: heading // Utilisation de trueheading
+                        rotationAngle: heading 
                     }).addTo(pathLayer);
 
                     marker.bindPopup(`
                         <div class="info-box">
                             <h3 style="margin:0 0 5px 0">${type}</h3>
+                            <div style="font-size:10px; color:#666; margin-bottom:5px;">📅 ${dt}</div>
                             <hr>
                             <b>Vitesse (SOG):</b> ${sog} nœuds<br>
                             <b>Route (COG):</b> ${cog}°<br>
                             <b>Cap (Heading):</b> ${heading}°<br>
-                            <b>Rotation:</b> ${rot}°/min<br>
-                            <b>Tonnage (DWT):</b> ${dwt} t
+                            <b>Tonnage:</b> ${dwt} t
                         </div>
                     `).openPopup();
                 }
             });
 
-            // 4. Tracer la ligne de trajectoire
+            // 3. Tracer le sillage
             const polyline = L.polyline(coords, {
                 color: '#2196F3',
-                weight: 3,
-                opacity: 0.7,
-                dashArray: '5, 10'
+                weight: 2,
+                opacity: 0.6,
+                dashArray: '5, 8'
             }).addTo(pathLayer);
 
-            // Ajuster la vue pour voir tout le trajet
-            map.fitBounds(polyline.getBounds(), { padding: [20, 20] });
+            map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
         }
 
-        // Écouter les messages venant de SAS Visual Analytics
         window.addEventListener('message', onMessage, false);
     </script>
 </body>
