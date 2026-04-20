@@ -2,13 +2,13 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Visualisation Navires Bruts - SAS VA</title>
+    <title>Suivi Navire Segmenté - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #0f172a; }
+        #map { height: 100vh; width: 100vw; background: #0f172a; } /* Fond sombre élégant */
         .info-box { font-size: 13px; min-width: 200px; }
-        .header { font-weight: bold; color: #2563eb; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; }
+        .header { font-weight: bold; color: #2563eb; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -19,22 +19,25 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
+        // 1. Initialisation de la carte (fond sombre pour faire ressortir les lignes/points)
         const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
 
-        let dataLayer = L.featureGroup().addTo(map);
+        let pathLayer = L.featureGroup().addTo(map);
 
         function onMessage(event) {
             if (event.data && event.data.data) {
-                renderData(event.data.data);
+                renderDataTrail(event.data.data);
             }
         }
 
-        function renderData(rows) {
-            dataLayer.clearLayers();
+        function renderDataTrail(rows) {
+            pathLayer.clearLayers();
             if (rows.length === 0) return;
 
-            // 1. Trouver le point le plus récent (basé sur l'index 8 : datetime)
+            // 1. Trouver l'index de la ligne la plus récente (sur la colonne 9 : datetime, index 8)
             let latestIndex = 0;
             let maxTimestamp = -1;
 
@@ -46,7 +49,10 @@
                 }
             });
 
-            // 2. Parcourir et afficher chaque point
+            const allCoordinates = [];
+            let currentPath = [];
+            const threshold = 10; // Seuil de distance en degrés (si > 10°, on coupe la ligne)
+
             rows.forEach((row, index) => {
                 const lat = row[0];
                 const lng = row[1];
@@ -54,10 +60,23 @@
 
                 if (lat == null || lng == null) return;
 
+                // Gestion de la segmentation (couper la ligne si saut trop grand)
+                if (currentPath.length > 0) {
+                    const lastPoint = currentPath[currentPath.length - 1];
+                    const distance = Math.sqrt(Math.pow(lat - lastPoint[0], 2) + Math.pow(lng - lastPoint[1], 2));
+                    
+                    if (distance > threshold) {
+                        allCoordinates.push(currentPath); // Sauvegarder le segment fini
+                        currentPath = []; // En commencer un nouveau
+                    }
+                }
+                
+                currentPath.push([lat, lng]);
+
+                // Afficher l'icône de tête (verte) UNIQUEMENT pour la valeur datetime la plus récente
                 if (index === latestIndex) {
-                    // Position ACTUELLE (Icône de bateau avec infos)
                     const shipIcon = L.divIcon({
-                        html: `<svg viewBox="0 0 24 24" width="36" height="36" fill="#4ade80">
+                        html: `<svg viewBox="0 0 24 24" width="36" height="36" fill="#4ade80" style="filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.5));">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
                         iconSize: [36, 36],
@@ -67,38 +86,42 @@
                     const marker = L.marker([lat, lng], { 
                         icon: shipIcon,
                         rotationAngle: heading 
-                    }).addTo(dataLayer);
+                    }).addTo(pathLayer);
 
                     marker.bindPopup(`
                         <div class="info-box">
                             <div class="header">${row[5] || 'Détails Navire'}</div>
                             <b>Date :</b> ${row[8]}<br>
-                            <b>Vitesse :</b> ${row[3]} kts<br>
+                            <b>Vitesse :</b> ${row[3]?.toFixed(1)} kts<br>
                             <b>Cap :</b> ${heading}°<br>
-                            <b>Tonnage :</b> ${row[6]} DWT<br>
+                            <b>Tonnage :</b> ${row[6]?.toLocaleString()} DWT<br>
                             <hr>
-                            <small>Position brute : ${lat}, ${lng}</small>
+                            <small>Position : ${lat}, ${lng}</small>
                         </div>
                     `).openPopup();
+                }
+            });
+            
+            // Ajouter le dernier segment de ligne
+            allCoordinates.push(currentPath);
 
-                } else {
-                    // SILLAGE BRUT (Simples points pour voir la trace sans ligne)
-                    L.circleMarker([lat, lng], {
-                        radius: 3,
-                        fillColor: "#38bdf8",
-                        color: "#fff",
-                        weight: 0.5,
-                        fillOpacity: 0.6
-                    }).addTo(dataLayer);
+            // 2. Dessiner la ligne de sillage (les segments de route triés chronologiquement)
+            allCoordinates.forEach(path => {
+                if (path.length > 1) {
+                    L.polyline(path, {
+                        color: '#38bdf8', // Bleu clair contrastant
+                        weight: 3,
+                        opacity: 0.8,
+                        lineJoin: 'round',
+                        dashArray: '5, 8' // Pointillés pour le sillage
+                    }).addTo(pathLayer);
                 }
             });
 
-            if (dataLayer.getLayers().length > 0) {
-                map.fitBounds(dataLayer.getBounds(), { padding: [40, 40] });
+            if (pathLayer.getBounds().isValid()) {
+                map.fitBounds(pathLayer.getBounds(), { padding: [40, 40] });
             }
         }
 
         window.addEventListener('message', onMessage, false);
     </script>
-</body>
-</html>
