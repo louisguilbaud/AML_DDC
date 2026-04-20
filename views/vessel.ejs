@@ -2,13 +2,19 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Suivi de Navire Segmenté - SAS VA</title>
+    <title>Sillage Fléché Navire - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { height: 100vh; width: 100vw; background: #0f172a; }
-        .info-box { font-size: 13px; min-width: 200px; }
-        .header { font-weight: bold; color: #38bdf8; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; text-transform: uppercase; }
+        .info-box { font-size: 13px; min-width: 210px; color: #333; }
+        .header { font-weight: bold; color: #2563eb; border-bottom: 1px solid #ddd; margin-bottom: 6px; padding-bottom: 6px; text-transform: uppercase; font-size: 14px; }
+        
+        /* Styles pour les petits bateaux de sillage (petites flèches) */
+        .trail-ship-icon {
+            filter: drop-shadow(0px 0px 1px rgba(0,0,0,0.5));
+            opacity: 0.8; /* Légèrement transparent */
+        }
     </style>
 </head>
 <body>
@@ -19,7 +25,7 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
-        // 1. Initialisation de la carte avec un fond sombre élégant
+        // 1. Initialisation de la carte (fond sombre pour faire ressortir les icônes)
         const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap &copy; CARTO'
@@ -27,85 +33,80 @@
 
         let pathLayer = L.featureGroup().addTo(map);
 
+        // 2. SVG du bateau (utilisé pour le sillage et la position actuelle)
+        // fill="#60a5fa" (bleu clair pour le sillage)
+        const shipSvg = `<svg viewBox="0 0 24 24" fill="#60a5fa" style="filter: drop-shadow(0px 0px 1px rgba(0,0,0,0.5));">
+                        <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`;
+        
+        // SVG du grand bateau de tête (fill="#4ade80" vert vif)
+        const activeShipSvg = `<svg viewBox="0 0 24 24" width="34" height="34" fill="#4ade80" style="filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.5));">
+                               <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`;
+
         function onMessage(event) {
             if (event.data && event.data.data) {
-                drawVesselPath(event.data);
+                drawVesselTrail(event.data);
             }
         }
 
-        function drawVesselPath(sasPayload) {
+        function drawVesselTrail(sasPayload) {
             pathLayer.clearLayers();
             const rows = sasPayload.data;
             if (rows.length === 0) return;
 
-            let currentSegment = [];
-            const allSegments = [];
-            const threshold = 5; // Seuil de distance en degrés (si > 5°, on considère que c'est un nouveau trajet)
-
             rows.forEach((row, index) => {
                 const lat = row[0];
                 const lng = row[1];
+                const heading = row[2]; // Variable True Heading indispensable !
 
-                // Vérification du saut de distance pour éviter les lignes traversantes
-                if (currentSegment.length > 0) {
-                    const lastPoint = currentSegment[currentSegment.length - 1];
-                    const distance = Math.sqrt(Math.pow(lat - lastPoint[0], 2) + Math.pow(lng - lastPoint[1], 2));
-                    
-                    if (distance > threshold) {
-                        allSegments.push(currentSegment); // On sauvegarde le segment fini
-                        currentSegment = []; // On en commence un nouveau
-                    }
-                }
-                
-                currentSegment.push([lat, lng]);
-
-                // Gestion du marqueur pour le point final (la position actuelle)
+                // 3. Dessiner la position ACTUELLE (dernière ligne de données)
                 if (index === rows.length - 1) {
                     createShipMarker(row);
                 }
-            });
-            
-            // Ajouter le dernier segment
-            allSegments.push(currentSegment);
+                // 4. Dessiner le SILLAGE (toutes les autres positions)
+                else {
+                    // Création de l'icône de sillage (petite flèche bleue)
+                    const trailIcon = L.divIcon({
+                        html: shipSvg,
+                        className: 'trail-ship-icon',
+                        iconSize: [14, 14], // Petits bateaux
+                        iconAnchor: [7, 7]  // Centrer l'ancre
+                    });
 
-            // 2. Dessiner tous les segments proprement
-            allSegments.forEach(segment => {
-                if (segment.length > 1) {
-                    L.polyline(segment, {
-                        color: '#38bdf8',
-                        weight: 3,
-                        opacity: 0.8,
-                        lineJoin: 'round'
+                    // Création du marqueur de sillage orienté
+                    L.marker([lat, lng], {
+                        icon: trailIcon,
+                        rotationAngle: heading, // Orienter selon le True Heading
+                        interactive: false // Désactive le clic pour ne pas gêner la carte
                     }).addTo(pathLayer);
                 }
             });
 
-            // Ajuster la vue
+            // Ajuster la vue pour englober tout le sillage
             if (pathLayer.getBounds().isValid()) {
                 map.fitBounds(pathLayer.getBounds(), { padding: [50, 50] });
             }
         }
 
+        // Fonction pour le marqueur principal et sa pop-up
         function createShipMarker(data) {
             const [lat, lng, heading, sog, cog, type, dwt, rot] = data;
 
             const shipIcon = L.divIcon({
-                html: `<svg viewBox="0 0 24 24" width="34" height="34" fill="#4ade80" style="filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.5));">
-                        <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
+                html: activeShipSvg,
                 className: '',
-                iconSize: [34, 34],
+                iconSize: [34, 34], // Grand bateau de tête
                 iconAnchor: [17, 17]
             });
 
             const marker = L.marker([lat, lng], { 
                 icon: shipIcon,
-                rotationAngle: heading
+                rotationAngle: heading // Orienté
             }).addTo(pathLayer);
 
             marker.bindPopup(`
                 <div class="info-box">
                     <div class="header">${type || 'Navire'}</div>
-                    <b>Vitesse :</b> ${sog?.toFixed(2) || 0} kts<br>
+                    <b>Vitesse :</b> ${sog?.toFixed(2) || 0} nœuds (SOG)<br>
                     <b>Route (COG) :</b> ${cog?.toFixed(1) || 0}°<br>
                     <b>Cap (Heading) :</b> ${heading?.toFixed(1) || 0}°<br>
                     <b>Rotation :</b> ${rot || 0}°/min<br>
