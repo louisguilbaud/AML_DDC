@@ -136,4 +136,7 @@ router.get("/managing_words.html", function (req, res, next) {
 	res.render("managing_words", { title: "managing_words" });
 });
 
+router.get("/vessel.html", function (req, res, next) {
+	res.render("vessel", { title: "vessel" });
+});
 module.exports = router;
