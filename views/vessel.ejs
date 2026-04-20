@@ -2,58 +2,99 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Visualisation Données Brutes - SAS VA</title>
+    <title>Visualisation Navires Bruts - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; background: #0f172a; }
-        .raw-point {
-            background-color: #00e676;
-            border: 1px solid white;
-            border-radius: 50%;
-        }
+        .info-box { font-size: 13px; min-width: 200px; }
+        .header { font-weight: bold; color: #2563eb; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; }
     </style>
 </head>
 <body>
+
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
+
     <script>
         const map = L.map('map').setView([0, 0], 2);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-        
+
         let dataLayer = L.featureGroup().addTo(map);
 
         function onMessage(event) {
             if (event.data && event.data.data) {
-                renderRawData(event.data.data);
+                renderData(event.data.data);
             }
         }
 
-        function renderRawData(rows) {
+        function renderData(rows) {
             dataLayer.clearLayers();
-            
-            rows.forEach((row) => {
-                const lat = row[0]; // Latitude
-                const lng = row[1]; // Longitude
-                
-                // On crée un simple cercle pour chaque ligne de donnée reçue
-                if (lat != null && lng != null) {
+            if (rows.length === 0) return;
+
+            // 1. Trouver le point le plus récent (basé sur l'index 8 : datetime)
+            let latestIndex = 0;
+            let maxTimestamp = -1;
+
+            rows.forEach((row, index) => {
+                const ts = new Date(row[8]).getTime();
+                if (ts > maxTimestamp) {
+                    maxTimestamp = ts;
+                    latestIndex = index;
+                }
+            });
+
+            // 2. Parcourir et afficher chaque point
+            rows.forEach((row, index) => {
+                const lat = row[0];
+                const lng = row[1];
+                const heading = row[2];
+
+                if (lat == null || lng == null) return;
+
+                if (index === latestIndex) {
+                    // Position ACTUELLE (Icône de bateau avec infos)
+                    const shipIcon = L.divIcon({
+                        html: `<svg viewBox="0 0 24 24" width="36" height="36" fill="#4ade80">
+                                <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
+                        className: '',
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    });
+
+                    const marker = L.marker([lat, lng], { 
+                        icon: shipIcon,
+                        rotationAngle: heading 
+                    }).addTo(dataLayer);
+
+                    marker.bindPopup(`
+                        <div class="info-box">
+                            <div class="header">${row[5] || 'Détails Navire'}</div>
+                            <b>Date :</b> ${row[8]}<br>
+                            <b>Vitesse :</b> ${row[3]} kts<br>
+                            <b>Cap :</b> ${heading}°<br>
+                            <b>Tonnage :</b> ${row[6]} DWT<br>
+                            <hr>
+                            <small>Position brute : ${lat}, ${lng}</small>
+                        </div>
+                    `).openPopup();
+
+                } else {
+                    // SILLAGE BRUT (Simples points pour voir la trace sans ligne)
                     L.circleMarker([lat, lng], {
-                        radius: 4,
-                        fillColor: "#00e676",
+                        radius: 3,
+                        fillColor: "#38bdf8",
                         color: "#fff",
-                        weight: 1,
-                        opacity: 1,
-                        fillOpacity: 0.8
-                    })
-                    .bindPopup(`Lat: ${lat}<br>Lng: ${lng}<br>Data: ${JSON.stringify(row)}`)
-                    .addTo(dataLayer);
+                        weight: 0.5,
+                        fillOpacity: 0.6
+                    }).addTo(dataLayer);
                 }
             });
 
             if (dataLayer.getLayers().length > 0) {
-                map.fitBounds(dataLayer.getBounds(), { padding: [20, 20] });
+                map.fitBounds(dataLayer.getBounds(), { padding: [40, 40] });
             }
         }
 
