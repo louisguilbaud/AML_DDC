@@ -4,11 +4,127 @@
     <meta charset="UTF-8">
     <title>Suivi Navire Segmenté - SAS VA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Importation d'une police moderne -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #0f172a; } /* Fond sombre élégant */
-        .info-box { font-size: 13px; min-width: 200px; }
-        .header { font-weight: bold; color: #2563eb; border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px; text-transform: uppercase; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Inter', sans-serif; 
+            background: #0f172a;
+        }
+        
+        #map { 
+            height: 100vh; 
+            width: 100vw; 
+            background: #0f172a; 
+        }
+
+        /* --- Refonte complète du style des Popups Leaflet --- */
+        .leaflet-popup-content-wrapper {
+            background: rgba(30, 41, 59, 0.85) !important; /* Slate 800 semi-transparent */
+            backdrop-filter: blur(8px); /* Effet de flou arrière-plan chic */
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+            color: #f8fafc !important; /* Texte blanc doux */
+            padding: 4px;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(30, 41, 59, 0.85) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .leaflet-popup-close-button {
+            color: #94a3b8 !important;
+            padding: 8px 8px 0 0 !important;
+        }
+        
+        .leaflet-popup-close-button:hover {
+            color: #f1f5f9 !important;
+        }
+
+        /* --- Structure du contenu de la Popup --- */
+        .info-box { 
+            font-size: 13px; 
+            min-width: 240px; 
+            line-height: 1.6;
+        }
+        
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+            margin-bottom: 10px; 
+            padding-bottom: 8px; 
+        }
+
+        .header-title { 
+            font-weight: 700; 
+            color: #38bdf8; /* Bleu cyan moderne */
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(74, 222, 128, 0.1);
+            color: #4ade80;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #4ade80;
+            border-radius: 50%;
+            margin-right: 4px;
+            display: inline-block;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .info-label {
+            color: #94a3b8; /* Gris clair pour les labels */
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .info-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 8px;
+            padding-top: 6px;
+            color: #64748b;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        /* --- Animation de pulsation pour l'icône du navire --- */
+        @keyframes pulse {
+            0% { filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.6)); }
+            50% { filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.9)); }
+            100% { filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.6)); }
+        }
+        .vessel-pulse {
+            animation: pulse 2s infinite ease-in-out;
+        }
     </style>
 </head>
 <body>
@@ -19,10 +135,11 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
-        // 1. Initialisation de la carte (fond sombre pour faire ressortir les lignes/points)
-        const map = L.map('map').setView([0, 0], 2);
+        // 1. Initialisation de la carte avec un zoom minimum pour éviter les répétitions infinies du globe
+        const map = L.map('map', { minZoom: 2 }).setView([0, 0], 2);
+        
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
 
         let pathLayer = L.featureGroup().addTo(map);
@@ -37,7 +154,7 @@
             pathLayer.clearLayers();
             if (rows.length === 0) return;
 
-            // 1. Trouver l'index de la ligne la plus récente (sur la colonne 9 : datetime, index 8)
+            // Trouver l'index du point le plus récent
             let latestIndex = 0;
             let maxTimestamp = -1;
 
@@ -51,7 +168,7 @@
 
             const allCoordinates = [];
             let currentPath = [];
-            const threshold = 10; // Seuil de distance en degrés (si > 10°, on coupe la ligne)
+            const threshold = 10; 
 
             rows.forEach((row, index) => {
                 const lat = row[0];
@@ -60,68 +177,90 @@
 
                 if (lat == null || lng == null) return;
 
-                // Gestion de la segmentation (couper la ligne si saut trop grand)
+                // Segmentation du tracé si saut de coordonnées
                 if (currentPath.length > 0) {
                     const lastPoint = currentPath[currentPath.length - 1];
                     const distance = Math.sqrt(Math.pow(lat - lastPoint[0], 2) + Math.pow(lng - lastPoint[1], 2));
                     
                     if (distance > threshold) {
-                        allCoordinates.push(currentPath); // Sauvegarder le segment fini
-                        currentPath = []; // En commencer un nouveau
+                        allCoordinates.push(currentPath);
+                        currentPath = [];
                     }
                 }
                 
                 currentPath.push([lat, lng]);
 
-                // Afficher l'icône de tête (verte) UNIQUEMENT pour la valeur datetime la plus récente
+                // Affichage du marqueur moderne pour le point le plus récent
                 if (index === latestIndex) {
                     const shipIcon = L.divIcon({
-                        html: `<svg viewBox="0 0 24 24" width="36" height="36" fill="#4ade80" style="filter: drop-shadow(0px 0px 5px rgba(0,0,0,0.5));">
+                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="40" height="40" fill="#4ade80">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18]
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
                     });
+
+                    // Formatage de la date plus lisible
+                    let dateFormatee = row[8];
+                    try {
+                        const d = new Date(row[8]);
+                        if(!isNaN(d)) {
+                            dateFormatee = d.toLocaleString('fr-FR', { timeZone: 'UTC' }) + ' (UTC)';
+                        }
+                    } catch(e) {}
 
                     const marker = L.marker([lat, lng], { 
                         icon: shipIcon,
                         rotationAngle: heading 
                     }).addTo(pathLayer);
 
+                    // Structure HTML propre et compartimentée en lignes (Key-Value)
                     marker.bindPopup(`
                         <div class="info-box">
-                            <div class="header">${row[5] || 'Détails Navire'}</div>
-                            <b>Date :</b> ${row[8]}<br>
-                            <b>Vitesse :</b> ${row[3]?.toFixed(1)} kts<br>
-                            <b>Cap :</b> ${heading}°<br>
-                            <b>Tonnage :</b> ${row[6]?.toLocaleString()} DWT<br>
-                            <hr>
-                            <small>Position : ${lat}, ${lng}</small>
+                            <div class="header-container">
+                                <div class="header-title">${row[5] || 'Navire'}</div>
+                                <div class="status-badge"><span class="status-dot"></span>Actuel</div>
+                            </div>
+                            <div class="info-row"><span class="info-label">Date</span><span class="info-value">${dateFormatee}</span></div>
+                            <div class="info-row"><span class="info-label">Vitesse</span><span class="info-value">${row[3]?.toFixed(1)} kts</span></div>
+                            <div class="info-row"><span class="info-label">Cap</span><span class="info-value">${heading}°</span></div>
+                            <div class="info-row"><span class="info-label">Tonnage</span><span class="info-value">${row[6] ? row[6].toLocaleString() + ' DWT' : 'N/A'}</span></div>
+                            <div class="info-footer">Position : ${lat.toFixed(4)}°, ${lng.toFixed(4)}°</div>
                         </div>
                     `).openPopup();
                 }
             });
             
-            // Ajouter le dernier segment de ligne
             allCoordinates.push(currentPath);
 
-            // 2. Dessiner la ligne de sillage (les segments de route triés chronologiquement)
+            // Dessin du sillage avec des couleurs fluides et épaisses
             allCoordinates.forEach(path => {
                 if (path.length > 1) {
+                    // Optionnel : Ligne de fond pour donner un effet "néon glow" au sillage
                     L.polyline(path, {
-                        color: '#38bdf8', // Bleu clair contrastant
-                        weight: 3,
-                        opacity: 0.8,
+                        color: '#38bdf8',
+                        weight: 6,
+                        opacity: 0.15,
+                        lineJoin: 'round'
+                    }).addTo(pathLayer);
+
+                    // Ligne principale en pointillés fins et précis
+                    L.polyline(path, {
+                        color: '#38bdf8',
+                        weight: 2.5,
+                        opacity: 0.85,
                         lineJoin: 'round',
-                        dashArray: '5, 8' // Pointillés pour le sillage
+                        dashArray: '6, 6'
                     }).addTo(pathLayer);
                 }
             });
 
             if (pathLayer.getBounds().isValid()) {
-                map.fitBounds(pathLayer.getBounds(), { padding: [40, 40] });
+                map.fitBounds(pathLayer.getBounds(), { padding: [50, 50] });
             }
         }
 
         window.addEventListener('message', onMessage, false);
     </script>
+</body>
+</html>
