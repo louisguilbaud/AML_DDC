@@ -11,36 +11,30 @@
             margin: 0; 
             padding: 0; 
             font-family: 'Inter', sans-serif; 
-            background: #fff5f5; /* Fond rosé de secours */
+            background: #f1f5f9; 
         }
         
         #map { 
             height: 100vh; 
             width: 100vw; 
-            background: #fff5f5; 
-        }
-
-        /* --- LE SECRET POUR LES OCÉANS ROSES --- */
-        .leaflet-tile-container {
-            /* Inversion des couleurs, rotation de la teinte vers le rose et ajustement du contraste */
-            filter: invert(1) hue-rotate(150deg) saturate(1.4) brightness(1.05) contrast(0.9);
+            background: #f1f5f9; 
         }
 
         /* --- Style de la Popup : Version Compacte --- */
         .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.9) !important; 
+            background: rgba(255, 255, 255, 0.88) !important; 
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(244, 63, 94, 0.2); /* Bordure subtile rose/rose rouge */
-            border-radius: 10px !important; 
+            border: 1px solid rgba(0, 0, 0, 0.06); 
+            border-radius: 10px !important; /* Coins légèrement plus discrets */
             box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.1) !important;
             color: #1e293b !important; 
             padding: 2px;
         }
 
         .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: 1px solid rgba(244, 63, 94, 0.2);
+            background: rgba(255, 255, 255, 0.88) !important;
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .leaflet-popup-close-button {
@@ -48,9 +42,10 @@
             padding: 6px 8px 0 0 !important;
         }
 
+        /* Taille réduite du conteneur global */
         .info-box { 
-            font-size: 11.5px; 
-            min-width: 190px;  
+            font-size: 11.5px; /* Écritures un poil plus petites */
+            min-width: 190px;  /* Conteneur plus étroit */
             line-height: 1.5;
         }
         
@@ -65,7 +60,7 @@
 
         .header-title { 
             font-weight: 700; 
-            color: #e11d48; /* Titre rose foncé / rouge pour aller avec le thème */
+            color: #0284c7; 
             text-transform: uppercase; 
             letter-spacing: 0.5px;
             font-size: 11.5px;
@@ -74,8 +69,8 @@
         .status-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(244, 63, 94, 0.15); /* Badge teinté rose */
-            color: #e11d48;
+            background: rgba(22, 163, 74, 0.1);
+            color: #16a34a;
             padding: 1px 6px;
             border-radius: 20px;
             font-size: 9px;
@@ -85,7 +80,7 @@
         .status-dot {
             width: 5px;
             height: 5px;
-            background-color: #e11d48;
+            background-color: #16a34a;
             border-radius: 50%;
             margin-right: 4px;
             display: inline-block;
@@ -117,11 +112,11 @@
             font-family: monospace;
         }
 
-        /* --- Animation Pulse Icône (Violet/Fuchsia pour trancher sur le rose) --- */
+        /* --- Animation Pulse Icône (Ajustée pour 36px) --- */
         @keyframes pulse {
-            0% { filter: drop-shadow(0 0 1px rgba(162, 28, 175, 0.4)); }
-            50% { filter: drop-shadow(0 0 6px rgba(162, 28, 175, 0.7)); }
-            100% { filter: drop-shadow(0 0 1px rgba(162, 28, 175, 0.4)); }
+            0% { filter: drop-shadow(0 0 1px rgba(22, 163, 74, 0.4)); }
+            50% { filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.6)); }
+            100% { filter: drop-shadow(0 0 1px rgba(22, 163, 74, 0.4)); }
         }
         .vessel-pulse {
             animation: pulse 2.5s infinite ease-in-out;
@@ -142,7 +137,6 @@
             bounceAtZoomLimits: false
         }).setView([0, 0], 2);
         
-        // Base claire qui va être transformée en rose par le CSS
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             subdomains: 'abcd',
@@ -196,9 +190,9 @@
                 currentPath.push([lat, lng]);
 
                 if (index === latestIndex) {
-                    // Icône changée en Violet/Fuchsia (#a21caf) pour être ultra-visible sur le rose pastel
+                    // Taille de l'icône réduite de 42px à 36px pour s'harmoniser avec la petite boîte
                     const shipIcon = L.divIcon({
-                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="36" height="36" fill="#a21caf">
+                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="36" height="36" fill="#16a34a">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
                         iconSize: [36, 36],
@@ -236,18 +230,17 @@
             
             allCoordinates.push(currentPath);
 
-            // Sillage en Violet Foncé / Indigo pour ressortir magnifiquement sur le rose
             allCoordinates.forEach(path => {
                 if (path.length > 1) {
                     L.polyline(path, {
-                        color: '#4338ca', 
+                        color: '#0284c7', 
                         weight: 4,
-                        opacity: 0.12,
+                        opacity: 0.15,
                         lineJoin: 'round'
                     }).addTo(pathLayer);
 
                     L.polyline(path, {
-                        color: '#6366f1', 
+                        color: '#0ea5e9', 
                         weight: 2.2,
                         opacity: 0.85,
                         lineJoin: 'round',
