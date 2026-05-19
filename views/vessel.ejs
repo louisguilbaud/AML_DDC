@@ -11,40 +11,34 @@
             margin: 0; 
             padding: 0; 
             font-family: 'Inter', sans-serif; 
-            background: #0b0f19; /* Fond encore plus profond */
+            background: #f1f5f9; /* Fond clair de secours */
         }
         
         #map { 
             height: 100vh; 
             width: 100vw; 
-            background: #0b0f19; 
+            background: #f1f5f9; 
         }
 
-        /* --- Amélioration du contraste de la carte via CSS (Effet premium) --- */
-        .leaflet-tile-container {
-            /* Augmente légèrement le contraste et réduit la luminosité pour faire ressortir le sillage fluo */
-            filter: brightness(0.85) contrast(1.1) saturate(0.9);
-        }
-
-        /* --- Popups Premium Style --- */
+        /* --- Style de la Popup : Version Claire Épurée --- */
         .leaflet-popup-content-wrapper {
-            background: rgba(15, 23, 42, 0.9) !important; 
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(56, 189, 248, 0.2); /* Légère lueur bleue sur la bordure */
+            background: rgba(255, 255, 255, 0.85) !important; /* Blanc semi-transparent */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.06); 
             border-radius: 14px !important;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7) !important;
-            color: #f8fafc !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+            color: #1e293b !important; /* Texte sombre pour le contraste */
             padding: 6px;
         }
 
         .leaflet-popup-tip {
-            background: rgba(15, 23, 42, 0.9) !important;
-            border: 1px solid rgba(56, 189, 248, 0.2);
+            background: rgba(255, 255, 255, 0.85) !important;
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .leaflet-popup-close-button {
-            color: #64748b !important;
+            color: #94a3b8 !important;
             padding: 10px 10px 0 0 !important;
         }
 
@@ -58,14 +52,14 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08); 
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06); 
             margin-bottom: 12px; 
             padding-bottom: 8px; 
         }
 
         .header-title { 
             font-weight: 700; 
-            color: #38bdf8; 
+            color: #0284c7; /* Bleu océan plus soutenu pour fond clair */
             text-transform: uppercase; 
             letter-spacing: 0.7px;
             font-size: 13px;
@@ -74,8 +68,8 @@
         .status-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(74, 222, 128, 0.15);
-            color: #4ade80;
+            background: rgba(22, 163, 74, 0.1);
+            color: #16a34a;
             padding: 3px 9px;
             border-radius: 20px;
             font-size: 10px;
@@ -86,7 +80,7 @@
         .status-dot {
             width: 6px;
             height: 6px;
-            background-color: #4ade80;
+            background-color: #16a34a;
             border-radius: 50%;
             margin-right: 5px;
             display: inline-block;
@@ -99,30 +93,30 @@
         }
 
         .info-label {
-            color: #64748b;
+            color: #64748b; /* Gris intermédiaire */
             font-weight: 500;
         }
 
         .info-value {
-            color: #e2e8f0;
+            color: #0f172a; /* Texte important très sombre */
             font-weight: 600;
         }
 
         .info-footer {
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
             margin-top: 10px;
             padding-top: 8px;
-            color: #475569;
+            color: #64748b;
             font-size: 11px;
             text-align: center;
             font-family: monospace;
         }
 
-        /* --- Animation Pulse Icône --- */
+        /* --- Animation Pulse Icône (Adaptée pour le fond clair) --- */
         @keyframes pulse {
-            0% { filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.7)); }
-            50% { filter: drop-shadow(0 0 12px rgba(74, 222, 128, 0.9)); }
-            100% { filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.7)); }
+            0% { filter: drop-shadow(0 0 2px rgba(22, 163, 74, 0.4)); }
+            50% { filter: drop-shadow(0 0 8px rgba(22, 163, 74, 0.7)); }
+            100% { filter: drop-shadow(0 0 2px rgba(22, 163, 74, 0.4)); }
         }
         .vessel-pulse {
             animation: pulse 2.5s infinite ease-in-out;
@@ -137,17 +131,15 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
     <script>
-        // 1. Initialisation de la carte avec options de propreté visuelle (pas de bounce, pas de répétition sauvage)
         const map = L.map('map', { 
             minZoom: 2,
             maxZoom: 18,
             bounceAtZoomLimits: false
         }).setView([0, 0], 2);
         
-        // Utilisation de la version 'nosabels' + injection des frontières/noms de manière plus discrète au besoin.
-        // Ici, 'dark_all' reste la plus équilibrée, mais optimisée avec l'option noWrap et les filtres CSS plus haut.
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+        // Changement pour un fond "Positron" (CartoDB Light) ultra-épuré et clair
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(map);
@@ -199,8 +191,9 @@
                 currentPath.push([lat, lng]);
 
                 if (index === latestIndex) {
+                    // Icône d'un vert un peu plus soutenu (#16a34a) pour trancher sur le blanc
                     const shipIcon = L.divIcon({
-                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="42" height="42" fill="#4ade80">
+                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="42" height="42" fill="#16a34a">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
                         iconSize: [42, 42],
@@ -238,24 +231,22 @@
             
             allCoordinates.push(currentPath);
 
-            // Dessin du sillage ultra-propre (Style "Glow / Néon")
+            // Dessin du sillage bleu cyan soutenu (très visible sur fond blanc)
             allCoordinates.forEach(path => {
                 if (path.length > 1) {
-                    // Halo lumineux arrière-plan
                     L.polyline(path, {
-                        color: '#0ea5e9',
-                        weight: 6,
+                        color: '#0284c7', // Bleu plus foncé pour le contraste clair
+                        weight: 4,
                         opacity: 0.2,
                         lineJoin: 'round'
                     }).addTo(pathLayer);
 
-                    // Ligne principale nette
                     L.polyline(path, {
-                        color: '#38bdf8',
-                        weight: 2,
+                        color: '#0ea5e9', // Ligne centrale vive
+                        weight: 2.5,
                         opacity: 0.9,
                         lineJoin: 'round',
-                        dashArray: '8, 6'
+                        dashArray: '6, 5'
                     }).addTo(pathLayer);
                 }
             });
