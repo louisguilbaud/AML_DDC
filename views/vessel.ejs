@@ -11,41 +11,47 @@
             margin: 0; 
             padding: 0; 
             font-family: 'Inter', sans-serif; 
-            background: #f1f5f9; /* Fond clair de secours */
+            background: #fff5f5; /* Fond rosé de secours */
         }
         
         #map { 
             height: 100vh; 
             width: 100vw; 
-            background: #f1f5f9; 
+            background: #fff5f5; 
         }
 
-        /* --- Style de la Popup : Version Claire Épurée --- */
+        /* --- LE SECRET POUR LES OCÉANS ROSES --- */
+        .leaflet-tile-container {
+            /* Inversion des couleurs, rotation de la teinte vers le rose et ajustement du contraste */
+            filter: invert(1) hue-rotate(150deg) saturate(1.4) brightness(1.05) contrast(0.9);
+        }
+
+        /* --- Style de la Popup : Version Compacte --- */
         .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.85) !important; /* Blanc semi-transparent */
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(0, 0, 0, 0.06); 
-            border-radius: 14px !important;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-            color: #1e293b !important; /* Texte sombre pour le contraste */
-            padding: 6px;
+            background: rgba(255, 255, 255, 0.9) !important; 
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(244, 63, 94, 0.2); /* Bordure subtile rose/rose rouge */
+            border-radius: 10px !important; 
+            box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.1) !important;
+            color: #1e293b !important; 
+            padding: 2px;
         }
 
         .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.85) !important;
-            border: 1px solid rgba(0, 0, 0, 0.06);
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(244, 63, 94, 0.2);
         }
 
         .leaflet-popup-close-button {
             color: #94a3b8 !important;
-            padding: 10px 10px 0 0 !important;
+            padding: 6px 8px 0 0 !important;
         }
 
         .info-box { 
-            font-size: 13px; 
-            min-width: 250px; 
-            line-height: 1.6;
+            font-size: 11.5px; 
+            min-width: 190px;  
+            line-height: 1.5;
         }
         
         .header-container {
@@ -53,70 +59,69 @@
             align-items: center;
             justify-content: space-between;
             border-bottom: 1px solid rgba(0, 0, 0, 0.06); 
-            margin-bottom: 12px; 
-            padding-bottom: 8px; 
+            margin-bottom: 8px; 
+            padding-bottom: 5px; 
         }
 
         .header-title { 
             font-weight: 700; 
-            color: #0284c7; /* Bleu océan plus soutenu pour fond clair */
+            color: #e11d48; /* Titre rose foncé / rouge pour aller avec le thème */
             text-transform: uppercase; 
-            letter-spacing: 0.7px;
-            font-size: 13px;
+            letter-spacing: 0.5px;
+            font-size: 11.5px;
         }
 
         .status-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(22, 163, 74, 0.1);
-            color: #16a34a;
-            padding: 3px 9px;
+            background: rgba(244, 63, 94, 0.15); /* Badge teinté rose */
+            color: #e11d48;
+            padding: 1px 6px;
             border-radius: 20px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
-            letter-spacing: 0.5px;
         }
 
         .status-dot {
-            width: 6px;
-            height: 6px;
-            background-color: #16a34a;
+            width: 5px;
+            height: 5px;
+            background-color: #e11d48;
             border-radius: 50%;
-            margin-right: 5px;
+            margin-right: 4px;
             display: inline-block;
         }
 
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 6px;
+            margin-bottom: 3px;
         }
 
         .info-label {
-            color: #64748b; /* Gris intermédiaire */
+            color: #64748b; 
             font-weight: 500;
         }
 
         .info-value {
-            color: #0f172a; /* Texte important très sombre */
+            color: #0f172a; 
             font-weight: 600;
         }
 
         .info-footer {
             border-top: 1px solid rgba(0, 0, 0, 0.04);
-            margin-top: 10px;
-            padding-top: 8px;
-            color: #64748b;
-            font-size: 11px;
+            margin-top: 6px;
+            padding-top: 4px;
+            color: #94a3b8;
+            font-size: 10px;
             text-align: center;
             font-family: monospace;
         }
 
-        /* --- Animation Pulse Icône (Adaptée pour le fond clair) --- */
+        /* --- Animation Pulse Icône (Violet/Fuchsia pour trancher sur le rose) --- */
         @keyframes pulse {
-            0% { filter: drop-shadow(0 0 2px rgba(22, 163, 74, 0.4)); }
-            50% { filter: drop-shadow(0 0 8px rgba(22, 163, 74, 0.7)); }
-            100% { filter: drop-shadow(0 0 2px rgba(22, 163, 74, 0.4)); }
+            0% { filter: drop-shadow(0 0 1px rgba(162, 28, 175, 0.4)); }
+            50% { filter: drop-shadow(0 0 6px rgba(162, 28, 175, 0.7)); }
+            100% { filter: drop-shadow(0 0 1px rgba(162, 28, 175, 0.4)); }
         }
         .vessel-pulse {
             animation: pulse 2.5s infinite ease-in-out;
@@ -137,7 +142,7 @@
             bounceAtZoomLimits: false
         }).setView([0, 0], 2);
         
-        // Changement pour un fond "Positron" (CartoDB Light) ultra-épuré et clair
+        // Base claire qui va être transformée en rose par le CSS
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             subdomains: 'abcd',
@@ -191,13 +196,13 @@
                 currentPath.push([lat, lng]);
 
                 if (index === latestIndex) {
-                    // Icône d'un vert un peu plus soutenu (#16a34a) pour trancher sur le blanc
+                    // Icône changée en Violet/Fuchsia (#a21caf) pour être ultra-visible sur le rose pastel
                     const shipIcon = L.divIcon({
-                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="42" height="42" fill="#16a34a">
+                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="36" height="36" fill="#a21caf">
                                 <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
                         className: '',
-                        iconSize: [42, 42],
-                        iconAnchor: [21, 21]
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
                     });
 
                     let dateFormatee = row[8];
@@ -223,7 +228,7 @@
                             <div class="info-row"><span class="info-label">Vitesse</span><span class="info-value">${row[3]?.toFixed(1)} kts</span></div>
                             <div class="info-row"><span class="info-label">Cap</span><span class="info-value">${heading}°</span></div>
                             <div class="info-row"><span class="info-label">Tonnage</span><span class="info-value">${row[6] ? row[6].toLocaleString() + ' DWT' : 'N/A'}</span></div>
-                            <div class="info-footer">POS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+                            <div class="info-footer">POS: ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
                         </div>
                     `).openPopup();
                 }
@@ -231,22 +236,22 @@
             
             allCoordinates.push(currentPath);
 
-            // Dessin du sillage bleu cyan soutenu (très visible sur fond blanc)
+            // Sillage en Violet Foncé / Indigo pour ressortir magnifiquement sur le rose
             allCoordinates.forEach(path => {
                 if (path.length > 1) {
                     L.polyline(path, {
-                        color: '#0284c7', // Bleu plus foncé pour le contraste clair
+                        color: '#4338ca', 
                         weight: 4,
-                        opacity: 0.2,
+                        opacity: 0.12,
                         lineJoin: 'round'
                     }).addTo(pathLayer);
 
                     L.polyline(path, {
-                        color: '#0ea5e9', // Ligne centrale vive
-                        weight: 2.5,
-                        opacity: 0.9,
+                        color: '#6366f1', 
+                        weight: 2.2,
+                        opacity: 0.85,
                         lineJoin: 'round',
-                        dashArray: '6, 5'
+                        dashArray: '5, 5'
                     }).addTo(pathLayer);
                 }
             });
