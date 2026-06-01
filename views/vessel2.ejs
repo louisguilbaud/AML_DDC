@@ -2,39 +2,39 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Suivi Navire Segmenté - SAS VA</title>
+    <title>Suivi Navire - SAS VA</title>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: 'Inter', sans-serif; 
-            background: #f1f5f9; 
-        }
-        
-        #map { 
-            height: 100vh; 
-            width: 100vw; 
-            background: #f1f5f9; 
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
         }
 
-        /* --- Style de la Popup : Version Compacte --- */
+        #map {
+            height: 100vh;
+            width: 100vw;
+            background: #f1f5f9;
+        }
+
         .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.88) !important; 
+            background: rgba(255,255,255,0.88) !important;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 0, 0, 0.06); 
-            border-radius: 10px !important; /* Coins légèrement plus discrets */
-            box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.1) !important;
-            color: #1e293b !important; 
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 10px !important;
+            box-shadow: 0 4px 18px -4px rgba(0,0,0,0.1) !important;
+            color: #1e293b !important;
             padding: 2px;
         }
 
         .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.88) !important;
-            border: 1px solid rgba(0, 0, 0, 0.06);
+            background: rgba(255,255,255,0.88) !important;
+            border: 1px solid rgba(0,0,0,0.06);
         }
 
         .leaflet-popup-close-button {
@@ -42,26 +42,25 @@
             padding: 6px 8px 0 0 !important;
         }
 
-        /* Taille réduite du conteneur global */
-        .info-box { 
-            font-size: 11.5px; /* Écritures un poil plus petites */
-            min-width: 190px;  /* Conteneur plus étroit */
+        .info-box {
+            font-size: 11.5px;
+            min-width: 190px;
             line-height: 1.5;
         }
-        
+
         .header-container {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06); 
-            margin-bottom: 8px; 
-            padding-bottom: 5px; 
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            margin-bottom: 8px;
+            padding-bottom: 5px;
         }
 
-        .header-title { 
-            font-weight: 700; 
-            color: #0284c7; 
-            text-transform: uppercase; 
+        .header-title {
+            font-weight: 700;
+            color: #0284c7;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
             font-size: 11.5px;
         }
@@ -69,7 +68,7 @@
         .status-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(22, 163, 74, 0.1);
+            background: rgba(22,163,74,0.1);
             color: #16a34a;
             padding: 1px 6px;
             border-radius: 20px;
@@ -93,17 +92,17 @@
         }
 
         .info-label {
-            color: #64748b; 
+            color: #64748b;
             font-weight: 500;
         }
 
         .info-value {
-            color: #0f172a; 
+            color: #0f172a;
             font-weight: 600;
         }
 
         .info-footer {
-            border-top: 1px solid rgba(0, 0, 0, 0.04);
+            border-top: 1px solid rgba(0,0,0,0.04);
             margin-top: 6px;
             padding-top: 4px;
             color: #94a3b8;
@@ -112,149 +111,188 @@
             font-family: monospace;
         }
 
-        /* --- Animation Pulse Icône (Ajustée pour 36px) --- */
         @keyframes pulse {
-            0% { filter: drop-shadow(0 0 1px rgba(22, 163, 74, 0.4)); }
-            50% { filter: drop-shadow(0 0 6px rgba(22, 163, 74, 0.6)); }
-            100% { filter: drop-shadow(0 0 1px rgba(22, 163, 74, 0.4)); }
+            0% { filter: drop-shadow(0 0 1px rgba(22,163,74,0.4)); }
+            50% { filter: drop-shadow(0 0 6px rgba(22,163,74,0.6)); }
+            100% { filter: drop-shadow(0 0 1px rgba(22,163,74,0.4)); }
         }
+
         .vessel-pulse {
             animation: pulse 2.5s infinite ease-in-out;
         }
     </style>
 </head>
+
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-rotatedmarker@0.2.0/leaflet.rotatedMarker.min.js"></script>
 
-    <script>
-        const map = L.map('map', { 
-            minZoom: 2,
-            maxZoom: 18,
-            bounceAtZoomLimits: false
-        }).setView([0, 0], 2);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(map);
+<script>
 
-        let pathLayer = L.featureGroup().addTo(map);
+const map = L.map('map', {
+    minZoom: 2,
+    maxZoom: 18,
+    bounceAtZoomLimits: false
+}).setView([0,0], 2);
 
-        function onMessage(event) {
-            if (event.data && event.data.data) {
-                renderDataTrail(event.data.data);
+L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {
+        attribution: '&copy; CARTO & OpenStreetMap',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }
+).addTo(map);
+
+const pathLayer = L.featureGroup().addTo(map);
+
+function onMessage(event) {
+    if (event.data && event.data.data) {
+        renderDataTrail(event.data.data);
+    }
+}
+
+function renderDataTrail(rows) {
+
+    pathLayer.clearLayers();
+
+    if (!rows || rows.length === 0) return;
+
+    // Sort by datetime
+    const sortedRows = [...rows].sort((a, b) => {
+        return new Date(a[8]) - new Date(b[8]);
+    });
+
+    const coordinates = [];
+
+    sortedRows.forEach(row => {
+
+        const lat = parseFloat(row[0]);
+        const lng = parseFloat(row[1]);
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        coordinates.push([lat, lng]);
+    });
+
+    // Single route line
+    if (coordinates.length > 1) {
+
+        L.polyline(coordinates, {
+            color: '#0ea5e9',
+            weight: 4,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round',
+            smoothFactor: 1
+        }).addTo(pathLayer);
+    }
+
+    // Latest point
+    const latestRow = sortedRows[sortedRows.length - 1];
+
+    if (latestRow) {
+
+        const lat = parseFloat(latestRow[0]);
+        const lng = parseFloat(latestRow[1]);
+        const heading = parseFloat(latestRow[2]) || 0;
+
+        const shipIcon = L.divIcon({
+            html: `
+                <svg class="vessel-pulse"
+                     viewBox="0 0 24 24"
+                     width="36"
+                     height="36"
+                     fill="#16a34a">
+                    <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/>
+                </svg>
+            `,
+            className: '',
+            iconSize: [36,36],
+            iconAnchor: [18,18]
+        });
+
+        let dateFormatee = latestRow[8];
+
+        try {
+            const d = new Date(latestRow[8]);
+
+            if (!isNaN(d)) {
+                dateFormatee =
+                    d.toLocaleString('fr-FR', {
+                        timeZone: 'UTC'
+                    }) + ' UTC';
             }
         }
+        catch(e){}
 
-        function renderDataTrail(rows) {
-            pathLayer.clearLayers();
-            if (rows.length === 0) return;
+        const marker = L.marker([lat, lng], {
+            icon: shipIcon,
+            rotationAngle: heading
+        }).addTo(pathLayer);
 
-            let latestIndex = 0;
-            let maxTimestamp = -1;
+        marker.bindPopup(`
+            <div class="info-box">
 
-            rows.forEach((row, index) => {
-                const ts = new Date(row[8]).getTime();
-                if (ts > maxTimestamp) {
-                    maxTimestamp = ts;
-                    latestIndex = index;
-                }
-            });
+                <div class="header-container">
+                    <div class="header-title">
+                        ${latestRow[5] || 'NAVIRE'}
+                    </div>
 
-            const allCoordinates = [];
-            let currentPath = [];
-            const threshold = 10; 
+                    <div class="status-badge">
+                        <span class="status-dot"></span>
+                        LIVE
+                    </div>
+                </div>
 
-            rows.forEach((row, index) => {
-                const lat = row[0];
-                const lng = row[1];
-                const heading = row[2];
+                <div class="info-row">
+                    <span class="info-label">Date</span>
+                    <span class="info-value">${dateFormatee}</span>
+                </div>
 
-                if (lat == null || lng == null) return;
+                <div class="info-row">
+                    <span class="info-label">Vitesse</span>
+                    <span class="info-value">
+                        ${Number(latestRow[3] || 0).toFixed(1)} kts
+                    </span>
+                </div>
 
-                if (currentPath.length > 0) {
-                    const lastPoint = currentPath[currentPath.length - 1];
-                    const distance = Math.sqrt(Math.pow(lat - lastPoint[0], 2) + Math.pow(lng - lastPoint[1], 2));
-                    
-                    if (distance > threshold) {
-                        allCoordinates.push(currentPath);
-                        currentPath = [];
-                    }
-                }
-                
-                currentPath.push([lat, lng]);
+                <div class="info-row">
+                    <span class="info-label">Cap</span>
+                    <span class="info-value">${heading}°</span>
+                </div>
 
-                if (index === latestIndex) {
-                    // Taille de l'icône réduite de 42px à 36px pour s'harmoniser avec la petite boîte
-                    const shipIcon = L.divIcon({
-                        html: `<svg class="vessel-pulse" viewBox="0 0 24 24" width="36" height="36" fill="#16a34a">
-                                <path d="M12,2L4.5,20.29L5.21,21L12,18L18.79,21L19.5,20.29L12,2Z"/></svg>`,
-                        className: '',
-                        iconSize: [36, 36],
-                        iconAnchor: [18, 18]
-                    });
+                <div class="info-row">
+                    <span class="info-label">Tonnage</span>
+                    <span class="info-value">
+                        ${latestRow[6]
+                            ? Number(latestRow[6]).toLocaleString() + ' DWT'
+                            : 'N/A'}
+                    </span>
+                </div>
 
-                    let dateFormatee = row[8];
-                    try {
-                        const d = new Date(row[8]);
-                        if(!isNaN(d)) {
-                            dateFormatee = d.toLocaleString('fr-FR', { timeZone: 'UTC' }) + ' UTC';
-                        }
-                    } catch(e) {}
+                <div class="info-footer">
+                    POS: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+                </div>
 
-                    const marker = L.marker([lat, lng], { 
-                        icon: shipIcon,
-                        rotationAngle: heading 
-                    }).addTo(pathLayer);
+            </div>
+        `).openPopup();
+    }
 
-                    marker.bindPopup(`
-                        <div class="info-box">
-                            <div class="header-container">
-                                <div class="header-title">${row[5] || 'NAVIRE'}</div>
-                                <div class="status-badge"><span class="status-dot"></span>LIVE</div>
-                            </div>
-                            <div class="info-row"><span class="info-label">Date</span><span class="info-value">${dateFormatee}</span></div>
-                            <div class="info-row"><span class="info-label">Vitesse</span><span class="info-value">${row[3]?.toFixed(1)} kts</span></div>
-                            <div class="info-row"><span class="info-label">Cap</span><span class="info-value">${heading}°</span></div>
-                            <div class="info-row"><span class="info-label">Tonnage</span><span class="info-value">${row[6] ? row[6].toLocaleString() + ' DWT' : 'N/A'}</span></div>
-                            <div class="info-footer">POS: ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
-                        </div>
-                    `).openPopup();
-                }
-            });
-            
-            allCoordinates.push(currentPath);
+    if (pathLayer.getBounds().isValid()) {
+        map.fitBounds(
+            pathLayer.getBounds(),
+            { padding: [60,60] }
+        );
+    }
+}
 
-            allCoordinates.forEach(path => {
-                if (path.length > 1) {
-                    L.polyline(path, {
-                        color: '#0284c7', 
-                        weight: 4,
-                        opacity: 0.15,
-                        lineJoin: 'round'
-                    }).addTo(pathLayer);
+window.addEventListener('message', onMessage, false);
 
-                    L.polyline(path, {
-                        color: '#0ea5e9', 
-                        weight: 2.2,
-                        opacity: 0.85,
-                        lineJoin: 'round',
-                        dashArray: '5, 5'
-                    }).addTo(pathLayer);
-                }
-            });
+</script>
 
-            if (pathLayer.getBounds().isValid()) {
-                map.fitBounds(pathLayer.getBounds(), { padding: [60, 60] });
-            }
-        }
-
-        window.addEventListener('message', onMessage, false);
-    </script>
 </body>
 </html>
