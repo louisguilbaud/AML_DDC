@@ -166,6 +166,7 @@ function renderDataTrail(rows) {
         return new Date(a[8]) - new Date(b[8]);
     });
 
+    // 1. Build coordinates
     const coordinates = [];
 
     sortedRows.forEach(row => {
@@ -178,10 +179,38 @@ function renderDataTrail(rows) {
         coordinates.push([lat, lng]);
     });
 
-    // Single route line
-    if (coordinates.length > 1) {
+    // 2. Split route at International Date Line
+    const paths = [];
+    let currentPath = [];
 
-        L.polyline(coordinates, {
+    for (let i = 0; i < coordinates.length; i++) {
+
+        if (i > 0) {
+
+            const previousLng = coordinates[i - 1][1];
+            const currentLng = coordinates[i][1];
+
+            if (Math.abs(currentLng - previousLng) > 180) {
+
+                if (currentPath.length > 1) {
+                    paths.push(currentPath);
+                }
+
+                currentPath = [];
+            }
+        }
+
+        currentPath.push(coordinates[i]);
+    }
+
+    if (currentPath.length > 1) {
+        paths.push(currentPath);
+    }
+
+    // 3. Draw segmented paths
+    paths.forEach(path => {
+
+        L.polyline(path, {
             color: '#0ea5e9',
             weight: 4,
             opacity: 0.9,
@@ -189,7 +218,8 @@ function renderDataTrail(rows) {
             lineJoin: 'round',
             smoothFactor: 1
         }).addTo(pathLayer);
-    }
+
+    });
 
     // Latest point
     const latestRow = sortedRows[sortedRows.length - 1];
@@ -219,15 +249,10 @@ function renderDataTrail(rows) {
 
         try {
             const d = new Date(latestRow[8]);
-
             if (!isNaN(d)) {
-                dateFormatee =
-                    d.toLocaleString('fr-FR', {
-                        timeZone: 'UTC'
-                    }) + ' UTC';
+                dateFormatee = d.toLocaleString('fr-FR', { timeZone: 'UTC' }) + ' UTC';
             }
-        }
-        catch(e){}
+        } catch(e){}
 
         const marker = L.marker([lat, lng], {
             icon: shipIcon,
@@ -283,10 +308,7 @@ function renderDataTrail(rows) {
     }
 
     if (pathLayer.getBounds().isValid()) {
-        map.fitBounds(
-            pathLayer.getBounds(),
-            { padding: [60,60] }
-        );
+        map.fitBounds(pathLayer.getBounds(), { padding: [60,60] });
     }
 }
 
